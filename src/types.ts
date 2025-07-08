@@ -1,0 +1,105 @@
+
+import type { TreeDataNode, TableColumnType } from "antd";
+
+import { z } from "zod";
+export const NDPValidator = z.object({
+    v: z.string(),
+});
+
+export const GoalValidator = z.object({
+    deg: z.string().optional(),
+    degs: z.string().optional(),
+    filter: z.string().optional(),
+    "deg-ids": z.string().optional(),
+    program: z.string().optional(),
+    tab: z.string().optional(),
+    pe: z.string(),
+    label: z.string(),
+    ous: z.union([z.string(), z.string().array()]).optional(),
+});
+
+export type GoalSearch = z.infer<typeof GoalValidator>;
+
+export type AdditionalColumn = {
+    value: string;
+    label: string;
+    selected: boolean;
+    render?: TableColumnType<
+        Record<string, string | number | undefined>
+    >["render"];
+};
+
+export interface OrgUnit extends TreeDataNode {
+    pId?: string;
+    value: string;
+    id: string;
+    title: string;
+    children?: OrgUnit[];
+}
+export interface OrgUnitsResponse {
+    organisationUnits: OrgUnit[];
+}
+
+
+export type AttributeValue = {
+    attribute: { id: string; name: string };
+    value: string;
+};
+
+export type NameWithAttribute = {
+    id: string;
+    name: string;
+    attributeValues: AttributeValue[];
+};
+
+export type DataElementGroupSet = NameWithAttribute & {
+    dataElementGroups: Array<
+        NameWithAttribute & {
+            dataElements: NameWithAttribute[];
+        }
+    >;
+};
+
+export type DataElement = NameWithAttribute & {
+    dataElementGroups: Array<
+        NameWithAttribute & {
+            groupSets: NameWithAttribute[];
+        }
+    >;
+};
+
+type MetaData = {
+    items: Record<string, Dx>;
+    dimensions: Record<string, string[]>;
+};
+
+type Dx = {
+    uid: string;
+    name: string;
+    dimensionType: string;
+    description?: string;
+    valueType?: string;
+    aggregationType?: string;
+    totalAggregationType?: string;
+    startDate?: string;
+    endDate?: string;
+    code?: string;
+};
+
+type Header = {
+    name: string;
+    column: string;
+    valueType: string;
+    type: string;
+    hidden: boolean;
+    meta: boolean;
+};
+
+export type Analytics = {
+    headers: Header[];
+    metaData: MetaData;
+    width: number;
+    rows: string[][];
+    height: number;
+    headerWidth: number;
+};
