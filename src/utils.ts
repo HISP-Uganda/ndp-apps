@@ -1,3 +1,4 @@
+import { SelectProps } from "antd";
 import { Analytics, DataElement, DataElementGroupSet } from "./types";
 import { fromPairs, groupBy } from "lodash";
 
@@ -150,4 +151,99 @@ export const flattenDataElementGroupSets = (
             Object.assign({}, ...val),
         ]),
     );
+};
+
+export const convertToDataElementGroupSetsOptions = (
+    dataElementGroupSets: DataElementGroupSet[],
+): SelectProps["options"] => {
+    return dataElementGroupSets.map(({ id, name, dataElementGroups }) => ({
+        value: id,
+        label: name,
+    }));
+};
+export const convertToDataElementGroupsOptions = (
+    dataElementGroupSet: string | undefined,
+    dataElementGroupSets: DataElementGroupSet[],
+): SelectProps["options"] => {
+    return dataElementGroupSets.flatMap(({ dataElementGroups, id }) => {
+        if (dataElementGroupSet !== id) {
+            return [];
+        }
+        return dataElementGroups.map(({ id, name }) => ({
+            value: id,
+            label: name,
+        }));
+    });
+};
+
+export const convertToDataElementsOptions = (
+    dataElementGroupSets: DataElementGroupSet[],
+): SelectProps["options"] => {
+    return dataElementGroupSets.flatMap(({ dataElementGroups }) =>
+        dataElementGroups.flatMap(({ dataElements }) =>
+            dataElements.map(({ id, name }) => ({
+                value: id,
+                label: name,
+            })),
+        ),
+    );
+};
+
+export const createOptions2 = (labels: string[], values: string[]) => {
+    if (labels.length === values.length) {
+        return labels.map((label, index) => {
+            return {
+                label,
+                value: values[index],
+            };
+        });
+    }
+    return [];
+};
+
+export const fixedPeriods = [
+    "DAILY",
+    "WEEKLY",
+    "WEEKLYWED",
+    "WEEKLYTHU",
+    "WEEKLYSAT",
+    "WEEKLYSUN",
+    "BIWEEKLY",
+    "MONTHLY",
+    "BIMONTHLY",
+    "QUARTERLY",
+    "QUARTERLYNOV",
+    "SIXMONTHLY",
+    "SIXMONTHLYAPR",
+    "SIXMONTHLYNOV",
+    "YEARLY",
+    "FYNOV",
+    "FYOCT",
+    "FYJUL",
+    "FYAPR",
+];
+
+export const makeDataElementData = (analytics: Analytics) => {
+    const {
+        rows,
+        metaData: { items, dimensions },
+    } = analytics;
+
+    return dimensions.dx.map((a) => {
+        const current: Map<string, string> = new Map();
+        dimensions["pe"]?.forEach((pe) => {
+            dimensions["Duw5yep8Vae"].forEach((dim) => {
+                const search = rows.find(
+                    (row) => row[0] === a && row[3] === pe && row[2] === dim,
+                );
+                current.set(`${pe}${dim}`, search?.[4] ?? "");
+            });
+        });
+        return {
+            id: a,
+            dx: items[a].name,
+            code: items[a].code,
+            ...Object.fromEntries(current),
+        };
+    });
 };

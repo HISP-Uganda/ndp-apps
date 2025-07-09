@@ -1,7 +1,9 @@
+import type { TableColumnType, TreeDataNode } from "antd";
 
-import type { TreeDataNode, TableColumnType } from "antd";
-
+import { FixedPeriod } from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
+import { ToOptions } from "@tanstack/react-router";
 import { z } from "zod";
+import { router } from "./router";
 export const NDPValidator = z.object({
     v: z.string(),
 });
@@ -9,13 +11,10 @@ export const NDPValidator = z.object({
 export const GoalValidator = z.object({
     deg: z.string().optional(),
     degs: z.string().optional(),
-    filter: z.string().optional(),
-    "deg-ids": z.string().optional(),
-    program: z.string().optional(),
     tab: z.string().optional(),
-    pe: z.string(),
-    label: z.string(),
-    ous: z.union([z.string(), z.string().array()]).optional(),
+    pe: z.string().array().optional(),
+    ou: z.string(),
+    program: z.string().optional(),
 });
 
 export type GoalSearch = z.infer<typeof GoalValidator>;
@@ -39,7 +38,6 @@ export interface OrgUnit extends TreeDataNode {
 export interface OrgUnitsResponse {
     organisationUnits: OrgUnit[];
 }
-
 
 export type AttributeValue = {
     attribute: { id: string; name: string };
@@ -102,4 +100,13 @@ export type Analytics = {
     rows: string[][];
     height: number;
     headerWidth: number;
+};
+
+export type AppRouter = typeof router;
+
+export type To = ToOptions<AppRouter>["to"];
+
+export type PickerProps = {
+    selectedPeriods: string[];
+    onChange: (periods: string[]) => void;
 };

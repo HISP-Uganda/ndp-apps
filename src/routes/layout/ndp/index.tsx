@@ -1,17 +1,15 @@
 import { createRoute } from "@tanstack/react-router";
 import { Carousel, Image } from "antd";
 import React from "react";
-
-import { PathlessLayoutRoute } from "./layout.route";
-import { NDPRoute } from "./layout.ndp.route";
+import { NDPRoute } from "./route";
 
 export const NDPIndexRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "/",
-    component: IndexRouteComponent,
+    component: Component,
 });
 
-function IndexRouteComponent() {
+function Component() {
     return (
         <Carousel autoplay arrows style={{ padding: "10px" }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((item) => (

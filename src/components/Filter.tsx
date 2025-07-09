@@ -1,117 +1,134 @@
-import { useLoaderData } from "@tanstack/react-router";
-import type { SelectProps } from "antd";
-import { Flex, Select } from "antd";
+import { CaretRightOutlined } from "@ant-design/icons";
+import type { CollapseProps, SelectProps } from "antd";
+import { Collapse, Flex, Form, Select } from "antd";
 import React from "react";
-import { NDPItemRoute } from "../routes/layout.ndp.$item";
-import { GoalSearch } from "../types";
-import { onlyDegs } from "../utils";
+import { OrgUnitSelect } from "./organisation";
+import PeriodSelector from "./period-selector";
 
 export default function Filter({
-    first,
-    second,
+    options,
+    data,
+    onChange,
 }: {
-    first: SelectProps["options"];
-    second: SelectProps["options"];
+    options: Array<{
+        options: SelectProps["options"];
+        key: string;
+        label: string;
+    }>;
+    data: {
+        ou?: string | string[];
+        pe?: string[];
+        deg?: string;
+        degs?: string;
+        program?: string;
+    };
+    onChange: (
+        val: { [key: string]: string | string[] | undefined },
+        next: string | undefined,
+    ) => void;
 }) {
-    const navigate = NDPItemRoute.useNavigate();
-    const { deg, degs, program, pe, label } = NDPItemRoute.useSearch();
-    const { item } = NDPItemRoute.useParams();
-
-    const { dataElementGroupSets } = useLoaderData({
-        from: "__root__",
-    });
-
-    return (
-        <Flex className="w-1/2 h-[180px]" vertical>
-            <Flex
-                vertical={true}
-                justify="center"
-                gap="small"
-                style={{ margin: "5px" }}
-            >
-                <div>{label}</div>
-                <Select
-                    allowClear
-                    options={first}
-                    style={{ width: "100%" }}
-                    value={program || degs}
-                    onChange={(value) => {
-                        let search: GoalSearch = { pe, label };
-                        if (onlyDegs.has(item) && value) {
-                            const filtered = dataElementGroupSets.filter(
-                                ({ id }) => id === value,
-                            );
-                            if (filtered.length > 0) {
-                                search = {
-                                    ...search,
-                                    "deg-ids": filtered[0].dataElementGroups
-                                        .map(({ id }) => `DE_GROUP-${id}`)
-                                        .join(";"),
-                                    degs: value,
-                                };
+    const items: CollapseProps["items"] = [
+        {
+            key: "1",
+            label: "Advanced report filters (by FY, by MDALGs)",
+            children: (
+                <>
+                    <OrgUnitSelect
+                        value={data.ou}
+                        onChange={(ou) => {
+                            if (ou && !Array.isArray(ou)) {
+                                onChange(
+                                    {
+                                        ou,
+                                    },
+                                    undefined,
+                                );
                             }
-                        } else {
-                            search = { ...search, program: value };
-                        }
-
-                        navigate({
-                            search: (prev) => ({
-                                ...prev,
-                                ...search,
-                                deg: undefined,
-                            }),
-                        });
-                    }}
-                    onClear={() => {
-                        navigate({
-                            search: (prev) => ({
-                                ...prev,
-                                deg: undefined,
-                            }),
-                        });
-                    }}
-                />
+                        }}
+                    />
+                    <Form.Item
+                        label="Period"
+                        layout="horizontal"
+                        labelCol={{ span: 4 }}
+                        wrapperCol={{ span: 20 }}
+                        labelAlign="left"
+                    >
+                        <PeriodSelector
+                            onChange={(pe) =>
+                                onChange(
+                                    {
+                                        pe,
+                                    },
+                                    undefined,
+                                )
+                            }
+                            selectedPeriods={data.pe ?? []}
+                        />
+                    </Form.Item>
+                </>
+            ),
+        },
+    ];
+    return (
+        <Flex gap={10}>
+            <Flex
+                vertical
+                style={{
+                    width: "50%",
+                    maxWidth: "50%",
+                    backgroundColor: "#d0eBd0",
+                    padding: 10,
+                    border: "1px solid #a4d2a3",
+                    borderRadius: "3px",
+                }}
+            >
+                {options.map((option, index) => (
+                    <Form.Item
+                        label={option.label}
+                        layout="horizontal"
+                        labelCol={{ span: 4 }}
+                        wrapperCol={{ span: 20 }}
+                        labelAlign="left"
+												key={option.key}
+                    >
+                        <Select
+                            options={option.options}
+                            style={{ width: "100%" }}
+                            allowClear
+                            value={data[option.key]}
+                            onChange={(value) => {
+                                onChange(
+                                    {
+                                        [option.key]: value,
+                                    },
+                                    index < options.length - 1
+                                        ? options[index + 1].key
+                                        : undefined,
+                                );
+                            }}
+                        />
+                    </Form.Item>
+                ))}
             </Flex>
             <Flex
-                vertical={true}
-                justify="center"
-                gap="small"
-                style={{ margin: "5px" }}
+                vertical
+                gap={10}
+                style={{
+                    width: "50%",
+                    maxWidth: "50%",
+                    backgroundColor: "#BBD1EE",
+                    padding: 10,
+                    border: "1px solid #729fcf",
+                    borderRadius: "3px",
+                }}
             >
-                <div>{label}</div>
-                <Select
-                    allowClear
-                    options={second}
-                    style={{ width: "100%" }}
-                    value={deg}
-                    defaultValue="ALL"
-                    onChange={(value) => {
-                        if (value) {
-                            navigate({
-                                search: (prev) => ({
-                                    ...prev,
-                                    deg: value,
-                                    "deg-ids": `DE_GROUP-${value}`,
-                                }),
-                            });
-                        } else if (onlyDegs.has(item)) {
-                            const filtered = dataElementGroupSets.filter(
-                                ({ id }) => id === degs,
-                            );
-                            if (filtered.length > 0) {
-                                navigate({
-                                    search: (prev) => ({
-                                        ...prev,
-                                        deg: undefined,
-                                        "deg-ids": filtered[0].dataElementGroups
-                                            .map(({ id }) => `DE_GROUP-${id}`)
-                                            .join(";"),
-                                    }),
-                                });
-                            }
-                        }
-                    }}
-                    maxTagCount="responsive"
+                <Collapse
+                    bordered={false}
+                    expandIcon={({ isActive }) => (
+                        <CaretRightOutlined rotate={isActive ? 90 : 0} />
+                    )}
+                    items={items}
+                    expandIconPosition={"end"}
                 />
             </Flex>
         </Flex>

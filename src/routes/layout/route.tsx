@@ -2,57 +2,74 @@ import { createRoute, Outlet } from "@tanstack/react-router";
 import React from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Flex, Select, Splitter, Tree, TreeDataNode } from "antd";
-import { initialQueryOptions } from "../query-options";
-import { RootRoute } from "./__root";
-import { NDPValidator } from "../types";
+import { Flex, Select, Splitter, Tree, TreeDataNode, TreeProps } from "antd";
+import { initialQueryOptions } from "../../query-options";
+import { NDPValidator, To } from "../../types";
+import { RootRoute } from "../__root";
 
-const treeData: TreeDataNode[] = [
+interface NDPTree extends TreeDataNode {
+    to?: To;
+    children?: NDPTree[];
+}
+
+const treeData: NDPTree[] = [
     {
         title: "NDP Results",
         key: "0",
         selectable: false,
         checkable: false,
+        disabled: true,
         children: [
             {
                 title: "High Level Results",
                 selectable: false,
+                checkable: false,
+                disabled: true,
                 key: "0-0",
                 children: [
                     {
-                        title: "Vision 20240 Targets",
+                        title: "Vision 2040 Targets",
                         key: "vision2040",
+                        to: "/ndp/visions",
                     },
                     {
                         title: "Goal",
                         key: "goal",
+                        to: "/ndp/goals",
                     },
                     {
                         title: "Objective",
                         key: "resultsFrameworkObjective",
+                        to: "/ndp/objectives",
                     },
                     {
                         title: "Outcome Level",
                         key: "objective",
+                        to: "/ndp/outcome-levels",
                     },
                 ],
             },
             {
-                title: "Sub-Programme Results",
+                title: "Vote Level Results",
                 key: "0-1",
                 selectable: false,
+                checkable: false,
+                disabled: true,
                 children: [
                     {
                         title: "Intermediate Outcomes",
                         key: "sub-programme",
+                        to: "/ndp/sub-program-outcomes",
                     },
                     {
                         title: "Output Level",
                         key: "output",
+                        to: "/ndp/sub-program-outputs",
                     },
                     {
                         title: "Action Level",
                         key: "sub-intervention4action",
+                        to: "/ndp/sub-program-actions",
                     },
                 ],
             },
@@ -63,14 +80,17 @@ const treeData: TreeDataNode[] = [
         key: "1",
         selectable: false,
         checkable: false,
+        disabled: true,
         children: [
             {
                 title: "Project Performance",
                 key: "project-performance",
+                to: "/ndp/sub-program-outcomes",
             },
             {
                 title: "Policy Actions",
                 key: "policy-actions",
+                to: "/ndp/policy-actions",
             },
         ],
     },
@@ -79,40 +99,45 @@ const treeData: TreeDataNode[] = [
         key: "2",
         selectable: false,
         checkable: false,
+        disabled: true,
         children: [
             {
                 title: "Indicator Dictionary",
                 key: "2-0",
+                to: "/ndp/indicator-dictionaries",
             },
             {
                 title: "Workflow & Guidelines",
                 key: "2-1",
+                to: "/ndp/workflows",
             },
             {
                 title: "FAQs",
                 key: "2-2",
+                to: "/ndp/faqs",
             },
         ],
     },
     {
         title: "Library",
         key: "3",
+        to: "/ndp/libraries",
     },
 ];
 
-export const PathlessLayoutRoute = createRoute({
+export const LayoutRoute = createRoute({
     getParentRoute: () => RootRoute,
-    id: "pathlessLayout",
-    component: PathlessLayoutComponent,
+    id: "layout",
+    component: Component,
     validateSearch: NDPValidator,
 });
 
-function PathlessLayoutComponent() {
-    const { engine } = PathlessLayoutRoute.useRouteContext();
-    const navigate = PathlessLayoutRoute.useNavigate();
-    const { v } = PathlessLayoutRoute.useSearch();
+function Component() {
+    const { engine } = LayoutRoute.useRouteContext();
+    const navigate = LayoutRoute.useNavigate();
+    const { v } = LayoutRoute.useSearch();
     const {
-        data: { ndpVersions },
+        data: { ndpVersions, ou },
     } = useSuspenseQuery(
         initialQueryOptions(
             engine,
@@ -129,6 +154,26 @@ function PathlessLayoutComponent() {
             "nZffnMQwoWr",
         ),
     );
+
+    const onSelect: TreeProps<NDPTree>["onSelect"] = (
+        selectedKeys,
+        { node },
+    ) => {
+        if (selectedKeys.length > 0 && node.to) {
+            navigate({
+                to: node.to as Parameters<typeof navigate>[0]["to"],
+                search: (prev) => {
+                    return {
+                        ...prev,
+                        v,
+                        ou,
+                        degs: undefined,
+                        deg: undefined,
+                    };
+                },
+            });
+        }
+    };
     return (
         <Splitter
             style={{
@@ -150,7 +195,11 @@ function PathlessLayoutComponent() {
                         style={{ width: "100%" }}
                         onChange={(value) => {
                             navigate({
-                                search: (prev) => ({ ...prev, v: value }),
+                                search: (prev) => ({
+                                    ...prev,
+                                    v: value,
+                                    ou,
+                                }),
                             });
                         }}
                         value={v}
@@ -160,6 +209,7 @@ function PathlessLayoutComponent() {
                         defaultExpandAll
                         treeData={treeData}
                         multiple={false}
+                        onSelect={onSelect}
                     />
                 </Flex>
             </Splitter.Panel>

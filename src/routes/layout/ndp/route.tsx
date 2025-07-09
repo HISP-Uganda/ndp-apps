@@ -1,13 +1,13 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
 import React from "react";
-import { PathlessLayoutRoute } from "./layout.route";
+import { LayoutRoute } from "../route";
 
 export const NDPRoute = createRoute({
-    getParentRoute: () => PathlessLayoutRoute,
+    getParentRoute: () => LayoutRoute,
     path: "/ndp",
-    component: NDPRouteComponent,
+    component: Component,
 });
 
-function NDPRouteComponent() {
+function Component() {
     return <Outlet />;
 }

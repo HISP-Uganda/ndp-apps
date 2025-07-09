@@ -1,24 +1,7 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions } from "@tanstack/react-query";
-import { DataElementGroupSet, OrgUnit } from "./types";
-
-const processDHIS2OrgUnit = ({ id, name, leaf, parent }: DHIS2OrgUnit) => {
-    let current: OrgUnit = {
-        id,
-        title: name,
-        isLeaf: leaf,
-        value: id,
-        key: id,
-    };
-
-    if (parent && parent.id) {
-        current = {
-            ...current,
-            pId: parent.id,
-        };
-    }
-    return current;
-};
+import { db } from "./db";
+import { Analytics, DataElementGroupSet, GoalSearch, OrgUnit } from "./types";
 
 type DHIS2OrgUnit = {
     id: string;
@@ -35,21 +18,11 @@ export const initialQueryOptions = (
     return queryOptions({
         queryKey: ["initial-query-options"],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            params.append(
-                "fields",
-                "id,name,dataElementGroups[id,name,attributeValues],attributeValues",
-            );
-            params.append(
-                "filter",
-                `attributeValues.value:in:[${attributeValue.join(",")}]`,
-            );
-            params.append("paging", `false`);
             const response = await engine.query({
                 orgUnits: {
                     resource: "me",
                     params: {
-                        fields: "organisationUnits[id~rename(key),name~rename(title),leaf~rename(isLeaf)],dataViewOrganisationUnits[id~rename(key),name~rename(title),leaf~rename(isLeaf)]",
+                        fields: "organisationUnits[id,name,leaf],dataViewOrganisationUnits[id,name,leaf]",
                     },
                 },
 
@@ -66,17 +39,13 @@ export const initialQueryOptions = (
                 programs: {
                     resource: `optionSets/${programOptionSet}/options`,
                 },
-                dataElementGroupSets: {
-                    resource: `dataElementGroupSets?${params.toString()}`,
-                },
             });
 
             const {
-                orgUnits: { dataViewOrganisationUnits, organisationUnits },
+                orgUnits: { dataViewOrganisationUnits },
                 options: { options },
                 ndpVersions: { options: ndpVersions },
                 programs: { options: programs },
-                dataElementGroupSets: { dataElementGroupSets },
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
@@ -97,15 +66,8 @@ export const initialQueryOptions = (
                 programs: {
                     options: { id: string; name: string; code: string }[];
                 };
-                dataElementGroupSets: {
-                    dataElementGroupSets: DataElementGroupSet[];
-                };
             };
-
-            const units = organisationUnits.map(processDHIS2OrgUnit);
-
             return {
-                dataElementGroupSets,
                 options,
                 programs,
                 ndpVersions,
@@ -128,6 +90,156 @@ export const optionSetQueryOptions = (
                 },
             });
             return options;
+        },
+    });
+};
+
+export const dataElementGroupSetsQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    attributeValue: string,
+    ndpVersion: string,
+) => {
+    return queryOptions({
+        queryKey: ["data-element-groupSets", attributeValue, ndpVersion],
+        queryFn: async () => {
+            const response = await engine.query({
+                dataElementGroupSets: {
+                    resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:${attributeValue}&fields=id,name,displayName,dataElementGroups[id,name,attributeValues],attributeValues&paging=false`,
+                },
+            });
+            const {
+                dataElementGroupSets: { dataElementGroupSets },
+            } = response as unknown as {
+                dataElementGroupSets: {
+                    dataElementGroupSets: DataElementGroupSet[];
+                };
+            };
+            return dataElementGroupSets;
+        },
+    });
+};
+
+export const dataElementGroupSetsWithProgramsQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    attributeValue: string,
+    ndpVersion: string,
+) => {
+    return queryOptions({
+        queryKey: ["option-sets-programs", ndpVersion, attributeValue],
+        queryFn: async () => {
+            const response = await engine.query({
+                optionSets: {
+                    resource: `optionSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:true&fields=options[id,name,code]`,
+                },
+                dataElementGroupSets: {
+                    resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:${attributeValue}&fields=id,name,displayName,dataElementGroups[id,name,attributeValues],attributeValues&paging=false`,
+                },
+            });
+            const {
+                optionSets: {
+                    optionSets: [{ options }],
+                },
+                dataElementGroupSets: { dataElementGroupSets },
+            } = response as unknown as {
+                optionSets: {
+                    optionSets: Array<{
+                        options: Array<{
+                            id: string;
+                            name: string;
+                            code: string;
+                        }>;
+                    }>;
+                };
+                dataElementGroupSets: {
+                    dataElementGroupSets: DataElementGroupSet[];
+                };
+            };
+            return { options, dataElementGroupSets };
+        },
+    });
+};
+
+export const orgUnitQueryOptions = (
+    orgUnit: string,
+    engine: ReturnType<typeof useDataEngine>,
+) => {
+    return queryOptions({
+        queryKey: ["organisations", orgUnit],
+        queryFn: async () => {
+            const response = await engine.query({
+                organisationUnits: {
+                    resource: `organisationUnits/${orgUnit}`,
+                    params: {
+                        fields: "children[id,name,leaf]",
+                    },
+                },
+            });
+
+            const {
+                organisationUnits: { children },
+            } = response as unknown as {
+                organisationUnits: {
+                    children: Array<{
+                        id: string;
+                        name: string;
+                        leaf: boolean;
+                    }>;
+                };
+            };
+
+            if (children.length === 0) {
+                return "No children found";
+            }
+
+            const organisationUnits = children.map(({ id, name, leaf }) => {
+                const current: OrgUnit = {
+                    id,
+                    title: name,
+                    isLeaf: leaf,
+                    value: id,
+                    key: id,
+                    pId: orgUnit,
+                };
+                return current;
+            });
+            await db.dataViewOrgUnits.bulkPut(organisationUnits);
+            return "Done";
+        },
+    });
+};
+
+export const analyticsQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    { deg, pe, ou, program }: GoalSearch,
+) => {
+    return queryOptions({
+        queryKey: ["analytics", pe, deg, ou, program],
+        queryFn: async () => {
+            if (!ou || !pe || !deg) {
+                throw new Error("Organisation unit and period are required");
+            }
+
+            const params = new URLSearchParams({
+                displayProperty: "NAME",
+                includeMetadataDetails: "true",
+            });
+            [
+                "co",
+                "Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U",
+                `pe:${pe.join(";")}`,
+                `dx:${deg}`,
+            ].forEach((dimension) => params.append("dimension", dimension));
+            [`ou:${ou}`].forEach((filter) => params.append("filter", filter));
+            const response = await engine.query({
+                analytics: {
+                    resource: `analytics?${params.toString()}`,
+                },
+            });
+            const { analytics } = response as unknown as {
+                analytics: Analytics;
+            };
+
+            return analytics;
         },
     });
 };

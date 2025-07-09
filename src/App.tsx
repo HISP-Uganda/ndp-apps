@@ -1,7 +1,9 @@
-import React, { FC } from "react";
 import { useDataEngine } from "@dhis2/app-runtime";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
+import { ConfigProvider } from "antd";
+import React, { FC } from "react";
+
 import { router } from "./router";
 const queryClient = new QueryClient();
 declare module "@tanstack/react-router" {
@@ -12,9 +14,18 @@ declare module "@tanstack/react-router" {
 const MyApp: FC = () => {
     const engine = useDataEngine();
     return (
-        <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} context={{ engine }} />
-        </QueryClientProvider>
+        <ConfigProvider
+            theme={{
+                token: {
+                    fontFamily: "Cambria, Georgia, serif",
+                    fontSize: 14,
+                },
+            }}
+        >
+            <QueryClientProvider client={queryClient}>
+                <RouterProvider router={router} context={{ engine }} />
+            </QueryClientProvider>
+        </ConfigProvider>
     );
 };
 
