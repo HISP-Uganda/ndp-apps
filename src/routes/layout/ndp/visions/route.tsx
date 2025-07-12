@@ -1,5 +1,5 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Flex } from "antd";
@@ -26,8 +26,24 @@ export const VisionRoute = createRoute({
 
 function Component() {
     const { engine } = VisionRoute.useRouteContext();
-    const { v } = VisionRoute.useSearch();
-    useSuspenseQuery(dataElementGroupSetsQueryOptions(engine, "vision2040", v));
+    const { v, degs } = VisionRoute.useSearch();
+    const navigate = VisionRoute.useNavigate();
+
+    const { data } = useSuspenseQuery(
+        dataElementGroupSetsQueryOptions(engine, "vision2040", v),
+    );
+
+    useEffect(() => {
+        if (degs === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    degs: data?.[0]?.id ?? "",
+                    pe: ["2009July", "2024July", "2039July"],
+                }),
+            });
+        }
+    }, []);
 
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>

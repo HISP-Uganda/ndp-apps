@@ -1,5 +1,11 @@
 import { SelectProps } from "antd";
-import { Analytics, DataElement, DataElementGroupSet } from "./types";
+import {
+    Analytics,
+    DataElement,
+    DataElementGroupSet,
+    GoalSearch,
+    MapPredicate,
+} from "./types";
 import { fromPairs, groupBy } from "lodash";
 
 export const prepareVisionData = ({
@@ -47,6 +53,7 @@ export const flattenDataElements = (dataElements: DataElement[]) => {
         dataElements.map(({ id, name, dataElementGroups, attributeValues }) => {
             const obj: Map<string, string> = new Map();
             obj.set(id, name);
+            obj.set("id", id);
             attributeValues.forEach(({ value, attribute: { id, name } }) => {
                 obj.set(id, value);
                 obj.set(name, value);
@@ -156,7 +163,7 @@ export const flattenDataElementGroupSets = (
 export const convertToDataElementGroupSetsOptions = (
     dataElementGroupSets: DataElementGroupSet[],
 ): SelectProps["options"] => {
-    return dataElementGroupSets.map(({ id, name, dataElementGroups }) => ({
+    return dataElementGroupSets.map(({ id, name }) => ({
         value: id,
         label: name,
     }));
@@ -223,14 +230,20 @@ export const fixedPeriods = [
     "FYAPR",
 ];
 
-export const makeDataElementData = (analytics: Analytics) => {
+export const makeDataElementData = (data: {
+    analytics: Analytics;
+    dataElements: Map<string, { [k: string]: string }>;
+    targetId: string;
+    actualId: string;
+}) => {
     const {
         rows,
         metaData: { items, dimensions },
-    } = analytics;
+    } = data.analytics;
 
     return dimensions.dx.map((a) => {
-        const current: Map<string, string> = new Map();
+        const current: Map<string, any> = new Map();
+        const dataElementDetails = data.dataElements.get(a);
         dimensions["pe"]?.forEach((pe) => {
             dimensions["Duw5yep8Vae"].forEach((dim) => {
                 const search = rows.find(
@@ -238,12 +251,252 @@ export const makeDataElementData = (analytics: Analytics) => {
                 );
                 current.set(`${pe}${dim}`, search?.[4] ?? "");
             });
+            const target = Number(current.get(`${pe}${data.targetId}`));
+            const actual = Number(current.get(`${pe}${data.actualId}`));
+            const ratio = calculatePerformanceRatio(actual, target);
+            const { performance, style } = findBackground(
+                ratio,
+                dataElementDetails?.["descending indicator type"],
+            );
+            if (isNaN(ratio)) {
+                current.set(`${pe}performance`, "-");
+            } else {
+                current.set(`${pe}performance`, formatPercentage(ratio / 100));
+            }
+            current.set(`${pe}style`, style);
+            current.set(`${pe}performance-group`, performance);
         });
+
         return {
             id: a,
             dx: items[a].name,
             code: items[a].code,
             ...Object.fromEntries(current),
+            ...dataElementDetails,
         };
     });
+};
+
+export const extractDataElementGroups = (
+    dataElementGroupSets: DataElementGroupSet[],
+    degs?: string,
+): string[] => {
+    if (dataElementGroupSets.length === 0) return [];
+
+    if (degs !== undefined) {
+        const targetGroupSet = dataElementGroupSets.find((d) => d.id === degs);
+        return targetGroupSet?.dataElementGroups.map((g) => g.id) ?? [];
+    }
+    return dataElementGroupSets.flatMap((d) =>
+        d.dataElementGroups.map((g) => g.id),
+    );
+};
+
+export const extractDataElementGroupsByProgram = (
+    dataElementGroupSets: DataElementGroupSet[],
+    program?: string,
+): { groupSets: string[]; dataElementGroups: string[] } => {
+    if (program === undefined || dataElementGroupSets.length === 0) {
+        return {
+            groupSets: [],
+            dataElementGroups: [],
+        };
+    }
+    const groupSets = dataElementGroupSets.flatMap((d) => {
+        const hasProgram =
+            d.attributeValues?.some((a) => a.value === program) ?? false;
+
+        if (hasProgram) {
+            return d.id;
+        }
+        return [];
+    });
+    const dataElementGroups = dataElementGroupSets.flatMap((d) => {
+        const hasProgram =
+            d.attributeValues?.some((a) => a.value === program) ?? false;
+
+        if (hasProgram) {
+            return d.dataElementGroups.map((g) => g.id);
+        }
+
+        return [];
+    });
+
+    return {
+        groupSets,
+        dataElementGroups,
+    };
+};
+
+export const resolveDataElementGroups = (
+    searchParams: GoalSearch,
+    dataElementGroupSets: DataElementGroupSet[],
+): { groupSets: string[]; dataElementGroups: string[] } => {
+    const { deg, degs, program } = searchParams;
+
+    if (deg !== undefined) {
+        return {
+            groupSets: [degs ?? ""],
+            dataElementGroups: [deg],
+        };
+    }
+
+    if (program !== undefined) {
+        return extractDataElementGroupsByProgram(dataElementGroupSets, program);
+    }
+    const dataElementGroups = extractDataElementGroups(
+        dataElementGroupSets,
+        degs,
+    );
+
+    return {
+        groupSets: dataElementGroupSets.map((d) => d.id),
+        dataElementGroups,
+    };
+};
+export const buildQueryParams = (
+    { dataElementGroups }: { groupSets: string[]; dataElementGroups: string[] },
+    searchParams: GoalSearch,
+) => {
+    const { pe, ou, program } = searchParams;
+
+    return {
+        deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
+        pe,
+        ou,
+        ...(program && { program }),
+    };
+};
+
+export const validateDataElementGroupSets = (
+    dataElementGroupSets: any,
+): dataElementGroupSets is DataElementGroupSet[] => {
+    return (
+        Array.isArray(dataElementGroupSets) &&
+        dataElementGroupSets.every(
+            (set) =>
+                set &&
+                typeof set.id === "string" &&
+                Array.isArray(set.dataElementGroups),
+        )
+    );
+};
+
+export const debounceNavigation = <T extends (...args: any[]) => any>(
+    fn: T,
+    delay: number = 300,
+): T => {
+    let timeoutId: NodeJS.Timeout;
+
+    return ((...args: Parameters<T>) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(...args), delay);
+    }) as T;
+};
+export const selectSearchParams = <K extends keyof GoalSearch>(
+    searchParams: GoalSearch,
+    keys: K[],
+): Pick<GoalSearch, K> => {
+    return keys.reduce((acc, key) => {
+        acc[key] = searchParams[key];
+        return acc;
+    }, {} as Pick<GoalSearch, K>);
+};
+
+export function filterMapFunctional<K, V>(
+    map: Map<K, V>,
+    predicate: MapPredicate<K, V>,
+) {
+    return Array.from(map)
+        .filter(([key, value]) => predicate(key, value))
+        .map(([, value]) => value);
+}
+
+export const calculatePerformanceRatio = (
+    actual: number,
+    target: number,
+): number => {
+    if (isNaN(actual) || isNaN(target) || target === 0) return NaN;
+    return (actual * 100) / target;
+};
+
+export const formatPercentage = (value: number): string => {
+    return new Intl.NumberFormat("en-US", {
+        style: "percent",
+    }).format(value);
+};
+
+export const PERFORMANCE_COLORS = {
+    red: { bg: "#CD615A", fg: "black", end: 75 },
+    yellow: { bg: "#F4CD4D", fg: "black", start: 75, end: 99 },
+    gray: { bg: "#AAAAAA", fg: "black", start: 75, end: 99 },
+    green: { bg: "#339D73", fg: "white", start: 100 },
+} as const;
+
+export const headerColors = {
+    n: { backgroundColor: "#CD615A", color: "black" },
+    m: { backgroundColor: "#F4CD4D", color: "black" },
+    x: { backgroundColor: "#AAAAAA", color: "black" },
+    a: { backgroundColor: "#339D73", color: "white" },
+} as const;
+export const findBackground = (
+    value: number,
+    isDescending: string | undefined,
+) => {
+    if (isNaN(value)) {
+        return {
+            style: {
+                backgroundColor: PERFORMANCE_COLORS.gray.bg,
+                color: PERFORMANCE_COLORS.gray.fg,
+            },
+            performance: "x",
+        };
+    }
+    const { red, yellow, green } = PERFORMANCE_COLORS;
+    if (isDescending && isDescending === "true") {
+        if (value < red.end) {
+            return {
+                style: { backgroundColor: green.bg, color: green.fg },
+                performance: "a",
+            };
+        }
+        if (value >= yellow.start && value < yellow.end) {
+            return {
+                style: { backgroundColor: yellow.bg, color: yellow.fg },
+                performance: "m",
+            };
+        }
+        if (value >= green.start) {
+            return {
+                style: { backgroundColor: red.bg, color: red.fg },
+                performance: "n",
+            };
+        }
+    } else {
+        if (value < red.end) {
+            return {
+                style: { backgroundColor: red.bg, color: red.fg },
+                performance: "n",
+            };
+        }
+        if (value >= yellow.start && value < yellow.end) {
+            return {
+                style: { backgroundColor: yellow.bg, color: yellow.fg },
+                performance: "m",
+            };
+        }
+        if (value >= green.start) {
+            return {
+                style: { backgroundColor: green.bg, color: green.fg },
+                performance: "a",
+            };
+        }
+    }
+    return {
+        style: {
+            backgroundColor: PERFORMANCE_COLORS.gray.bg,
+            color: PERFORMANCE_COLORS.gray.fg,
+        },
+        performance: "x",
+    };
 };

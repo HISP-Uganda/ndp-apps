@@ -42,7 +42,7 @@ function Component() {
     const navigate = SubProgramOutputRoute.useNavigate();
 
     useEffect(() => {
-        if (degs === undefined) {
+        if (program === undefined) {
             navigate({
                 search: (prev) => ({
                     ...prev,
@@ -55,13 +55,13 @@ function Component() {
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
                 data={{ deg, degs, ou, pe, program }}
-                onChange={(val, previous) => {
-                    if (previous) {
+                onChange={(val, next) => {
+                    if (next) {
                         navigate({
                             search: (prev) => ({
                                 ...prev,
                                 ...val,
-                                [previous]: undefined,
+                                [next]: undefined,
                             }),
                         });
                     } else {

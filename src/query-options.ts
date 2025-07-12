@@ -1,7 +1,14 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "./db";
-import { Analytics, DataElementGroupSet, GoalSearch, OrgUnit } from "./types";
+import {
+    Analytics,
+    DataElement,
+    DataElementGroupSet,
+    GoalSearch,
+    OrgUnit,
+} from "./types";
+import { flattenDataElements } from "./utils";
 
 type DHIS2OrgUnit = {
     id: string;
@@ -174,7 +181,6 @@ export const orgUnitQueryOptions = (
                     },
                 },
             });
-
             const {
                 organisationUnits: { children },
             } = response as unknown as {
@@ -210,13 +216,15 @@ export const orgUnitQueryOptions = (
 
 export const analyticsQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
-    { deg, pe, ou, program }: GoalSearch,
+    { deg, pe, ou, program, degs }: GoalSearch,
 ) => {
     return queryOptions({
-        queryKey: ["analytics", pe, deg, ou, program],
+        queryKey: ["analytics", ...(pe ?? []), degs, deg, ou, program],
         queryFn: async () => {
-            if (!ou || !pe || !deg) {
-                throw new Error("Organisation unit and period are required");
+            if (deg === undefined || pe === undefined || ou === undefined) {
+                throw new Error(
+                    "Organisation unit and/or period and/or dimension are missing",
+                );
             }
 
             const params = new URLSearchParams({
@@ -239,7 +247,33 @@ export const analyticsQueryOptions = (
                 analytics: Analytics;
             };
 
-            return analytics;
+            const response2 = await engine.query({
+                dataElements: {
+                    resource: `dataElements.json`,
+                    params: {
+                        filter: `id:in:[${analytics.metaData.dimensions[
+                            "dx"
+                        ]?.join(",")}]`,
+                        paging: "false",
+                        fields: "id,name,attributeValues[attribute[id,name],value],dataElementGroups[id,name,attributeValues[attribute[id,name],value],groupSets[id,name,attributeValues[attribute[id,name],value]]]",
+                    },
+                },
+            });
+
+            console.log("Data Elements response:", response2);
+
+            const {
+                dataElements: { dataElements },
+            } = response2 as unknown as {
+                dataElements: {
+                    dataElements: DataElement[];
+                };
+            };
+            const dataElementsMap = flattenDataElements(dataElements);
+            return { analytics, dataElements: dataElementsMap };
         },
+        enabled: deg !== undefined && pe !== undefined && ou !== undefined,
+        refetchOnWindowFocus: false,
+        retry: false,
     });
 };

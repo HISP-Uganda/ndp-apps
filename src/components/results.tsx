@@ -2,366 +2,302 @@ import {
     Flex,
     Table,
     TableColumnsType,
-    TableColumnType,
+    TableProps,
     Tabs,
     TabsProps,
 } from "antd";
-import { orderBy } from "lodash";
-import React from "react";
-import { Analytics, DataElementGroupSet, GoalSearch } from "../types";
-import { makeDataElementData } from "../utils";
+import { groupBy, orderBy } from "lodash";
+import React, { useMemo } from "react";
+import { ResultsProps } from "../types";
+import {
+    filterMapFunctional,
+    formatPercentage,
+    headerColors,
+    makeDataElementData,
+    PERFORMANCE_COLORS,
+} from "../utils";
 
-const performanceLabels: Record<number, string> = {
+const PERFORMANCE_LABELS: Record<number, string> = {
     0: "Target",
     1: "Actual",
     2: "%",
-};
+} as const;
 
-const red = { bg: "#CD615A", fg: "black", end: 75 };
-const yellow = { bg: "#F4CD4D", fg: "black", start: 75, end: 99 };
-const gray = { bg: "#AAAAAA", fg: "black", start: 75, end: 99 };
-const green = { bg: "#339D73", fg: "white", start: 100 };
+const OVERVIEW_COLUMNS = ["a", "m", "n", "x"] as const;
 
-const findBackground = (
-    row: Record<string, string>,
-    current: string[],
-    pe: string,
-) => {
-    const actual = Number(row[`${pe}${current[1]}`]);
-    const target = Number(row[`${pe}${current[0]}`]);
+const PerformanceLegend = React.memo(() => {
+    const legendItems = [
+        {
+            bg: PERFORMANCE_COLORS.green.bg,
+            color: "white",
+            label: "Achieved (≤ 100%)",
+        },
+        {
+            bg: PERFORMANCE_COLORS.yellow.bg,
+            color: "black",
+            label: "Moderately achieved (75-99%)",
+        },
+        {
+            bg: PERFORMANCE_COLORS.red.bg,
+            color: "black",
+            label: "Not achieved (< 75%)",
+        },
+        { bg: PERFORMANCE_COLORS.gray.bg, color: "black", label: "No Data" },
+    ];
 
-    if (!isNaN(actual) && !isNaN(target) && target !== 0) {
-        const ratio = (actual * 100) / target;
+    return (
+        <Flex justify="between" align="center" gap="4px">
+            {legendItems.map((item, index) => (
+                <div
+                    key={index}
+                    style={{
+                        width: "100%",
+                        height: "40px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: item.bg,
+                        color: item.color,
+                    }}
+                >
+                    {item.label}
+                </div>
+            ))}
+        </Flex>
+    );
+});
 
-        if (row["wRRYuIS8JKN"] === "true") {
-            if (ratio <= green.start) {
-                return {
-                    style: { backgroundColor: green.bg, color: green.fg },
-                };
-            }
-            if (ratio >= yellow.end && ratio < yellow.start) {
-                return {
-                    style: { backgroundColor: yellow.bg, color: yellow.fg },
-                };
-            }
-            if (ratio > red.end) {
-                return { style: { backgroundColor: red.bg, color: red.fg } };
-            }
-        } else {
-            if (ratio < red.end) {
-                return { style: { backgroundColor: red.bg, color: red.fg } };
-            }
-            if (ratio >= yellow.start && ratio < yellow.end) {
-                return {
-                    style: { backgroundColor: yellow.bg, color: yellow.fg },
-                };
-            }
-            if (ratio >= green.start) {
-                return {
-                    style: { backgroundColor: green.bg, color: green.fg },
-                };
-            }
-        }
-    }
+PerformanceLegend.displayName = "PerformanceLegend";
 
-    return {
-        style: { backgroundColor: gray.bg, color: gray.fg },
-    };
-};
 export function Results({
     tab,
     data,
     onChange,
-}: {
-    dataElementGroupSets: DataElementGroupSet[];
-    data: Analytics;
-    onChange?: (key: string) => void;
-} & GoalSearch) {
-    const nameColumn: TableColumnType<{
-        [key: string]: string | number | undefined;
-    }> = {
-        title: "Indicator",
-        dataIndex: "dx",
-        ellipsis: true,
-    };
-    const periods = data.metaData.dimensions["pe"] ?? [];
-    const [, target = "", value = ""] =
-        data.metaData.dimensions["Duw5yep8Vae"] ?? [];
+    postfixColumns = [],
+    prefixColumns = [],
+}: ResultsProps) {
+    const {
+        periods,
+        target,
+        value,
+        analyticsItems,
+        finalData,
+        dataElementGroups,
+    } = useMemo(() => {
+        const periods = data.analytics.metaData.dimensions["pe"] ?? [];
+        const [, target = "", value = ""] =
+            data.analytics.metaData.dimensions["Duw5yep8Vae"] ?? [];
+        const analyticsItems = data.analytics.metaData.items;
+        const finalData = orderBy(
+            makeDataElementData({ ...data, targetId: target, actualId: value }),
+            ["code"],
+            ["asc"],
+        );
+        const dataElementGroups = data.dataElementGroups.map((deg) => {
+            const dataElements = filterMapFunctional<
+                string,
+                Record<string, string>
+            >(data.dataElements, (_, value) => value && deg in value);
+            const totalIndicators = dataElements.length;
 
-    const finalData = orderBy(makeDataElementData(data), ["code"], ["asc"]);
-    const columns: Map<
-        string,
-        TableColumnsType<Record<string, string | number | undefined>>
-    > = new Map([
-        [
-            "target",
-            [
-                nameColumn,
-                ...periods.map((pe) => ({
-                    title: data.metaData.items[pe].name,
-                    dataIndex: "",
+            const results: Record<string, any> = {
+                ...dataElements[0],
+                indicators: totalIndicators,
+            };
+            const availableIndicators = finalData.filter((row) => deg in row);
+
+            data.analytics.metaData.dimensions["pe"].map((pe) => {
+                const grouped = groupBy(
+                    availableIndicators,
+                    `${pe}performance-group`,
+                );
+                Object.entries(grouped).forEach(([key, value]) => {
+                    const percentage = formatPercentage(
+                        value.length / totalIndicators,
+                    );
+                    results[`${pe}${key}`] = percentage;
+                });
+            });
+            return results;
+        });
+        return {
+            periods,
+            target,
+            value,
+            analyticsItems,
+            finalData,
+            dataElementGroups,
+        };
+    }, [data.analytics]);
+
+    const nameColumn: TableColumnsType<
+        Record<string, string | number | undefined>
+    > = useMemo(
+        () => [
+            ...prefixColumns,
+            {
+                title: "Indicators",
+                dataIndex: "dx",
+            },
+        ],
+        [prefixColumns],
+    );
+
+    const columns = useMemo(() => {
+        const columnsMap = new Map<
+            string,
+            TableColumnsType<Record<string, string | number | undefined>>
+        >();
+
+        columnsMap.set("target", [
+            ...nameColumn,
+            ...periods.map((pe) => ({
+                title: analyticsItems[pe].name,
+                dataIndex: "",
+                align: "center" as const,
+                children: [
+                    {
+                        title: "Target",
+                        dataIndex: `${pe}${target}`,
+                        width: "200px",
+                        align: "center" as const,
+                    },
+                ],
+            })),
+            ...postfixColumns,
+        ]);
+        columnsMap.set("performance", [
+            ...nameColumn,
+            ...periods.map((pe) => ({
+                title: analyticsItems[pe].name,
+                children: [target, value, "performance"].map((v, index) => ({
+                    title: PERFORMANCE_LABELS[index],
+                    key: `${pe}${v}`,
+                    minWidth: "96px",
                     align: "center",
-                    children: [
-                        {
-                            title: "Target",
-                            dataIndex: `${pe}${target}`,
-                            width: "200px",
-                            align: "center",
-                        },
-                    ],
+                    onCell: (row: Record<string, any>) => {
+                        if (index === 2) {
+                            return { style: row[`${pe}style`] };
+                        }
+                        return {};
+                    },
+                    dataIndex: `${pe}${v}`,
                 })),
-            ],
-        ],
-        [
-            "performance",
-            [
-                nameColumn,
-                ...periods.map((pe) => ({
-                    title: data.metaData.items[pe].name,
-                    children: [target, value, "performance"].map(
-                        (v, index, current) => ({
-                            title: performanceLabels[index],
-                            key: `${pe}${v}`,
-                            minWidth: "96px",
-                            align: "center",
-                            onCell: (row: Record<string, string>) => {
-                                if (index === 2) {
-                                    return findBackground(row, current, pe);
-                                }
-                                return {};
-                            },
-                            render: (
-                                _: unknown,
-                                row: Record<string, string>,
-                            ) => {
-                                if (index === 2) {
-                                    const actual = Number(
-                                        row[`${pe}${current[1]}`],
-                                    );
-                                    const target = Number(
-                                        row[`${pe}${current[0]}`],
-                                    );
-                                    if (
-                                        !isNaN(actual) &&
-                                        !isNaN(target) &&
-                                        target !== 0
-                                    ) {
-                                        return Intl.NumberFormat("en-US", {
-                                            style: "percent",
-                                        }).format(actual / target);
-                                    }
-                                    return "-";
-                                }
-                                return row[`${pe}${v}`];
-                            },
-                        }),
-                    ),
+            })),
+            ...postfixColumns,
+        ]);
+        columnsMap.set("performance-overview", [
+            ...prefixColumns,
+            {
+                title: "Indicators",
+                dataIndex: "indicators",
+                width: "115px",
+                align: "center",
+            },
+            ...periods.map((pe) => ({
+                title: analyticsItems[pe].name,
+                children: OVERVIEW_COLUMNS.map((v) => ({
+                    title: `${v.toLocaleUpperCase()}%`,
+                    dataIndex: `${pe}${v}`,
+                    width: "60px",
+                    align: "center",
+                    onHeaderCell: () => {
+                        return {
+                            style: headerColors[v],
+                        };
+                    },
                 })),
-            ],
-        ],
-        [
-            "performance-overview",
-            [
-                nameColumn,
-                {
-                    title: "Indicators",
-                    dataIndex: "indicators",
-                },
-                ...periods.map((pe) => ({
-                    title: pe,
-                    dataIndex: "",
-                    children: ["a", "m", "n", "x"].map((v) => ({
-                        title: `${v.toLocaleUpperCase()}%`,
-                        dataIndex: `${pe}${v}`,
-                        width: "60px",
-                    })),
-                })),
-            ],
-        ],
-        [
-            "completeness",
-            [
-                nameColumn,
-                {
-                    title: "Indicators",
-                    dataIndex: "indicators",
-                },
-            ],
-        ],
-    ]);
+            })),
+        ]);
 
-    const items: TabsProps["items"] = [
-        {
-            key: "target",
-            label: "Targets",
-            children: (
-                <Table
-                    columns={columns.get("target")}
-                    dataSource={finalData}
-                    pagination={false}
-                    scroll={{ y: "calc(100vh - 420px)", x: "max-content" }}
-                    rowKey="id"
-                    bordered
-                    sticky
-                    tableLayout="auto"
-                />
-            ),
-        },
-        {
-            key: "performance",
-            label: "Performance",
-            children: (
-                <Flex vertical gap={10}>
-                    <Flex justify="between" align="center" gap="4px">
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: green.bg,
-                                color: "white",
-                            }}
-                        >
-                            Achieved (&le; 100%)
-                        </div>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: yellow.bg,
-                            }}
-                        >
-                            Moderately achieved (75-99%)
-                        </div>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: red.bg,
-                            }}
-                        >
-                            Not achieved (&lt; 75%)
-                        </div>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: gray.bg,
-                            }}
-                        >
-                            No Data
-                        </div>
+        columnsMap.set("completeness", [
+            ...nameColumn,
+            {
+                title: "Indicators",
+                dataIndex: "dx",
+            },
+        ]);
+
+        return columnsMap;
+    }, [nameColumn, periods, target, value, analyticsItems, postfixColumns]);
+
+    const tableProps = useMemo<TableProps>(
+        () => ({
+            scroll: { y: "calc(100vh - 420px)" },
+            rowKey: "id",
+            bordered: true,
+            sticky: true,
+            tableLayout: "auto",
+            dataSource: finalData,
+            pagination: false,
+            size: "small",
+        }),
+        [finalData],
+    );
+
+    const performanceOverviewTableProps = useMemo<TableProps>(
+        () => ({
+            scroll: { y: "calc(100vh - 420px)" },
+            rowKey: "value",
+            bordered: true,
+            sticky: true,
+            tableLayout: "auto",
+            dataSource: dataElementGroups,
+            pagination: false,
+            size: "small",
+        }),
+        [dataElementGroups],
+    );
+
+    const items: TabsProps["items"] = useMemo(
+        () => [
+            {
+                key: "target",
+                label: "Targets",
+                children: (
+                    <Table {...tableProps} columns={columns.get("target")} />
+                ),
+            },
+            {
+                key: "performance",
+                label: "Performance",
+                children: (
+                    <Flex vertical gap={10}>
+                        <PerformanceLegend />
+                        <Table
+                            {...tableProps}
+                            columns={columns.get("performance")}
+                        />
                     </Flex>
-                    <Table
-                        columns={columns.get("performance")}
-                        dataSource={finalData}
-                        pagination={false}
-                        scroll={{ y: "calc(100vh - 420px)", x: "max-content" }}
-                        rowKey="id"
-                        bordered
-                        sticky
-                        tableLayout="auto"
-                    />
-                </Flex>
-            ),
-        },
-        {
-            key: "performance-overview",
-            label: "Performance overview",
-            children: (
-                <Flex vertical gap={10}>
-                    <Flex justify="between" align="center" gap="4px">
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: green.bg,
-                                color: "white",
-                            }}
-                        >
-                            Achieved (&le; 100%)
-                        </div>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: yellow.bg,
-                            }}
-                        >
-                            Moderately achieved (75-99%)
-                        </div>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: red.bg,
-                            }}
-                        >
-                            Not achieved (&lt; 75%)
-                        </div>
-                        <div
-                            style={{
-                                width: "100%",
-                                height: "40px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: gray.bg,
-                            }}
-                        >
-                            No Data
-                        </div>
+                ),
+            },
+            {
+                key: "performance-overview",
+                label: "Performance overview",
+                children: (
+                    <Flex vertical gap={10}>
+                        <PerformanceLegend />
+                        <Table
+                            {...performanceOverviewTableProps}
+                            columns={columns.get("performance-overview")}
+                        />
                     </Flex>
+                ),
+            },
+            {
+                key: "completeness",
+                label: "Completeness",
+                children: (
                     <Table
-                        columns={columns.get("performance-overview")}
-                        dataSource={finalData}
-                        pagination={false}
-                        scroll={{ y: "calc(100vh - 420px)", x: "max-content" }}
-                        rowKey="id"
-                        bordered
-                        sticky
-                        tableLayout="auto"
+                        {...tableProps}
+                        columns={columns.get("completeness")}
                     />
-                </Flex>
-            ),
-        },
-        {
-            key: "completeness",
-            label: "Completeness",
-            children: (
-                <Table
-                    columns={columns.get("completeness")}
-                    dataSource={finalData}
-                    pagination={false}
-                    scroll={{ y: "calc(100vh - 420px)", x: "max-content" }}
-                    rowKey="id"
-                    bordered
-                    sticky
-                    tableLayout="auto"
-                />
-            ),
-        },
-    ];
+                ),
+            },
+        ],
+        [columns, tableProps],
+    );
+
     return (
         <Tabs activeKey={tab || "target"} items={items} onChange={onChange} />
     );

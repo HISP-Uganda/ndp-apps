@@ -169,6 +169,7 @@ function Component() {
                         ou,
                         degs: undefined,
                         deg: undefined,
+                        program: undefined,
                     };
                 },
             });
@@ -199,6 +200,9 @@ function Component() {
                                     ...prev,
                                     v: value,
                                     ou,
+                                    degs: undefined,
+                                    deg: undefined,
+                                    program: undefined,
                                 }),
                             });
                         }}

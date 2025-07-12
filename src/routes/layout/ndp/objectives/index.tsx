@@ -1,9 +1,12 @@
 import { createRoute } from "@tanstack/react-router";
-import React, { useEffect } from "react";
-import { ObjectiveRoute } from "./route";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { analyticsQueryOptions } from "../../../../query-options";
+import React, { useCallback, useMemo } from "react";
 import { Results } from "../../../../components/results";
+import {
+    useAnalyticsQuery,
+    useDataElementGroups,
+} from "../../../../hooks/data-hooks";
+import { ObjectiveRoute } from "./route";
+import { ResultsProps } from "../../../../types";
 
 export const ObjectIndexRoute = createRoute({
     path: "/",
@@ -13,92 +16,65 @@ export const ObjectIndexRoute = createRoute({
 
 function Component() {
     const { engine } = ObjectIndexRoute.useRouteContext();
-    const { ou, deg, degs, pe, tab } = ObjectIndexRoute.useSearch();
+    const { ou, deg, degs, pe, tab, program } = ObjectIndexRoute.useSearch();
     const navigate = ObjectIndexRoute.useNavigate();
     const dataElementGroupSets = ObjectiveRoute.useLoaderData();
-    const [dataElementGroups, setDataElementGroups] = React.useState<string[]>(
-        () => {
-            if (degs !== undefined && dataElementGroupSets.length > 0) {
-                return dataElementGroupSets.flatMap((d) => {
-                    if (d.id === degs) {
-                        return d.dataElementGroups.map((g) => g.id);
-                    }
-                    return [];
-                });
-            } else if (dataElementGroupSets.length > 0) {
-                return dataElementGroupSets.flatMap((d) =>
-                    d.dataElementGroups.map((g) => g.id),
-                );
-            }
-            return [];
+
+    const dataElementGroups = useDataElementGroups(
+        { deg, pe, ou, program, degs },
+        dataElementGroupSets,
+    );
+    const data = useAnalyticsQuery(engine, dataElementGroups, {
+        deg,
+        pe,
+        ou,
+        program,
+        degs,
+    });
+
+    const onChange = useCallback(
+        (key: string) => {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    tab: key,
+                }),
+            });
         },
+        [navigate],
     );
-
-    useEffect(() => {
-        if (degs !== undefined && dataElementGroupSets.length > 0) {
-            setDataElementGroups(() =>
-                dataElementGroupSets.flatMap((d) => {
-                    if (d.id === degs) {
-                        return d.dataElementGroups.map((g) => g.id);
-                    }
-                    return [];
-                }),
-            );
-        } else if (dataElementGroupSets.length > 0) {
-            setDataElementGroups(() =>
-                dataElementGroupSets.flatMap((d) =>
-                    d.dataElementGroups.map((g) => g.id),
-                ),
-            );
-        }
-    }, [degs]);
-
-    useEffect(() => {
-        if (deg !== undefined) {
-            setDataElementGroups([deg]);
-        } else if (degs !== undefined && dataElementGroupSets.length > 0) {
-            setDataElementGroups(() =>
-                dataElementGroupSets.flatMap((d) => {
-                    if (d.id === degs) {
-                        return d.dataElementGroups.map((g) => g.id);
-                    }
-                    return [];
-                }),
-            );
-        } else if (dataElementGroupSets.length > 0) {
-            setDataElementGroups(() =>
-                dataElementGroupSets.flatMap((d) =>
-                    d.dataElementGroups.map((g) => g.id),
-                ),
-            );
-        }
-    }, [deg]);
-
-    const data = useSuspenseQuery(
-        analyticsQueryOptions(engine, {
-            deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
-            pe,
+    const resultsProps = useMemo<ResultsProps>(
+        () => ({
+            data: { ...data.data, ...dataElementGroups },
+            dataElementGroupSets,
+            onChange,
+            tab,
+            deg,
             ou,
+            pe,
+            prefixColumns: [
+                { title: "NDPIII Objectives", dataIndex: degs },
+                {
+                    title: "Key Result Areas",
+                    dataIndex: deg,
+                    render: (
+                        _,
+                        row: Record<string, string | number | undefined>,
+                    ) =>
+                        dataElementGroups.dataElementGroups
+                            .flatMap((group) => {
+                                const value = row[group];
+                                if (value === undefined) {
+                                    return [];
+                                }
+                                return value;
+                            })
+                            .join(" "),
+                },
+            ],
         }),
+        [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
     );
 
-    const onChange = (key: string) => {
-        navigate({
-            search: (prev) => ({
-                ...prev,
-                tab: key,
-            }),
-        });
-    };
-    return (
-        <Results
-            data={data.data}
-            dataElementGroupSets={dataElementGroupSets}
-            onChange={onChange}
-            tab={tab}
-            deg={deg}
-            ou={ou}
-            pe={pe}
-        />
-    );
+    return <Results {...resultsProps} />;
 }

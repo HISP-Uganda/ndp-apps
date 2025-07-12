@@ -1,4 +1,4 @@
-import type { TableColumnType, TreeDataNode } from "antd";
+import type { TableColumnsType, TableColumnType, TreeDataNode } from "antd";
 
 import { FixedPeriod } from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
 import { ToOptions } from "@tanstack/react-router";
@@ -110,3 +110,22 @@ export type PickerProps = {
     selectedPeriods: string[];
     onChange: (periods: string[]) => void;
 };
+
+export interface ResultsProps extends GoalSearch {
+    dataElementGroupSets: DataElementGroupSet[];
+    data: {
+        analytics: Analytics;
+        dataElements: Map<string, { [k: string]: string }>;
+        dataElementGroups: string[];
+        groupSets: string[];
+    };
+    onChange?: (key: string) => void;
+    prefixColumns?: TableColumnsType<
+        Record<string, string | number | undefined>
+    >;
+    postfixColumns?: TableColumnsType<
+        Record<string, string | number | undefined>
+    >;
+}
+
+export type MapPredicate<K, V> = (key: K, value: V) => boolean;

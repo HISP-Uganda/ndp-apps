@@ -1,9 +1,12 @@
 import { createRoute } from "@tanstack/react-router";
-import React, { useEffect } from "react";
-import { SubProgramActionRoute } from "./route";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { analyticsQueryOptions } from "../../../../query-options";
+import React, { useMemo } from "react";
 import { Results } from "../../../../components/results";
+import {
+    useAnalyticsQuery,
+    useDataElementGroups,
+} from "../../../../hooks/data-hooks";
+import { SubProgramActionRoute } from "./route";
+import { ResultsProps } from "../../../../types";
 
 export const SubProgramActionIndexRoute = createRoute({
     path: "/",
@@ -13,51 +16,22 @@ export const SubProgramActionIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramActionIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program } =
+    const { ou, deg, pe, tab, program, degs } =
         SubProgramActionIndexRoute.useSearch();
     const navigate = SubProgramActionIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramActionRoute.useLoaderData();
-    const [dataElementGroups, setDataElementGroups] = React.useState<string[]>(
-        () => {
-            if (program !== undefined && dataElementGroupSets.length > 0) {
-                return dataElementGroupSets.flatMap((d) => {
-                    if (
-                        d.attributeValues.filter((a) => a.value === program)
-                            .length > 0
-                    ) {
-                        return d.dataElementGroups.map((g) => g.id);
-                    }
-                    return [];
-                });
-            }
-            return [];
-        },
-    );
 
-    useEffect(() => {
-        if (program !== undefined && dataElementGroupSets.length > 0) {
-            setDataElementGroups(() =>
-                dataElementGroupSets.flatMap((d) => {
-                    if (
-                        d.attributeValues.filter((a) => a.value === program)
-                            .length > 0
-                    ) {
-                        return d.dataElementGroups.map((g) => g.id);
-                    }
-                    return [];
-                }),
-            );
-        }
-    }, [program]);
-
-    const data = useSuspenseQuery(
-        analyticsQueryOptions(engine, {
-            deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
-            pe,
-            ou,
-            program,
-        }),
+    const dataElementGroups = useDataElementGroups(
+        { deg, pe, ou, program, degs },
+        dataElementGroupSets,
     );
+    const data = useAnalyticsQuery(engine, dataElementGroups, {
+        deg,
+        pe,
+        ou,
+        program,
+        degs,
+    });
 
     const onChange = (key: string) => {
         navigate({
@@ -68,15 +42,22 @@ function Component() {
         });
     };
 
-    return (
-        <Results
-            data={data.data}
-            dataElementGroupSets={dataElementGroupSets}
-            onChange={onChange}
-            tab={tab}
-            deg={deg}
-            ou={ou}
-            pe={pe}
-        />
+    const resultsProps = useMemo<ResultsProps>(
+        () => ({
+            data: {
+                ...data.data,
+                ...dataElementGroups,
+            },
+            dataElementGroupSets,
+            onChange,
+            tab,
+            deg,
+            ou,
+            pe,
+            degs,
+        }),
+        [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
     );
+
+    return <Results {...resultsProps} />;
 }
