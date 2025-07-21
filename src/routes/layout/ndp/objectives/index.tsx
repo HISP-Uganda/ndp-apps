@@ -53,23 +53,13 @@ function Component() {
             ou,
             pe,
             prefixColumns: [
-                { title: "NDPIII Objectives", dataIndex: degs },
+                {
+                    title: "NDPIII Objectives",
+                    dataIndex: "dataElementGroupSet",
+                },
                 {
                     title: "Key Result Areas",
-                    dataIndex: deg,
-                    render: (
-                        _,
-                        row: Record<string, string | number | undefined>,
-                    ) =>
-                        dataElementGroups.dataElementGroups
-                            .flatMap((group) => {
-                                const value = row[group];
-                                if (value === undefined) {
-                                    return [];
-                                }
-                                return value;
-                            })
-                            .join(" "),
+                    dataIndex: "dataElementGroup",
                 },
             ],
         }),

@@ -54,7 +54,7 @@ function Component() {
                 }),
             });
         }
-    }, []);
+    }, [v]);
 
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>

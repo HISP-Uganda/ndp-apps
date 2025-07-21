@@ -12,119 +12,6 @@ interface NDPTree extends TreeDataNode {
     children?: NDPTree[];
 }
 
-const treeData: NDPTree[] = [
-    {
-        title: "NDP Results",
-        key: "0",
-        selectable: false,
-        checkable: false,
-        disabled: true,
-        children: [
-            {
-                title: "High Level Results",
-                selectable: false,
-                checkable: false,
-                disabled: true,
-                key: "0-0",
-                children: [
-                    {
-                        title: "Vision 2040 Targets",
-                        key: "vision2040",
-                        to: "/ndp/visions",
-                    },
-                    {
-                        title: "Goal",
-                        key: "goal",
-                        to: "/ndp/goals",
-                    },
-                    {
-                        title: "Objective",
-                        key: "resultsFrameworkObjective",
-                        to: "/ndp/objectives",
-                    },
-                    {
-                        title: "Outcome Level",
-                        key: "objective",
-                        to: "/ndp/outcome-levels",
-                    },
-                ],
-            },
-            {
-                title: "Vote Level Results",
-                key: "0-1",
-                selectable: false,
-                checkable: false,
-                disabled: true,
-                children: [
-                    {
-                        title: "Intermediate Outcomes",
-                        key: "sub-programme",
-                        to: "/ndp/sub-program-outcomes",
-                    },
-                    {
-                        title: "Output Level",
-                        key: "output",
-                        to: "/ndp/sub-program-outputs",
-                    },
-                    {
-                        title: "Action Level",
-                        key: "sub-intervention4action",
-                        to: "/ndp/sub-program-actions",
-                    },
-                ],
-            },
-        ],
-    },
-    {
-        title: "Tracking",
-        key: "1",
-        selectable: false,
-        checkable: false,
-        disabled: true,
-        children: [
-            {
-                title: "Project Performance",
-                key: "project-performance",
-                to: "/ndp/sub-program-outcomes",
-            },
-            {
-                title: "Policy Actions",
-                key: "policy-actions",
-                to: "/ndp/policy-actions",
-            },
-        ],
-    },
-    {
-        title: "Data Governance",
-        key: "2",
-        selectable: false,
-        checkable: false,
-        disabled: true,
-        children: [
-            {
-                title: "Indicator Dictionary",
-                key: "2-0",
-                to: "/ndp/indicator-dictionaries",
-            },
-            {
-                title: "Workflow & Guidelines",
-                key: "2-1",
-                to: "/ndp/workflows",
-            },
-            {
-                title: "FAQs",
-                key: "2-2",
-                to: "/ndp/faqs",
-            },
-        ],
-    },
-    {
-        title: "Library",
-        key: "3",
-        to: "/ndp/libraries",
-    },
-];
-
 export const LayoutRoute = createRoute({
     getParentRoute: () => RootRoute,
     id: "layout",
@@ -136,6 +23,122 @@ function Component() {
     const { engine } = LayoutRoute.useRouteContext();
     const navigate = LayoutRoute.useNavigate();
     const { v } = LayoutRoute.useSearch();
+
+    const voteLevelLabel =
+        v === "NDPIII" ? "Sub-Programme Results" : "Vote Level Results";
+
+    const treeData: NDPTree[] = [
+        {
+            title: "NDP Results",
+            key: "0",
+            selectable: false,
+            checkable: false,
+            disabled: true,
+            children: [
+                {
+                    title: "High Level Results",
+                    selectable: false,
+                    checkable: false,
+                    disabled: true,
+                    key: "0-0",
+                    children: [
+                        {
+                            title: "Vision 2040 Targets",
+                            key: "vision2040",
+                            to: "/ndp/visions",
+                        },
+                        {
+                            title: "Goal",
+                            key: "goal",
+                            to: "/ndp/goals",
+                        },
+                        {
+                            title: "Objective",
+                            key: "resultsFrameworkObjective",
+                            to: "/ndp/objectives",
+                        },
+                        {
+                            title: "Outcome Level",
+                            key: "objective",
+                            to: "/ndp/outcome-levels",
+                        },
+                    ],
+                },
+                {
+                    title: voteLevelLabel,
+                    key: "0-1",
+                    selectable: false,
+                    checkable: false,
+                    disabled: true,
+                    children: [
+                        {
+                            title: "Intermediate Outcomes",
+                            key: "sub-programme",
+                            to: "/ndp/sub-program-outcomes",
+                        },
+                        {
+                            title: "Output Level",
+                            key: "output",
+                            to: "/ndp/sub-program-outputs",
+                        },
+                        {
+                            title: "Action Level",
+                            key: "sub-intervention4action",
+                            to: "/ndp/sub-program-actions",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            title: "Tracking",
+            key: "1",
+            selectable: false,
+            checkable: false,
+            disabled: true,
+            children: [
+                {
+                    title: "Project Performance",
+                    key: "project-performance",
+                    to: "/ndp/sub-program-outcomes",
+                },
+                {
+                    title: "Policy Actions",
+                    key: "policy-actions",
+                    to: "/ndp/policy-actions",
+                },
+            ],
+        },
+        {
+            title: "Data Governance",
+            key: "2",
+            selectable: false,
+            checkable: false,
+            disabled: true,
+            children: [
+                {
+                    title: "Indicator Dictionary",
+                    key: "2-0",
+                    to: "/ndp/indicator-dictionaries",
+                },
+                {
+                    title: "Workflow & Guidelines",
+                    key: "2-1",
+                    to: "/ndp/workflows",
+                },
+                {
+                    title: "FAQs",
+                    key: "2-2",
+                    to: "/ndp/faqs",
+                },
+            ],
+        },
+        {
+            title: "Library",
+            key: "3",
+            to: "/ndp/libraries",
+        },
+    ];
     const {
         data: { ndpVersions, ou },
     } = useSuspenseQuery(

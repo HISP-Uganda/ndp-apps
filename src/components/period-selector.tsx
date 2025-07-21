@@ -1,86 +1,37 @@
-import { Flex, Typography, Select, InputNumber, Button } from "antd";
-import React, { useMemo, useCallback, useState } from "react";
 import {
-    generateFixedPeriods,
-    getFixedPeriodByDate,
+	generateFixedPeriods,
+	getFixedPeriodByDate,
 } from "@dhis2/multi-calendar-dates";
-import { createOptions2, fixedPeriods } from "../utils";
 import {
-    FixedPeriod,
-    PeriodType,
+	FixedPeriod,
+	PeriodType,
 } from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
+import { Button, Flex, InputNumber, Select, Typography } from "antd";
 import dayjs from "dayjs";
+import React, { useCallback, useMemo, useState } from "react";
 import { PickerProps } from "../types";
+import { createOptions2 } from "../utils";
 
 const { Text } = Typography;
 
-// Constants moved outside component to prevent recreation
-const PERIOD_TYPES = [
-    "Daily",
-    "Weekly",
-    "Weekly (Start Wednesday)",
-    "Weekly (Start Thursday)",
-    "Weekly (Start Saturday)",
-    "Weekly (Start Sunday)",
-    "Bi-Weekly",
-    "Monthly",
-    "Bi-Monthly",
-    "Quarterly",
-    "Quarterly-Nov",
-    "Six-Monthly",
-    "Six-Monthly-April",
-    "Six-Monthly-Nov",
-    "Yearly",
-    "Financial-Year (Start November)",
-    "Financial-Year (Start October)",
-    "Financial-Year (Start July)",
-    "Financial-Year (Start April)",
-];
-
-const DEFAULT_PERIOD_TYPE: PeriodType = "QUARTERLY";
+const DEFAULT_PERIOD_TYPE: PeriodType = "FYJUL";
 const CURRENT_YEAR = dayjs().year();
 const MIN_YEAR = 1900;
 
-// Memoized period type options
-const FIXED_PERIOD_TYPE_OPTIONS = createOptions2(PERIOD_TYPES, fixedPeriods);
+const FIXED_PERIOD_TYPE_OPTIONS = createOptions2(
+    ["Financial-Year (Start July)"],
+    ["FYJUL"],
+);
 
-// Optimized period detection with better type safety
-const detectPeriodType = (
-    period: string,
-): { type: PeriodType; date: string } => {
-    if (period.includes("Q")) {
-        return {
-            type: "QUARTERLY",
-            date: dayjs(period, "YYYY[Q]Q").format("YYYY-MM-DD"),
-        };
-    }
-
-    if (period.includes("Jul")) {
-        return {
-            type: "FYJUL",
-            date: dayjs(period, "YYYY").format("YYYY-MM-DD"),
-        };
-    }
-
-    // Default fallback
-    return {
-        type: "QUARTERLY",
-        date: dayjs(period, "YYYY[Q]Q").format("YYYY-MM-DD"),
-    };
-};
-
-// Memoized period converter
 const getFixedPeriod = (period: string): FixedPeriod => {
-    const { type, date } = detectPeriodType(period);
-
     return getFixedPeriodByDate({
-        periodType: type,
-        date,
+        periodType: "FYJUL",
+        date: dayjs(period, "YYYY-MM").format("YYYY-MM-DD"),
         calendar: "iso8601",
+				
     });
 };
 
-// Memoized list container styles
 const LIST_CONTAINER_STYLE = {
     backgroundColor: "white",
     padding: 5,
@@ -91,7 +42,6 @@ const LIST_CONTAINER_STYLE = {
     overflowY: "auto" as const,
 };
 
-// Memoized period item component
 const PeriodItem = React.memo<{
     period: FixedPeriod;
     onClick: (period: FixedPeriod) => void;
@@ -123,7 +73,6 @@ export default function PeriodSelector({
     const [fixedPeriodType, setFixedPeriodType] =
         useState<PeriodType>(DEFAULT_PERIOD_TYPE);
 
-    // Memoized initial periods from selected periods
     const initialPeriods = useMemo(() => {
         if (!selectedPeriods?.length) return [];
 
@@ -132,7 +81,6 @@ export default function PeriodSelector({
 
     const [periods, setPeriods] = useState<FixedPeriod[]>(initialPeriods);
 
-    // Memoized available periods calculation
     const availableFixedPeriods = useMemo(() => {
         const currentYear = year ?? CURRENT_YEAR;
 
@@ -143,20 +91,17 @@ export default function PeriodSelector({
             locale: "en",
         });
 
-        // Create a Set of selected period IDs for O(1) lookup
         const selectedIds = new Set(periods.map((p) => p.id));
 
         return generatedPeriods.filter((p) => !selectedIds.has(p.id));
     }, [fixedPeriodType, year, periods]);
 
-    // Memoized period type value
     const selectedPeriodTypeOption = useMemo(() => {
         return FIXED_PERIOD_TYPE_OPTIONS.find(
             ({ value }) => value === fixedPeriodType,
         )?.value;
     }, [fixedPeriodType]);
 
-    // Optimized handlers
     const handlePeriodTypeChange = useCallback((value: PeriodType | null) => {
         setFixedPeriodType(value || DEFAULT_PERIOD_TYPE);
     }, []);
@@ -194,7 +139,6 @@ export default function PeriodSelector({
 
     return (
         <Flex vertical gap={10}>
-            {/* Period Type Selector */}
             <Flex align="center" gap={10}>
                 <Text>Period Type</Text>
                 <Select
@@ -204,12 +148,11 @@ export default function PeriodSelector({
                     style={{ flex: 1 }}
                     value={selectedPeriodTypeOption}
                     placeholder="Select period type"
+                    disabled
                 />
             </Flex>
 
-            {/* Main Content */}
             <Flex gap={10}>
-                {/* Available Periods */}
                 <Flex vertical flex={1} gap={10}>
                     <Flex justify="space-between" align="center">
                         <Text>
@@ -240,7 +183,6 @@ export default function PeriodSelector({
                         )}
                     </Flex>
 
-                    {/* Year Input */}
                     <Flex align="center" gap={10}>
                         <Text>Year</Text>
                         <InputNumber
@@ -253,15 +195,12 @@ export default function PeriodSelector({
                         />
                     </Flex>
                 </Flex>
-
-                {/* Transfer Actions */}
                 <Flex align="center" justify="center" vertical gap={10}>
                     <Text type="secondary">Transfer</Text>
                     <Text>→</Text>
                     <Text>←</Text>
                 </Flex>
 
-                {/* Selected Periods */}
                 <Flex vertical flex={1} gap={10}>
                     <Flex justify="space-between" align="center">
                         <Text>Selected Periods ({periods.length})</Text>
@@ -290,7 +229,6 @@ export default function PeriodSelector({
                         )}
                     </Flex>
 
-                    {/* Action Buttons */}
                     <Flex gap={10}>
                         <Button
                             type="primary"

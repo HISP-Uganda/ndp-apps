@@ -253,6 +253,7 @@ export const makeDataElementData = (data: {
             });
             const target = Number(current.get(`${pe}${data.targetId}`));
             const actual = Number(current.get(`${pe}${data.actualId}`));
+
             const ratio = calculatePerformanceRatio(actual, target);
             const { performance, style } = findBackground(
                 ratio,
@@ -265,6 +266,8 @@ export const makeDataElementData = (data: {
             }
             current.set(`${pe}style`, style);
             current.set(`${pe}performance-group`, performance);
+            current.set(`${pe}target`, isNaN(target) ? 0 : 1);
+            current.set(`${pe}actual`, isNaN(actual) ? 0 : 1);
         });
 
         return {

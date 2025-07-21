@@ -75,39 +75,49 @@ function Component() {
             prefixColumns: [
                 {
                     title: "Programme Objectives",
-                    dataIndex: degs,
-                    render: (
-                        _,
-                        row: Record<string, string | number | undefined>,
-                    ) =>
-                        dataElementGroups.groupSets
-                            .flatMap((group) => {
-                                const value = row[group];
-                                if (value === undefined) {
-                                    return [];
-                                }
-                                return value;
-                            })
-                            .join(" "),
+                    dataIndex: "dataElementGroupSet",
                 },
                 {
                     title: "Outcomes",
-                    dataIndex: deg,
-                    render: (
-                        _,
-                        row: Record<string, string | number | undefined>,
-                    ) =>
-                        dataElementGroups.dataElementGroups
-                            .flatMap((group) => {
-                                const value = row[group];
-                                if (value === undefined) {
-                                    return [];
-                                }
-                                return value;
-                            })
-                            .join(" "),
+                    dataIndex: "dataElementGroup",
                 },
             ],
+            // prefixColumns: [
+            //     {
+            //         title: "Programme Objectives",
+            //         dataIndex: degs,
+            //         render: (
+            //             _,
+            //             row: Record<string, string | number | undefined>,
+            //         ) =>
+            //             dataElementGroups.groupSets
+            //                 .flatMap((group) => {
+            //                     const value = row[group];
+            //                     if (value === undefined) {
+            //                         return [];
+            //                     }
+            //                     return value;
+            //                 })
+            //                 .join(" "),
+            //     },
+            //     {
+            //         title: "Outcomes",
+            //         dataIndex: deg,
+            //         render: (
+            //             _,
+            //             row: Record<string, string | number | undefined>,
+            //         ) =>
+            //             dataElementGroups.dataElementGroups
+            //                 .flatMap((group) => {
+            //                     const value = row[group];
+            //                     if (value === undefined) {
+            //                         return [];
+            //                     }
+            //                     return value;
+            //                 })
+            //                 .join(" "),
+            //     },
+            // ],
         }),
         [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
     );

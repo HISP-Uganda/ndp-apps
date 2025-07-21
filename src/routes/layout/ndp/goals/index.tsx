@@ -57,26 +57,37 @@ function Component() {
             ou,
             pe,
             degs,
+
             prefixColumns: [
-                { title: "Goal", dataIndex: degs },
+                {
+                    title: "Goal",
+                    dataIndex: "dataElementGroupSet",
+                },
                 {
                     title: "Key Result Areas",
-                    dataIndex: deg,
-                    render: (
-                        _,
-                        row: Record<string, string | number | undefined>,
-                    ) =>
-                        dataElementGroups.dataElementGroups
-                            .flatMap((group) => {
-                                const value = row[group];
-                                if (value === undefined) {
-                                    return [];
-                                }
-                                return value;
-                            })
-                            .join(" "),
+                    dataIndex: "dataElementGroup",
                 },
             ],
+            // prefixColumns: [
+            //     { title: "Goal", dataIndex: degs },
+            //     {
+            //         title: "Key Result Areas",
+            //         dataIndex: deg,
+            //         render: (
+            //             _,
+            //             row: Record<string, string | number | undefined>,
+            //         ) =>
+            //             dataElementGroups.dataElementGroups
+            //                 .flatMap((group) => {
+            //                     const value = row[group];
+            //                     if (value === undefined) {
+            //                         return [];
+            //                     }
+            //                     return value;
+            //                 })
+            //                 .join(" "),
+            //     },
+            // ],
         }),
         [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
     );
