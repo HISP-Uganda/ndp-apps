@@ -235,25 +235,36 @@ export const makeDataElementData = (data: {
     dataElements: Map<string, { [k: string]: string }>;
     targetId: string;
     actualId: string;
+    baselineId: string;
 }) => {
     const {
         rows,
         metaData: { items, dimensions },
     } = data.analytics;
 
+    const allData: Map<string, string> = new Map(
+        rows.map((row) => {
+            return [
+                row.slice(0, row.length - 1).join(""),
+                String(row[row.length - 1]),
+            ];
+        }),
+    );
     return dimensions.dx.map((a) => {
         const current: Map<string, any> = new Map();
         const dataElementDetails = data.dataElements.get(a);
         dimensions["pe"]?.forEach((pe) => {
-            dimensions["Duw5yep8Vae"].forEach((dim) => {
-                const search = rows.find(
-                    (row) => row[0] === a && row[3] === pe && row[2] === dim,
-                );
-                current.set(`${pe}${dim}`, search?.[4] ?? "");
-            });
-            const target = Number(current.get(`${pe}${data.targetId}`));
-            const actual = Number(current.get(`${pe}${data.actualId}`));
-
+            let target = Number(allData.get(`${a}${data.targetId}${pe}`));
+            const actual = Number(allData.get(`${a}${data.actualId}${pe}`));
+            const baseline = Number(allData.get(`${a}${data.baselineId}${pe}`));
+            let year = pe.slice(0, 4);
+            if (pe.indexOf("Q") > -1) {
+                const quarter = pe.slice(-1);
+                if (quarter === "1" || quarter === "2") {
+                    year = String(Number(year) - 1);
+                }
+                target = Number(allData.get(`${a}${data.targetId}${year}July`));
+            }
             const ratio = calculatePerformanceRatio(actual, target);
             const { performance, style } = findBackground(
                 ratio,
@@ -266,10 +277,16 @@ export const makeDataElementData = (data: {
             }
             current.set(`${pe}style`, style);
             current.set(`${pe}performance-group`, performance);
-            current.set(`${pe}target`, isNaN(target) ? 0 : 1);
-            current.set(`${pe}actual`, isNaN(actual) ? 0 : 1);
+            current.set(`${pe}target`, isNaN(target) ? "-" : target);
+            current.set(`${pe}actual`, isNaN(actual) ? "-" : actual);
+            current.set(`${pe}baseline`, isNaN(baseline) ? "-" : baseline);
+            current.set(`${pe}${data.targetId}`, isNaN(target) ? "-" : target);
+            current.set(`${pe}${data.actualId}`, isNaN(actual) ? "-" : actual);
+            current.set(
+                `${pe}${data.baselineId}`,
+                isNaN(baseline) ? "-" : baseline,
+            );
         });
-
         return {
             id: a,
             dx: items[a].name,
@@ -502,4 +519,23 @@ export const findBackground = (
         },
         performance: "x",
     };
+};
+
+export const derivePeriods = (periods?: string[]) => {
+    if (!periods) return [];
+    return periods.flatMap((p) => {
+        return [p].concat(
+            [3, 4, 1, 2].map((q) => {
+                if (q === 1 || q === 2) {
+                    return `${Number(p.slice(0, 4)) + 1}Q${q}`;
+                }
+                return `${p.slice(0, 4)}Q${q}`;
+            }),
+        );
+    });
+};
+
+export const baselinePeriods = {
+    NDPIII: "2017July",
+    NDPIV: "2023July",
 };

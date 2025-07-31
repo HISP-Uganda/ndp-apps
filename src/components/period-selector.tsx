@@ -1,10 +1,10 @@
 import {
-	generateFixedPeriods,
-	getFixedPeriodByDate,
+    generateFixedPeriods,
+    getFixedPeriodByDate,
 } from "@dhis2/multi-calendar-dates";
 import {
-	FixedPeriod,
-	PeriodType,
+    FixedPeriod,
+    PeriodType,
 } from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
 import { Button, Flex, InputNumber, Select, Typography } from "antd";
 import dayjs from "dayjs";
@@ -26,9 +26,10 @@ const FIXED_PERIOD_TYPE_OPTIONS = createOptions2(
 const getFixedPeriod = (period: string): FixedPeriod => {
     return getFixedPeriodByDate({
         periodType: "FYJUL",
-        date: dayjs(period, "YYYY-MM").format("YYYY-MM-DD"),
+        date: dayjs(period.replace("July", "-07"), "YYYY-MM").format(
+            "YYYY-MM-DD",
+        ),
         calendar: "iso8601",
-				
     });
 };
 
@@ -78,6 +79,7 @@ export default function PeriodSelector({
 
         return selectedPeriods.map(getFixedPeriod);
     }, [selectedPeriods]);
+
 
     const [periods, setPeriods] = useState<FixedPeriod[]>(initialPeriods);
 

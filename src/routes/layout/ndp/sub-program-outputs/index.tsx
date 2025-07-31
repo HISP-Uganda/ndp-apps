@@ -7,6 +7,7 @@ import {
 } from "../../../../hooks/data-hooks";
 import { SubProgramOutputRoute } from "./route";
 import { ResultsProps } from "../../../../types";
+import { derivePeriods } from "../../../../utils";
 
 export const SubProgramOutputIndexRoute = createRoute({
     path: "/",
@@ -16,7 +17,7 @@ export const SubProgramOutputIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramOutputIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs } =
+    const { ou, deg, pe, tab, program, degs, quarters } =
         SubProgramOutputIndexRoute.useSearch();
     const navigate = SubProgramOutputIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramOutputRoute.useLoaderData();
@@ -26,7 +27,7 @@ function Component() {
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
         deg,
-        pe,
+        pe: derivePeriods(pe),
         ou,
         program,
         degs,
@@ -53,6 +54,7 @@ function Component() {
             deg,
             ou,
             pe,
+            quarters,
             prefixColumns: [
                 {
                     title: "Sub-Interventions",
@@ -63,42 +65,6 @@ function Component() {
                     dataIndex: "dataElementGroup",
                 },
             ],
-            // prefixColumns: [
-            //     {
-            //         title: "Sub-Interventions",
-            //         dataIndex: degs,
-            //         render: (
-            //             _,
-            //             row: Record<string, string | number | undefined>,
-            //         ) =>
-            //             dataElementGroups.groupSets
-            //                 .flatMap((group) => {
-            //                     const value = row[group];
-            //                     if (value === undefined) {
-            //                         return [];
-            //                     }
-            //                     return value;
-            //                 })
-            //                 .join(" "),
-            //     },
-            //     {
-            //         title: "Outputs",
-            //         dataIndex: deg,
-            //         render: (
-            //             _,
-            //             row: Record<string, string | number | undefined>,
-            //         ) =>
-            //             dataElementGroups.dataElementGroups
-            //                 .flatMap((group) => {
-            //                     const value = row[group];
-            //                     if (value === undefined) {
-            //                         return [];
-            //                     }
-            //                     return value;
-            //                 })
-            //                 .join(" "),
-            //     },
-            // ],
         }),
         [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
     );

@@ -51,6 +51,7 @@ function Component() {
                 search: (prev) => ({
                     ...prev,
                     degs: data?.[0]?.id ?? "",
+										quarters: false,
                 }),
             });
         }

@@ -40,6 +40,7 @@ function Component() {
                     ...prev,
                     degs: data?.[0]?.id ?? "",
                     pe: ["2009July", "2024July", "2039July"],
+										quarters: false,
                 }),
             });
         }

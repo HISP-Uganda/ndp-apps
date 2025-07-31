@@ -7,6 +7,7 @@ import {
 } from "../../../../hooks/data-hooks";
 import { SubProgramActionRoute } from "./route";
 import { ResultsProps } from "../../../../types";
+import { derivePeriods } from "../../../../utils";
 
 export const SubProgramActionIndexRoute = createRoute({
     path: "/",
@@ -16,7 +17,7 @@ export const SubProgramActionIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramActionIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs } =
+    const { ou, deg, pe, tab, program, degs,quarters } =
         SubProgramActionIndexRoute.useSearch();
     const navigate = SubProgramActionIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramActionRoute.useLoaderData();
@@ -27,7 +28,7 @@ function Component() {
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
         deg,
-        pe,
+        pe: derivePeriods(pe),
         ou,
         program,
         degs,
@@ -55,6 +56,7 @@ function Component() {
             ou,
             pe,
             degs,
+            quarters,
         }),
         [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
     );

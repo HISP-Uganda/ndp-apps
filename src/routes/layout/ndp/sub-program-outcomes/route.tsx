@@ -47,7 +47,11 @@ function Component() {
             navigate({
                 search: (prev) => ({
                     ...prev,
-                    program: data.options?.[0]?.code ?? "",
+                    program:
+                        program === undefined
+                            ? data.options?.[0]?.code ?? ""
+                            : program,
+                    quarters: v === "NDPIII" ? false : true,
                 }),
             });
         }

@@ -7,36 +7,16 @@ import {
 } from "../../../../hooks/data-hooks";
 import { OutcomeLevelRoute } from "./route";
 import { ResultsProps } from "../../../../types";
+import { derivePeriods } from "../../../../utils";
 
 export const OutcomeLevelIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => OutcomeLevelRoute,
     component: Component,
 });
-const extractDataElementGroupsByProgram = (
-    dataElementGroupSets: any[],
-    program?: string,
-): string[] => {
-    if (program === undefined || dataElementGroupSets.length === 0) {
-        return [];
-    }
-
-    return dataElementGroupSets.flatMap((d) => {
-        const hasProgram = d.attributeValues.some(
-            (a: any) => a.value === program,
-        );
-
-        if (hasProgram) {
-            return d.dataElementGroups.map((g: any) => g.id);
-        }
-
-        return [];
-    });
-};
-
 function Component() {
     const { engine } = OutcomeLevelIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs } =
+    const { ou, deg, pe, tab, program, degs, quarters } =
         OutcomeLevelIndexRoute.useSearch();
     const navigate = OutcomeLevelIndexRoute.useNavigate();
     const { dataElementGroupSets } = OutcomeLevelRoute.useLoaderData();
@@ -47,7 +27,7 @@ function Component() {
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
         deg,
-        pe,
+        pe: derivePeriods(pe),
         ou,
         program,
         degs,
@@ -72,6 +52,7 @@ function Component() {
             deg,
             ou,
             pe,
+            quarters,
             prefixColumns: [
                 {
                     title: "Programme Objectives",

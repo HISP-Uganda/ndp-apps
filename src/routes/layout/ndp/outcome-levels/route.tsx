@@ -43,6 +43,7 @@ function Component() {
                 search: (prev) => ({
                     ...prev,
                     program: data.options?.[0]?.code ?? "",
+                    quarters: v === "NDPIII" ? false : true,
                 }),
             });
         }

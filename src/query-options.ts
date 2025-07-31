@@ -232,7 +232,6 @@ export const analyticsQueryOptions = (
                 includeMetadataDetails: "true",
             });
             [
-                "co",
                 "Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U",
                 `pe:${pe.join(";")}`,
                 `dx:${deg}`,
@@ -259,9 +258,6 @@ export const analyticsQueryOptions = (
                     },
                 },
             });
-
-            console.log("Data Elements response:", response2);
-
             const {
                 dataElements: { dataElements },
             } = response2 as unknown as {

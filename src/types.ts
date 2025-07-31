@@ -15,6 +15,7 @@ export const GoalValidator = z.object({
     pe: z.string().array().optional(),
     ou: z.string(),
     program: z.string().optional(),
+    quarters: z.boolean().optional(),
 });
 
 export type GoalSearch = z.infer<typeof GoalValidator>;
@@ -126,6 +127,7 @@ export interface ResultsProps extends GoalSearch {
     postfixColumns?: TableColumnsType<
         Record<string, string | number | undefined>
     >;
+    quarters?: boolean;
 }
 
 export type MapPredicate<K, V> = (key: K, value: V) => boolean;
