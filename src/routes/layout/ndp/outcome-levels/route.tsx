@@ -72,12 +72,12 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "program",
+                        key: "programme",
                         options: data.options.map(({ name, code }) => ({
                             value: code,
                             label: name,
                         })),
-                        label: "Program",
+                        label: "Programme",
                     },
                 ]}
             />

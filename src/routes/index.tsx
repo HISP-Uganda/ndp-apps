@@ -11,7 +11,7 @@ export const IndexRoute = createRoute({
 });
 
 function IndexRouteComponent() {
-    const { ndpVersions, ou } = useLoaderData({ from: "__root__" });
+    const { ndpVersions } = useLoaderData({ from: "__root__" });
 
     const latestNDP = maxBy(ndpVersions, (version) => {
         return new Date(version.created).getTime();

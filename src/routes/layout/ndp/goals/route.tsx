@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute, Outlet } from "@tanstack/react-router";
 import { Flex } from "antd";
-import React, { useEffect } from "react";
+import React from "react";
 import Filter from "../../../../components/Filter";
 import { dataElementGroupSetsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
@@ -36,18 +36,6 @@ function Component() {
     );
     const navigate = GoalRoute.useNavigate();
 
-    useEffect(() => {
-        if (degs === undefined) {
-            navigate({
-                search: (prev) => ({
-                    ...prev,
-                    degs: data?.[0]?.id ?? "",
-                    quarters: false,
-                }),
-            });
-        }
-    }, [v]);
-
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
@@ -58,7 +46,7 @@ function Component() {
                             search: (prev) => ({
                                 ...prev,
                                 ...val,
-                                [previous]: undefined,
+                                [previous]: "All",
                             }),
                         });
                     } else {

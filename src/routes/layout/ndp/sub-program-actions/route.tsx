@@ -27,6 +27,7 @@ export const SubProgramActionRoute = createRoute({
         return data;
     },
     validateSearch: GoalValidator,
+    pendingComponent: () => <div>Loading...</div>,
 });
 
 function Component() {
@@ -76,12 +77,12 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "program",
+                        key: "programme",
                         options: data.options.map(({ name, code }) => ({
                             value: code,
                             label: name,
                         })),
-                        label: "Program",
+                        label: "Programme",
                     },
                 ]}
             />

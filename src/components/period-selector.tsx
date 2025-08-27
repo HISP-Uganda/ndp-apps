@@ -1,27 +1,17 @@
+import { DoubleLeftOutlined, DoubleRightOutlined } from "@ant-design/icons";
 import {
     generateFixedPeriods,
     getFixedPeriodByDate,
 } from "@dhis2/multi-calendar-dates";
-import {
-    FixedPeriod,
-    PeriodType,
-} from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
-import { Button, Flex, InputNumber, Select, Typography } from "antd";
+import { FixedPeriod } from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
+import { useLoaderData, useSearch } from "@tanstack/react-router";
+import { Button, Flex, Typography } from "antd";
 import dayjs from "dayjs";
 import React, { useCallback, useMemo, useState } from "react";
 import { PickerProps } from "../types";
-import { createOptions2 } from "../utils";
+import { orderBy } from "lodash";
 
 const { Text } = Typography;
-
-const DEFAULT_PERIOD_TYPE: PeriodType = "FYJUL";
-const CURRENT_YEAR = dayjs().year();
-const MIN_YEAR = 1900;
-
-const FIXED_PERIOD_TYPE_OPTIONS = createOptions2(
-    ["Financial-Year (Start July)"],
-    ["FYJUL"],
-);
 
 const getFixedPeriod = (period: string): FixedPeriod => {
     return getFixedPeriodByDate({
@@ -36,9 +26,9 @@ const getFixedPeriod = (period: string): FixedPeriod => {
 const LIST_CONTAINER_STYLE = {
     backgroundColor: "white",
     padding: 5,
-    minHeight: 280,
-    height: 280,
-    maxHeight: 280,
+    minHeight: 200,
+    height: 200,
+    maxHeight: 200,
     border: "1px solid #d9d9d9",
     overflowY: "auto" as const,
 };
@@ -70,9 +60,15 @@ export default function PeriodSelector({
     onChange,
     selectedPeriods,
 }: PeriodSelectorProps) {
-    const [year, setYear] = useState<number | null>(CURRENT_YEAR);
-    const [fixedPeriodType, setFixedPeriodType] =
-        useState<PeriodType>(DEFAULT_PERIOD_TYPE);
+    const { configurations } = useLoaderData({ from: "__root__" });
+    const { v } = useSearch({ from: "/layout" });
+    const financialYears = configurations[v].data.financialYears;
+    const baselineYear = configurations[v].data.baseline;
+    const year = dayjs(
+        financialYears?.at(-1)?.replace("July", "-07") ??
+            dayjs().add(4, "year"),
+        "YYYY-MM",
+    ).year();
 
     const initialPeriods = useMemo(() => {
         if (!selectedPeriods?.length) return [];
@@ -80,44 +76,36 @@ export default function PeriodSelector({
         return selectedPeriods.map(getFixedPeriod);
     }, [selectedPeriods]);
 
-
-    const [periods, setPeriods] = useState<FixedPeriod[]>(initialPeriods);
+    const [periods, setPeriods] = useState<FixedPeriod[]>(
+        orderBy(initialPeriods, ["id"]),
+    );
 
     const availableFixedPeriods = useMemo(() => {
-        const currentYear = year ?? CURRENT_YEAR;
-
         const generatedPeriods = generateFixedPeriods({
-            year: currentYear,
+            year,
             calendar: "iso8601",
-            periodType: fixedPeriodType,
+            periodType: "FYJUL",
             locale: "en",
         });
-
         const selectedIds = new Set(periods.map((p) => p.id));
-
-        return generatedPeriods.filter((p) => !selectedIds.has(p.id));
-    }, [fixedPeriodType, year, periods]);
-
-    const selectedPeriodTypeOption = useMemo(() => {
-        return FIXED_PERIOD_TYPE_OPTIONS.find(
-            ({ value }) => value === fixedPeriodType,
-        )?.value;
-    }, [fixedPeriodType]);
-
-    const handlePeriodTypeChange = useCallback((value: PeriodType | null) => {
-        setFixedPeriodType(value || DEFAULT_PERIOD_TYPE);
-    }, []);
-
-    const handleYearChange = useCallback((value: number | null) => {
-        setYear(value);
-    }, []);
+        return generatedPeriods.filter(
+            (p) =>
+                !selectedIds.has(p.id) &&
+                [baselineYear, ...financialYears].includes(p.id),
+        );
+    }, [year, periods]);
 
     const handleAddPeriod = useCallback((period: FixedPeriod) => {
-        setPeriods((prev) => [...prev, period]);
+        setPeriods((prev) => orderBy([...prev, period], ["id"]));
     }, []);
 
     const handleRemovePeriod = useCallback((period: FixedPeriod) => {
-        setPeriods((prev) => prev.filter((p) => p.id !== period.id));
+        setPeriods((prev) =>
+            orderBy(
+                prev.filter((p) => p.id !== period.id),
+                ["id"],
+            ),
+        );
     }, []);
 
     const handleSubmit = useCallback(() => {
@@ -135,36 +123,18 @@ export default function PeriodSelector({
             const newPeriods = availableFixedPeriods.filter(
                 (p) => !currentIds.has(p.id),
             );
-            return [...prev, ...newPeriods];
+            return orderBy([...prev, ...newPeriods], ["id"]);
         });
     }, [availableFixedPeriods]);
 
     return (
         <Flex vertical gap={10}>
-            <Flex align="center" gap={10}>
-                <Text>Period Type</Text>
-                <Select
-                    options={FIXED_PERIOD_TYPE_OPTIONS}
-                    allowClear
-                    onChange={handlePeriodTypeChange}
-                    style={{ flex: 1 }}
-                    value={selectedPeriodTypeOption}
-                    placeholder="Select period type"
-                    disabled
-                />
-            </Flex>
-
             <Flex gap={10}>
                 <Flex vertical flex={1} gap={10}>
                     <Flex justify="space-between" align="center">
                         <Text>
                             Available Periods ({availableFixedPeriods.length})
                         </Text>
-                        {availableFixedPeriods.length > 0 && (
-                            <Button size="small" onClick={handleSelectAll}>
-                                Select All
-                            </Button>
-                        )}
                     </Flex>
                     <Flex vertical style={LIST_CONTAINER_STYLE}>
                         {availableFixedPeriods.length === 0 ? (
@@ -184,33 +154,26 @@ export default function PeriodSelector({
                             ))
                         )}
                     </Flex>
-
-                    <Flex align="center" gap={10}>
-                        <Text>Year</Text>
-                        <InputNumber
-                            min={MIN_YEAR}
-                            max={CURRENT_YEAR + 10}
-                            value={year}
-                            onChange={handleYearChange}
-                            placeholder="Enter year"
-                            style={{ width: 120 }}
-                        />
-                    </Flex>
                 </Flex>
                 <Flex align="center" justify="center" vertical gap={10}>
                     <Text type="secondary">Transfer</Text>
-                    <Text>→</Text>
-                    <Text>←</Text>
+                    <Button
+                        icon={<DoubleRightOutlined color="#fff" />}
+                        onClick={handleSelectAll}
+                        disabled={availableFixedPeriods.length === 0}
+                        style={{ backgroundColor: "#5CB85C", width: 60 }}
+                    />
+                    <Button
+                        icon={<DoubleLeftOutlined color="#fff" />}
+                        onClick={handleClearAll}
+                        style={{ backgroundColor: "#CF7F86", width: 60 }}
+                        disabled={periods.length === 0}
+                    />
                 </Flex>
 
                 <Flex vertical flex={1} gap={10}>
                     <Flex justify="space-between" align="center">
                         <Text>Selected Periods ({periods.length})</Text>
-                        {periods.length > 0 && (
-                            <Button size="small" onClick={handleClearAll}>
-                                Clear All
-                            </Button>
-                        )}
                     </Flex>
                     <Flex vertical style={LIST_CONTAINER_STYLE}>
                         {periods.length === 0 ? (

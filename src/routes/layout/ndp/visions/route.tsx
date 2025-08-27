@@ -1,4 +1,4 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ function Component() {
     const { engine } = VisionRoute.useRouteContext();
     const { v, degs } = VisionRoute.useSearch();
     const navigate = VisionRoute.useNavigate();
+    const { configurations } = useLoaderData({ from: "__root__" });
 
     const { data } = useSuspenseQuery(
         dataElementGroupSetsQueryOptions(engine, "vision2040", v),
@@ -39,8 +40,8 @@ function Component() {
                 search: (prev) => ({
                     ...prev,
                     degs: data?.[0]?.id ?? "",
-                    pe: ["2009July", "2024July", "2039July"],
-										quarters: false,
+                    pe: [ configurations[v]?.data?.baseline, "2024July", "2039July"],
+                    quarters: false,
                 }),
             });
         }

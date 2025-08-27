@@ -6,6 +6,7 @@ export const PolicyActionIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => PolicyActionRoute,
     component: Component,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {

@@ -6,6 +6,7 @@ export const ProjectPerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => ProjectPerformanceRoute,
     component: Component,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {

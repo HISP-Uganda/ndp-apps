@@ -27,6 +27,7 @@ export const SubProgramOutcomeRoute = createRoute({
         return data;
     },
     validateSearch: GoalValidator,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {
@@ -41,6 +42,7 @@ function Component() {
         ),
     );
     const navigate = SubProgramOutcomeRoute.useNavigate();
+
 
     useEffect(() => {
         if (degs === undefined) {
@@ -80,12 +82,17 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "program",
+                        key: "programme",
                         options: data.options.map(({ name, code }) => ({
                             value: code,
                             label: name,
                         })),
-                        label: "Program",
+                        label: "Programme",
+                    },
+                    {
+                        key: "sub-programme",
+                        options: [],
+                        label: "Sub Programme",
                     },
                 ]}
             />

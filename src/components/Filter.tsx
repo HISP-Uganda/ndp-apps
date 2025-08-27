@@ -1,9 +1,10 @@
-import { CaretRightOutlined } from "@ant-design/icons";
+import { MinusSquareOutlined, PlusSquareOutlined } from "@ant-design/icons";
 import type { CollapseProps, SelectProps } from "antd";
 import { Collapse, Flex, Form, Select } from "antd";
 import React from "react";
 import { OrgUnitSelect } from "./organisation";
 import PeriodSelector from "./period-selector";
+import { orderBy } from "lodash";
 
 export default function Filter({
     options,
@@ -14,6 +15,7 @@ export default function Filter({
         options: SelectProps["options"];
         key: string;
         label: string;
+        includeAll?: boolean;
     }>;
     data: {
         ou?: string | string[];
@@ -62,7 +64,11 @@ export default function Filter({
                                     undefined,
                                 )
                             }
-                            selectedPeriods={data.pe ?? []}
+                            selectedPeriods={orderBy(
+                                data.pe ?? [],
+                                [],
+                                ["asc"],
+                            )}
                         />
                     </Form.Item>
                 </>
@@ -89,17 +95,28 @@ export default function Filter({
                         labelCol={{ span: 4 }}
                         wrapperCol={{ span: 20 }}
                         labelAlign="left"
-												key={option.key}
+                        key={option.key}
                     >
                         <Select
                             options={option.options}
                             style={{ width: "100%" }}
                             allowClear
                             value={data[option.key]}
+                            placeholder={`Select ${option.label}`}
+                            defaultValue={"All"}
+                            filterOption={(input, option) =>
+                                String(option?.label ?? "")
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase()) ||
+                                String(option?.value ?? "")
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase())
+                            }
+                            showSearch
                             onChange={(value) => {
                                 onChange(
                                     {
-                                        [option.key]: value,
+                                        [option.key]: value ?? "All",
                                     },
                                     index < options.length - 1
                                         ? options[index + 1].key
@@ -124,9 +141,13 @@ export default function Filter({
             >
                 <Collapse
                     bordered={false}
-                    expandIcon={({ isActive }) => (
-                        <CaretRightOutlined rotate={isActive ? 90 : 0} />
-                    )}
+                    expandIcon={({ isActive }) =>
+                        isActive ? (
+                            <MinusSquareOutlined style={{ fontSize: "24px" }} />
+                        ) : (
+                            <PlusSquareOutlined style={{ fontSize: "24px" }} />
+                        )
+                    }
                     items={items}
                     expandIconPosition={"end"}
                 />

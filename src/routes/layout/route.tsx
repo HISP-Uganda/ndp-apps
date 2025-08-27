@@ -1,24 +1,21 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
+import {
+    createRoute,
+    Link,
+    Navigate,
+    Outlet,
+    useLoaderData,
+    useLocation,
+} from "@tanstack/react-router";
 import React from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import {
-    Flex,
-    Select,
-    SelectProps,
-    Splitter,
-    Tree,
-    TreeDataNode,
-    TreeProps,
-} from "antd";
-import { initialQueryOptions } from "../../query-options";
-import { NDPValidator, To } from "../../types";
-import { RootRoute } from "../__root";
+import { Flex, Select, SelectProps, Splitter, Tree, TreeDataNode } from "antd";
 
-interface NDPTree extends TreeDataNode {
-    to?: To;
-    children?: NDPTree[];
-}
+import { SettingOutlined } from "@ant-design/icons";
+import { initialQueryOptions } from "../../query-options";
+import { NDPValidator } from "../../types";
+import { RootRoute } from "../__root";
+import { isEmpty } from "lodash";
 
 export const LayoutRoute = createRoute({
     getParentRoute: () => RootRoute,
@@ -29,146 +26,23 @@ export const LayoutRoute = createRoute({
 
 function Component() {
     const { engine } = LayoutRoute.useRouteContext();
+    const location = useLocation();
     const navigate = LayoutRoute.useNavigate();
     const { v } = LayoutRoute.useSearch();
+
+    const { configurations } = useLoaderData({ from: "__root__" });
+    if (
+        isEmpty(configurations[v]) ||
+        isEmpty(configurations[v].data) ||
+        isEmpty(configurations[v].data.baseline) ||
+        isEmpty(configurations[v].data.financialYears)
+    ) {
+        return <Navigate to="/settings" />;
+    }
 
     const voteLevelLabel =
         v === "NDPIII" ? "Sub-Programme Results" : "Vote Level Results";
 
-    const treeData: NDPTree[] = [
-        {
-            title: "NDP RESULTS",
-            key: "0",
-            selectable: false,
-            checkable: false,
-            // disabled: true,
-            style: { fontSize: "20px", margin: "20px 0 20px 0" },
-            children: [
-                {
-                    title: "High Level Results",
-                    selectable: false,
-                    checkable: false,
-                    // disabled: true,
-                    style: { fontSize: "20px" },
-
-                    key: "0-0",
-                    children: [
-                        {
-                            title: "Vision 2040 Targets",
-                            key: "vision2040",
-                            to: "/ndp/visions",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                        {
-                            title: "Goal",
-                            key: "goal",
-                            to: "/ndp/goals",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                        {
-                            title: "Objective",
-                            key: "resultsFrameworkObjective",
-                            to: "/ndp/objectives",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                        {
-                            title: "Outcome Level",
-                            key: "objective",
-                            to: "/ndp/outcome-levels",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                    ],
-                },
-                {
-                    title: voteLevelLabel,
-                    key: "0-1",
-                    selectable: false,
-                    checkable: false,
-                    // disabled: true,
-                    style: { fontSize: "20px" },
-
-                    children: [
-                        {
-                            title: "Intermediate Outcomes",
-                            key: "sub-programme",
-                            to: "/ndp/sub-program-outcomes",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                        {
-                            title: "Output Level",
-                            key: "output",
-                            to: "/ndp/sub-program-outputs",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                        {
-                            title: "Action Level",
-                            key: "sub-intervention4action",
-                            to: "/ndp/sub-program-actions",
-                            style: { color: "#2B6998", fontSize: "20px" },
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            title: "Tracking",
-            key: "1",
-            selectable: false,
-            checkable: false,
-            // disabled: true,
-            style: { fontSize: "20px", margin: "20px 0 20px 0" },
-
-            children: [
-                {
-                    title: "Project Performance",
-                    key: "project-performance",
-                    to: "/ndp/sub-program-outcomes",
-                    style: { color: "#2B6998", fontSize: "20px" },
-                },
-                {
-                    title: "Policy Actions",
-                    key: "policy-actions",
-                    to: "/ndp/policy-actions",
-                    style: { color: "#2B6998", fontSize: "20px" },
-                },
-            ],
-        },
-        {
-            title: "Data Governance",
-            key: "2",
-            selectable: false,
-            checkable: false,
-            // disabled: true,
-            style: { fontSize: "20px", margin: "20px 0 20px 0" },
-
-            children: [
-                {
-                    title: "Indicator Dictionary",
-                    key: "2-0",
-                    to: "/ndp/indicator-dictionaries",
-                    style: { color: "#2B6998", fontSize: "20px" },
-                },
-                {
-                    title: "Workflow & Guidelines",
-                    key: "2-1",
-                    to: "/ndp/workflows",
-                    style: { color: "#2B6998", fontSize: "20px" },
-                },
-                {
-                    title: "FAQs",
-                    key: "2-2",
-                    to: "/ndp/faqs",
-                    style: { color: "#2B6998", fontSize: "20px" },
-                },
-            ],
-        },
-        {
-            title: "Library",
-            key: "3",
-            to: "/ndp/libraries",
-            style: { fontSize: "20px" },
-        },
-    ];
     const {
         data: { ndpVersions, ou },
     } = useSuspenseQuery(
@@ -188,26 +62,452 @@ function Component() {
         ),
     );
 
-    const onSelect: TreeProps<NDPTree>["onSelect"] = (
-        selectedKeys,
-        { node },
-    ) => {
-        if (selectedKeys.length > 0 && node.to) {
-            navigate({
-                to: node.to as Parameters<typeof navigate>[0]["to"],
-                search: (prev) => {
-                    return {
-                        ...prev,
-                        v,
-                        ou,
-                        degs: undefined,
-                        deg: undefined,
-                        program: undefined,
-                    };
+    const treeData: TreeDataNode[] = [
+        {
+            title: "NDP RESULTS",
+            key: "0",
+            selectable: false,
+            checkable: false,
+            children: [
+                {
+                    title: "High Level Results",
+                    selectable: false,
+                    checkable: false,
+                    style: { fontSize: "20px" },
+                    key: "0-0",
+                    children: [
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/visions"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        program: undefined,
+                                        degs: undefined,
+                                        deg: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Vision 2040
+                                </Link>
+                            ),
+                            key: "/ndp/visions",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/goals"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        degs: "All",
+                                        deg: "All",
+                                        program: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Goal
+                                </Link>
+                            ),
+                            key: "/ndp/goals",
+                            // to: "/ndp/goals",
+                            //
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/objectives"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        degs: "All",
+                                        deg: "All",
+                                        program: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Objective
+                                </Link>
+                            ),
+                            key: "/ndp/objectives",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/outcome-levels"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        program: undefined,
+                                        degs: undefined,
+                                        deg: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Outcome Level
+                                </Link>
+                            ),
+                            key: "/ndp/outcome-levels",
+                        },
+                    ],
                 },
-            });
-        }
-    };
+                {
+                    title: voteLevelLabel,
+                    key: "0-1",
+                    selectable: false,
+                    checkable: false,
+                    style: { fontSize: "20px" },
+
+                    children: [
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/sub-program-outcomes"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        program: undefined,
+                                        degs: undefined,
+                                        deg: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Intermediate Outcomes
+                                </Link>
+                            ),
+                            key: "/ndp/sub-program-outcomes",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/sub-program-outputs"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        program: undefined,
+                                        degs: undefined,
+                                        deg: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Output Level
+                                </Link>
+                            ),
+                            key: "/ndp/sub-program-outputs",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/sub-program-actions"
+                                    search={(prev) => ({
+                                        ...prev,
+                                        ou,
+                                        v,
+                                        program: undefined,
+                                        degs: undefined,
+                                        deg: undefined,
+                                        pe: undefined,
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        fontSize: "20px",
+                                    }}
+                                >
+                                    Action Level
+                                </Link>
+                            ),
+                            key: "/ndp/sub-program-actions",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            title: "Tracking",
+            key: "1",
+            selectable: false,
+            checkable: false,
+            style: { fontSize: "20px", margin: "20px 0 20px 0" },
+            children: [
+                {
+                    title: (
+                        <Link
+                            to="/ndp/project-performances"
+                            search={(prev) => ({
+                                ...prev,
+                                ou,
+                                v,
+                                degs: "All",
+                                deg: "All",
+                            })}
+                            activeProps={{
+                                style: {
+                                    color: "white",
+                                },
+                            }}
+                            style={{
+                                color: "#2B6998",
+                                fontSize: "20px",
+                            }}
+                        >
+                            Project Performance
+                        </Link>
+                    ),
+                    key: "/ndp/project-performances",
+                    // to: "/ndp/project-performances",
+                },
+                {
+                    title: (
+                        <Link
+                            to="/ndp/policy-actions"
+                            search={(prev) => ({
+                                ...prev,
+                                ou,
+                                v,
+                                degs: "All",
+                                deg: "All",
+                            })}
+                            activeProps={{
+                                style: {
+                                    color: "white",
+                                },
+                            }}
+                            style={{
+                                color: "#2B6998",
+                                fontSize: "20px",
+                            }}
+                        >
+                            Policy Actions
+                        </Link>
+                    ),
+                    key: "/ndp/policy-actions",
+                    // to: "/ndp/policy-actions",
+                },
+            ],
+        },
+        {
+            title: "Data Governance",
+            key: "2",
+            selectable: false,
+            checkable: false,
+            style: { fontSize: "20px", margin: "20px 0 20px 0" },
+
+            children: [
+                {
+                    title: (
+                        <Link
+                            to="/ndp/indicator-dictionaries"
+                            search={(prev) => ({
+                                ...prev,
+                                ou,
+                                v,
+                                degs: "All",
+                                deg: "All",
+                            })}
+                            activeProps={{
+                                style: {
+                                    color: "white",
+                                },
+                            }}
+                            style={{
+                                color: "#2B6998",
+                                fontSize: "20px",
+                            }}
+                        >
+                            Indicator Dictionary
+                        </Link>
+                    ),
+                    key: "/ndp/indicator-dictionaries",
+                    // to: "/ndp/indicator-dictionaries",
+                },
+                {
+                    title: (
+                        <Link
+                            to="/ndp/workflows"
+                            search={(prev) => ({
+                                ...prev,
+                                ou,
+                                v,
+                                degs: "All",
+                                deg: "All",
+                            })}
+                            activeProps={{
+                                style: {
+                                    color: "white",
+                                },
+                            }}
+                            style={{
+                                color: "#2B6998",
+                                fontSize: "20px",
+                            }}
+                        >
+                            Workflow & Guidelines
+                        </Link>
+                    ),
+                    key: "/ndp/workflows",
+                    // to: "/ndp/workflows",
+                },
+                {
+                    title: (
+                        <Link
+                            to="/ndp/faqs"
+                            search={(prev) => ({
+                                ...prev,
+                                ou,
+                                v,
+                                degs: "All",
+                                deg: "All",
+                            })}
+                            activeProps={{
+                                style: {
+                                    color: "white",
+                                },
+                            }}
+                            style={{
+                                color: "#2B6998",
+                                fontSize: "20px",
+                            }}
+                        >
+                            FAQs
+                        </Link>
+                    ),
+                    key: "/ndp/faqs",
+                    // to: "/ndp/faqs",
+                },
+            ],
+        },
+        {
+            title: (
+                <Link
+                    to="/ndp/libraries"
+                    search={(prev) => ({
+                        ...prev,
+                        ou,
+                        v,
+                        degs: "All",
+                        deg: "All",
+                    })}
+                    activeProps={{
+                        style: {
+                            color: "white",
+                        },
+                    }}
+                    style={{
+                        color: "#2B6998",
+                        fontSize: "20px",
+                    }}
+                >
+                    Library
+                </Link>
+            ),
+            key: "/ndp/libraries",
+            // to: "/ndp/libraries",
+            style: { fontSize: "20px" },
+        },
+    ];
+
+    // const onSelect: TreeProps<TreeDataNode>["onSelect"] = (
+    //     selectedKeys,
+    //     { node },
+    // ) => {
+    //     if (selectedKeys.length > 0 && node.to) {
+    //         navigate({
+    //             to: node.to as Parameters<typeof navigate>[0]["to"],
+    //             search: (prev) => {
+    //                 return {
+    //                     ...prev,
+    //                     v,
+    //                     ou,
+    //                     degs: undefined,
+    //                     deg: undefined,
+    //                     program: undefined,
+    //                     pe: undefined,
+    //                 };
+    //             },
+    //         });
+    //     }
+    // };
     return (
         <Splitter
             style={{
@@ -221,38 +521,47 @@ function Component() {
                 style={{ padding: "10px", backgroundColor: "#F3F3F3" }}
             >
                 <Flex vertical gap={20}>
-                    <Select
-                        options={ndpVersions.flatMap(({ name, code }) => {
-                            const options: SelectProps["options"] = [
-                                {
-                                    label: name,
-                                    value: code,
-                                },
-                            ];
-                            return options;
-                        })}
-                        style={{ width: "100%" }}
-                        onChange={(value) => {
-                            navigate({
-                                search: (prev) => ({
-                                    ...prev,
-                                    v: value,
-                                    ou,
-                                    degs: undefined,
-                                    deg: undefined,
-                                    program: undefined,
-                                }),
-                            });
-                        }}
+                    <Flex gap={12} align="center">
+                        <Select
+                            options={ndpVersions.flatMap(({ name, code }) => {
+                                const options: SelectProps["options"] = [
+                                    {
+                                        label: name,
+                                        value: code,
+                                    },
+                                ];
+                                return options;
+                            })}
+                            style={{ width: "100%" }}
+                            onChange={(value) => {
+                                navigate({
+                                    search: (prev) => ({
+                                        ...prev,
+                                        v: value,
+                                        ou,
+                                        degs: undefined,
+                                        deg: undefined,
+                                        program: undefined,
+                                        pe: undefined,
+                                    }),
+                                });
+                            }}
+                            value={v}
+                        />
+                        <Link to="/settings">
+                            <SettingOutlined
+                                style={{ fontSize: "20px", cursor: "pointer" }}
+                            />
+                        </Link>
+                    </Flex>
 
-                        value={v}
-                    />
                     <Tree
                         showLine
                         defaultExpandAll
                         treeData={treeData}
                         multiple={false}
-                        onSelect={onSelect}
+                        // onSelect={onSelect}
+                        selectedKeys={[location.pathname]}
                     />
                 </Flex>
             </Splitter.Panel>

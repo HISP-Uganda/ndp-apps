@@ -1,24 +1,12 @@
 import { DownloadOutlined } from "@ant-design/icons";
-import { useSearch } from "@tanstack/react-router";
-import {
-    Button,
-    Flex,
-    Table,
-    TableColumnsType,
-    TableProps,
-    Tabs,
-    TabsProps,
-    Tooltip,
-} from "antd";
+import { useLoaderData, useSearch } from "@tanstack/react-router";
+import { Button, Flex, Table, TableProps, Tabs, TabsProps } from "antd";
 import ExcelJS from "exceljs";
 import { orderBy } from "lodash";
 import React, { useCallback, useMemo } from "react";
 import { ResultsProps } from "../types";
-import {
-    baselinePeriods,
-    makeDataElementData,
-    PERFORMANCE_COLORS,
-} from "../utils";
+import { makeDataElementData, PERFORMANCE_COLORS, textPxWidth } from "../utils";
+import TruncatedText from "./TrancatedText";
 
 const PERFORMANCE_LABELS: Record<number, string> = {
     0: "Target",
@@ -70,24 +58,6 @@ const PerformanceLegend = React.memo(() => {
 
 PerformanceLegend.displayName = "PerformanceLegend";
 
-const TruncatedText = React.memo(
-    ({ text, maxLength = 50 }: { text: string; maxLength?: number }) => {
-        if (!text || text.length <= maxLength) {
-            return <span>{text}</span>;
-        }
-
-        const truncated = text.substring(0, maxLength) + "...";
-
-        return (
-            <Tooltip title={text} placement="topLeft">
-                <span style={{ cursor: "help" }}>{truncated}</span>
-            </Tooltip>
-        );
-    },
-);
-
-TruncatedText.displayName = "TruncatedText";
-
 export function Results({
     tab,
     data,
@@ -98,6 +68,7 @@ export function Results({
     pe = [],
 }: ResultsProps) {
     const { v } = useSearch({ from: "/layout/ndp" });
+    const { configurations } = useLoaderData({ from: "__root__" });
     const { target, value, analyticsItems, finalData, baseline } =
         useMemo(() => {
             const [baseline, target = "", value = ""] =
@@ -145,20 +116,17 @@ export function Results({
                 baseline,
             };
         }, [data.analytics]);
-    const nameColumn: TableColumnsType<
-        Record<string, string | number | undefined>
-    > = useMemo(
+
+    const nameColumn: TableProps<Record<string, any>>["columns"] = useMemo(
         () => [
-            ...prefixColumns.map((col) => ({
-                ...col,
-                // fixed: "left" as const,
-                width: col.width || 250,
-            })),
+            ...prefixColumns,
             {
                 title: "Indicators",
                 dataIndex: "dx",
-                width: 300,
                 fixed: "left",
+                render: (text) => {
+                    return <TruncatedText text={text} />;
+                },
             },
         ],
         [prefixColumns],
@@ -167,37 +135,61 @@ export function Results({
     const columns = useMemo(() => {
         const columnsMap = new Map<
             string,
-            TableColumnsType<Record<string, string | number | undefined>>
+            TableProps<Record<string, any>>["columns"]
         >();
 
         columnsMap.set("target", [
             ...nameColumn,
-            ...pe.map((pe) => ({
-                title: analyticsItems[pe].name,
-                dataIndex: "",
-                align: "center" as const,
-                children: [
-                    {
-                        title:
-                            baselinePeriods[v] === pe
-                                ? analyticsItems[baseline].name
-                                : analyticsItems[target].name,
-                        dataIndex:
-                            baselinePeriods[v] === pe
-                                ? `${pe}${baseline}`
-                                : `${pe}${target}`,
-                        // width: "200px",
-                        align: "center" as const,
-                    },
-                ],
-            })),
+            ...pe.map((pe) => {
+                const title =
+                    configurations[v]?.data?.baseline === pe
+                        ? analyticsItems[baseline].name
+                        : analyticsItems[target].name;
+                const dataIndex =
+                    configurations[v]?.data?.baseline === pe
+                        ? `${pe}${baseline}`
+                        : `${pe}${target}`;
+                return {
+                    title: (
+                        <div
+                            style={{
+                                whiteSpace: "nowrap",
+                                wordBreak: "keep-all",
+                            }}
+                        >
+                            {analyticsItems[pe].name}
+                        </div>
+                    ),
+                    align: "center" as const,
+                    minWidth: textPxWidth(analyticsItems[pe].name) + 40,
+                    children: [
+                        {
+                            title,
+                            dataIndex,
+                            minWidth: textPxWidth(title) + 40,
+                            align: "center" as const,
+                        },
+                    ],
+                };
+            }),
             ...postfixColumns,
         ]);
         columnsMap.set("performance", [
             ...nameColumn,
             ...pe.map((pe) => ({
-                title: analyticsItems[pe].name,
-                children: (baselinePeriods[v] === pe
+                title: (
+                    <div
+                        style={{
+                            whiteSpace: "nowrap",
+                            wordBreak: "keep-all",
+                        }}
+                    >
+                        {analyticsItems[pe].name}
+                    </div>
+                ),
+                align: "center" as const,
+                minWidth: textPxWidth(analyticsItems[pe].name) + 40,
+                children: (configurations[v]?.data?.baseline === pe
                     ? [baseline]
                     : [target, value, "performance"]
                 ).flatMap((currentValue, index) => {
@@ -209,18 +201,23 @@ export function Results({
                                     ? year + 1
                                     : year;
                             return {
-                                title: `Q${index + 1}`,
+                                title: (
+                                    <div
+                                        style={{
+                                            whiteSpace: "nowrap",
+                                            wordBreak: "keep-all",
+                                        }}
+                                    >{`Q${index + 1}`}</div>
+                                ),
                                 key: `${pe}${currentYear}Q${quarter}`,
                                 align: "center",
+                                minWidth: textPxWidth(`Q${index + 1}`) + 40,
                                 children: [
                                     {
                                         title: `A`,
                                         key: `${currentYear}Q${quarter}actual`,
                                         dataIndex: `${currentYear}Q${quarter}actual`,
                                         align: "center",
-                                        // width: 56,
-                                        // maxWidth: 56,
-                                        // minWidth: 56,
                                     },
                                     {
                                         title: `%`,
@@ -234,21 +231,29 @@ export function Results({
                                                 ],
                                             };
                                         },
-                                        // width: 56,
-                                        // maxWidth: 56,
-                                        // minWidth: 56,
                                     },
                                 ],
                             };
                         });
-                    } else
+                    } else {
+                        const title =
+                            configurations[v]?.data?.baseline === pe
+                                ? analyticsItems[baseline].name
+                                : PERFORMANCE_LABELS[index];
                         return {
-                            title:
-                                baselinePeriods[v] === pe
-                                    ? analyticsItems[baseline].name
-                                    : PERFORMANCE_LABELS[index],
+                            title: (
+                                <div
+                                    style={{
+                                        whiteSpace: "nowrap",
+                                        wordBreak: "keep-all",
+                                    }}
+                                >
+                                    {title}
+                                </div>
+                            ),
                             key: `${pe}${currentValue}`,
                             align: "center",
+                            minWidth: textPxWidth(title) + 40,
                             onCell: (row: Record<string, any>) => {
                                 if (index === 2) {
                                     return {
@@ -258,11 +263,9 @@ export function Results({
                                 return {};
                             },
                             dataIndex: `${pe}${currentValue}`,
-                            // width: 56,
-                            // maxWidth: 56,
-                            minWidth: 90,
                             children: [],
                         };
+                    }
                 }),
             })),
             ...postfixColumns,
@@ -275,6 +278,11 @@ export function Results({
         analyticsItems,
         postfixColumns,
         prefixColumns,
+        configurations,
+        v,
+        baseline,
+        quarters,
+        pe,
     ]);
 
     const exportToExcel = useCallback(
@@ -622,16 +630,16 @@ export function Results({
         [columns, finalData],
     );
 
-    const tableProps = useMemo<TableProps>(
+    const tableProps = useMemo<TableProps<Record<string, any>>>(
         () => ({
-            scroll: { y: "calc(100vh - 420px)", x: "max-content" },
+            scroll: { y: "calc(100vh - 460px)", x: "max-content" },
             rowKey: "id",
             bordered: true,
             sticky: true,
             tableLayout: "auto",
             dataSource: finalData,
             pagination: false,
-            size: "small",
+            size: "middle",
         }),
         [finalData],
     );
@@ -641,7 +649,11 @@ export function Results({
                 key: "target",
                 label: "Targets",
                 children: (
-                    <Flex vertical gap={10}>
+                    <Flex
+                        vertical
+                        gap={10}
+                        style={{ height: "calc(100vh - 278px)" }}
+                    >
                         <Flex justify="end">
                             <Button
                                 icon={<DownloadOutlined />}
@@ -662,7 +674,13 @@ export function Results({
                 key: "performance",
                 label: "Performance",
                 children: (
-                    <Flex vertical gap={10}>
+                    <Flex
+                        vertical
+                        gap={10}
+                        style={{
+                            height: "calc(100vh - 278px)",
+                        }}
+                    >
                         <PerformanceLegend />
                         <Flex>
                             <Button
@@ -685,6 +703,13 @@ export function Results({
     );
 
     return (
-        <Tabs activeKey={tab || "target"} items={items} onChange={onChange} />
+        <Tabs
+            activeKey={tab || "target"}
+            type="card"
+            items={items}
+            onChange={onChange}
+            size="large"
+            // tabBarStyle={{ backgroundColor: "yellow" }}
+        />
     );
 }

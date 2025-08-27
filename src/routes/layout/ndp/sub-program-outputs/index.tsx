@@ -8,11 +8,13 @@ import {
 import { SubProgramOutputRoute } from "./route";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
+import TruncatedText from "../../../../components/TrancatedText";
 
 export const SubProgramOutputIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => SubProgramOutputRoute,
     component: Component,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {
@@ -59,10 +61,23 @@ function Component() {
                 {
                     title: "Sub-Interventions",
                     dataIndex: "dataElementGroupSet",
+                    render: (_, record) => {
+                        let current = "";
+                        for (const group of dataElementGroupSets) {
+                            if (Object(record).hasOwnProperty(group.id)) {
+                                current = group.name;
+                                break;
+                            }
+                        }
+                        return <TruncatedText text={current} />;
+                    },
                 },
                 {
                     title: "Outputs",
                     dataIndex: "dataElementGroup",
+                    render: (text) => {
+                        return <TruncatedText text={text} />;
+                    },
                 },
             ],
         }),

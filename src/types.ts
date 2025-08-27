@@ -1,6 +1,5 @@
-import type { TableColumnsType, TableColumnType, TreeDataNode } from "antd";
+import type { TableColumnsType, TableColumnType, TreeDataNode,TableProps } from "antd";
 
-import { FixedPeriod } from "@dhis2/multi-calendar-dates/build/types/period-calculation/types";
 import { ToOptions } from "@tanstack/react-router";
 import { z } from "zod";
 import { router } from "./router";
@@ -8,14 +7,18 @@ export const NDPValidator = z.object({
     v: z.string(),
 });
 
+export const SettingsSearch = z.object({
+    edit: z.string().optional(),
+});
+
 export const GoalValidator = z.object({
     deg: z.string().optional(),
     degs: z.string().optional(),
     tab: z.string().optional(),
     pe: z.string().array().optional(),
-    ou: z.string(),
     program: z.string().optional(),
     quarters: z.boolean().optional(),
+    ou: z.string(),
 });
 
 export type GoalSearch = z.infer<typeof GoalValidator>;
@@ -121,13 +124,21 @@ export interface ResultsProps extends GoalSearch {
         groupSets: string[];
     };
     onChange?: (key: string) => void;
-    prefixColumns?: TableColumnsType<
-        Record<string, string | number | undefined>
-    >;
-    postfixColumns?: TableColumnsType<
-        Record<string, string | number | undefined>
-    >;
+    prefixColumns?: TableProps<Record<string, any>>["columns"];
+    postfixColumns?: TableProps<Record<string, any>>["columns"];
     quarters?: boolean;
 }
 
 export type MapPredicate<K, V> = (key: K, value: V) => boolean;
+
+export type Option = {
+    id: string;
+    name: string;
+    code: string;
+    created: string;
+};
+export type OptionSet = {
+    id: string;
+    name: string;
+    options: Option[];
+};

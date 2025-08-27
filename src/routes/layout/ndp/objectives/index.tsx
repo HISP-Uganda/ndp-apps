@@ -7,11 +7,13 @@ import {
 } from "../../../../hooks/data-hooks";
 import { ObjectiveRoute } from "./route";
 import { ResultsProps } from "../../../../types";
+import TruncatedText from "../../../../components/TrancatedText";
 
 export const ObjectIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => ObjectiveRoute,
     component: Component,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {
@@ -54,12 +56,25 @@ function Component() {
             pe,
             prefixColumns: [
                 {
-                    title: "NDPIII Objectives",
+                    title: "Objectives",
                     dataIndex: "dataElementGroupSet",
+                    render: (_, record) => {
+                        let current = "";
+                        for (const group of dataElementGroupSets) {
+                            if (Object(record).hasOwnProperty(group.id)) {
+                                current = group.name;
+                                break;
+                            }
+                        }
+                        return <TruncatedText text={current} />;
+                    },
                 },
                 {
                     title: "Key Result Areas",
                     dataIndex: "dataElementGroup",
+                    render: (text) => {
+                        return <TruncatedText text={text} />;
+                    },
                 },
             ],
         }),

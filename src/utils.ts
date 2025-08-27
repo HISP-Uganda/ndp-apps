@@ -303,7 +303,7 @@ export const extractDataElementGroups = (
 ): string[] => {
     if (dataElementGroupSets.length === 0) return [];
 
-    if (degs !== undefined) {
+    if (degs !== undefined && degs !== "All") {
         const targetGroupSet = dataElementGroupSets.find((d) => d.id === degs);
         return targetGroupSet?.dataElementGroups.map((g) => g.id) ?? [];
     }
@@ -354,7 +354,7 @@ export const resolveDataElementGroups = (
 ): { groupSets: string[]; dataElementGroups: string[] } => {
     const { deg, degs, program } = searchParams;
 
-    if (deg !== undefined) {
+    if (deg !== undefined && deg !== "All") {
         return {
             groupSets: [degs ?? ""],
             dataElementGroups: [deg],
@@ -539,3 +539,15 @@ export const baselinePeriods = {
     NDPIII: "2017July",
     NDPIV: "2023July",
 };
+
+export function textPxWidth(
+    text: string,
+    font = "14px Cambria, Georgia, serif",
+): number {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return Math.ceil(text.length * 8); // fallback
+    ctx.font = font;
+    const m = ctx.measureText(text);
+    return Math.ceil(m.width);
+}

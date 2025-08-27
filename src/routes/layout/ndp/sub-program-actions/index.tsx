@@ -13,6 +13,7 @@ export const SubProgramActionIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => SubProgramActionRoute,
     component: Component,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {

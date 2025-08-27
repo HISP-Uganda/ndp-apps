@@ -38,6 +38,8 @@ import { ProjectPerformanceRoute } from "./routes/layout/ndp/project-performance
 import { ProjectPerformanceIndexRoute } from "./routes/layout/ndp/project-performances";
 import { ObjectiveRoute } from "./routes/layout/ndp/objectives/route";
 import { ObjectIndexRoute } from "./routes/layout/ndp/objectives";
+import { SettingsRoute } from "./routes/settings/route";
+import { SettingsIndexRoute } from "./routes/settings";
 
 const routeTree = RootRoute.addChildren([
     IndexRoute,
@@ -62,6 +64,7 @@ const routeTree = RootRoute.addChildren([
             ProjectPerformanceRoute.addChildren([ProjectPerformanceIndexRoute]),
         ]),
     ]),
+    SettingsRoute.addChildren([SettingsIndexRoute]),
 ]);
 export const router = createRouter({
     routeTree,

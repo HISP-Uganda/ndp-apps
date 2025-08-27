@@ -6,6 +6,8 @@ import {
     DataElement,
     DataElementGroupSet,
     GoalSearch,
+    Option,
+    OptionSet,
     OrgUnit,
 } from "./types";
 import { flattenDataElements } from "./utils";
@@ -58,27 +60,57 @@ export const initialQueryOptions = (
                     organisationUnits: DHIS2OrgUnit[];
                     dataViewOrganisationUnits: DHIS2OrgUnit[];
                 };
-                options: {
-                    id: string;
-                    options: { id: string; name: string; code: string }[];
-                };
+                options: OptionSet;
                 ndpVersions: {
-                    options: {
-                        id: string;
-                        name: string;
-                        code: string;
-                        created: string;
-                    }[];
+                    options: Option[];
                 };
                 programs: {
-                    options: { id: string; name: string; code: string }[];
+                    options: Option[];
                 };
             };
+
+            const organisationUnits: OrgUnit[] = dataViewOrganisationUnits.map(
+                ({ id, name, leaf }) => {
+                    const current: OrgUnit = {
+                        id,
+                        title: name,
+                        isLeaf: leaf,
+                        value: id,
+                        key: id,
+                    };
+                    return current;
+                },
+            );
+
+            const configurations: Record<string, any> = {};
+            for (const version of ndpVersions) {
+                try {
+                    const response = await engine.query({
+                        data: {
+                            resource: `dataStore/ndp-configurations/${version.code}`,
+                        },
+                    });
+                    configurations[version.code] = response;
+                } catch (error) {
+                    try {
+                        await engine.mutate({
+                            resource: `dataStore/ndp-configurations/${version.code}`,
+                            data: {
+                                baseline: "",
+                            },
+                            type: "create",
+                        });
+                    } catch (error) {}
+                }
+            }
+
+            await db.dataViewOrgUnits.bulkPut(organisationUnits);
             return {
                 options,
                 programs,
                 ndpVersions,
                 ou: dataViewOrganisationUnits[0].id,
+                configurations,
             };
         },
     });
@@ -139,7 +171,7 @@ export const dataElementGroupSetsWithProgramsQueryOptions = (
                     resource: `optionSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:true&fields=options[id,name,code]`,
                 },
                 dataElementGroupSets: {
-                    resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:${attributeValue}&fields=id,name,displayName,dataElementGroups[id,name,attributeValues],attributeValues&paging=false`,
+                    resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:${attributeValue}&fields=id,name,displayName,code,dataElementGroups[id,name,code,attributeValues],attributeValues&paging=false`,
                 },
             });
             const {
@@ -271,5 +303,38 @@ export const analyticsQueryOptions = (
         enabled: deg !== undefined && pe !== undefined && ou !== undefined,
         refetchOnWindowFocus: false,
         retry: false,
+    });
+};
+
+export const dataStoreQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    ndpVersions: Array<Option>,
+) => {
+    return queryOptions({
+        queryKey: ["dataStore"],
+        queryFn: async () => {
+            const data: Record<string, any> = {};
+            for (const version of ndpVersions) {
+                try {
+                    const response = await engine.query({
+                        data: {
+                            resource: `dataStore/ndp-configurations/${version.code}`,
+                        },
+                    });
+                    data[version.code] = response;
+                } catch (error) {
+                    try {
+                        await engine.mutate({
+                            resource: `dataStore/ndp-configurations/${version.code}`,
+                            data: {
+                                baseline: "-",
+                            },
+                            type: "create",
+                        });
+                    } catch (error) {}
+                }
+            }
+            return data;
+        },
     });
 };

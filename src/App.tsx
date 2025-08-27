@@ -19,7 +19,7 @@ const MyApp: FC = () => {
             theme={{
                 token: {
                     borderRadius: 0,
-                    lineWidth: 2,
+                    // lineWidth: 2,
                 },
                 components: {
                     Table: {
@@ -27,6 +27,11 @@ const MyApp: FC = () => {
                         borderRadius: 0,
                         headerBg: "#BBD1EE",
                         headerBorderRadius: 0,
+                    },
+                    Tree: {
+                        nodeSelectedBg: "#2B6998",
+												nodeSelectedColor: "#FFFFFF",
+											
                     },
                 },
             }}

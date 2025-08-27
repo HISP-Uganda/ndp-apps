@@ -45,17 +45,17 @@ function Component() {
     );
     const navigate = ObjectiveRoute.useNavigate();
 
-    useEffect(() => {
-        if (degs === undefined) {
-            navigate({
-                search: (prev) => ({
-                    ...prev,
-                    degs: data?.[0]?.id ?? "",
-										quarters: false,
-                }),
-            });
-        }
-    }, [v]);
+    // useEffect(() => {
+    //     if (degs === undefined || degs === "All") {
+    //         navigate({
+    //             search: (prev) => ({
+    //                 ...prev,
+    //                 degs: data?.[0]?.id ?? "",
+		// 								quarters: false,
+    //             }),
+    //         });
+    //     }
+    // }, [v]);
 
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>

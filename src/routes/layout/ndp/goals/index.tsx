@@ -5,13 +5,15 @@ import {
     useAnalyticsQuery,
     useDataElementGroups,
 } from "../../../../hooks/data-hooks";
-import { GoalRoute } from "./route";
 import { ResultsProps } from "../../../../types";
+import { GoalRoute } from "./route";
+import TruncatedText from "../../../../components/TrancatedText";
 
 export const GoalIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => GoalRoute,
     component: Component,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {
@@ -31,7 +33,6 @@ function Component() {
         program,
         degs,
     });
-
     const onChange = useCallback(
         (key: string) => {
             navigate({
@@ -57,15 +58,36 @@ function Component() {
             ou,
             pe,
             degs,
-
             prefixColumns: [
                 {
                     title: "Goal",
-                    dataIndex: "dataElementGroupSet",
+                    key: "dataElementGroupSet",
+                    render: (_, record) => {
+                        let current = "";
+                        for (const group of dataElementGroupSets) {
+                            if (Object(record).hasOwnProperty(group.id)) {
+                                current = group.name;
+                                break;
+                            }
+                        }
+                        return <TruncatedText text={current} />;
+                    },
                 },
                 {
-                    title: "Key Result Areas",
+                    title: (
+                        <div
+                            style={{
+                                whiteSpace: "normal",
+                                wordBreak: "break-word",
+                            }}
+                        >
+                            Key Result Areas
+                        </div>
+                    ),
                     dataIndex: "dataElementGroup",
+                    render: (text) => {
+                        return <TruncatedText text={text} />;
+                    },
                 },
             ],
         }),
