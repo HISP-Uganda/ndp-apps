@@ -20,7 +20,6 @@ type DHIS2OrgUnit = {
 };
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
-    attributeValue: string[],
     optionSet: string,
     programOptionSet: string,
 ) => {
@@ -103,7 +102,6 @@ export const initialQueryOptions = (
                     } catch (error) {}
                 }
             }
-
             await db.dataViewOrgUnits.bulkPut(organisationUnits);
             return {
                 options,
@@ -248,10 +246,10 @@ export const orgUnitQueryOptions = (
 
 export const analyticsQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
-    { deg, pe, ou, program, degs }: GoalSearch,
+    { deg, pe, ou, degs }: GoalSearch,
 ) => {
     return queryOptions({
-        queryKey: ["analytics", ...(pe ?? []), degs, deg, ou, program],
+        queryKey: ["analytics", ...(pe ?? []), degs, deg, ou],
         queryFn: async () => {
             if (deg === undefined || pe === undefined || ou === undefined) {
                 throw new Error(

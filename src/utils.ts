@@ -173,7 +173,11 @@ export const convertToDataElementGroupsOptions = (
     dataElementGroupSets: DataElementGroupSet[],
 ): SelectProps["options"] => {
     return dataElementGroupSets.flatMap(({ dataElementGroups, id }) => {
-        if (dataElementGroupSet !== id) {
+        if (
+            // dataElementGroupSet !== undefined &&
+            // dataElementGroupSet !== "All" &&
+            dataElementGroupSet !== id
+        ) {
             return [];
         }
         return dataElementGroups.map(({ id, name }) => ({
@@ -352,7 +356,13 @@ export const resolveDataElementGroups = (
     searchParams: GoalSearch,
     dataElementGroupSets: DataElementGroupSet[],
 ): { groupSets: string[]; dataElementGroups: string[] } => {
-    const { deg, degs, program } = searchParams;
+    const { deg, degs, program, requiresProgram } = searchParams;
+    if (requiresProgram && program === undefined) {
+        return {
+            groupSets: [],
+            dataElementGroups: [],
+        };
+    }
 
     if (deg !== undefined && deg !== "All") {
         return {

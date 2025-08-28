@@ -40,26 +40,23 @@ function Component() {
         return <Navigate to="/settings" />;
     }
 
+    const pe = [
+        configurations[v].data.baseline,
+        ...configurations[v].data.financialYears,
+    ];
+
+    const visionPeriods = [
+        configurations[v]?.data?.baseline,
+        pe.sort().at(-1),
+        "2039July",
+    ];
     const voteLevelLabel =
         v === "NDPIII" ? "Sub-Programme Results" : "Vote Level Results";
 
     const {
         data: { ndpVersions, ou },
     } = useSuspenseQuery(
-        initialQueryOptions(
-            engine,
-            [
-                "vision2040",
-                "goal",
-                "resultsFrameworkObjective",
-                "objective",
-                "sub-programme",
-                "sub-intervention4action",
-                "sub-intervention",
-            ],
-            "uV4fZlNvUsw",
-            "nZffnMQwoWr",
-        ),
+        initialQueryOptions(engine, "uV4fZlNvUsw", "nZffnMQwoWr"),
     );
 
     const treeData: TreeDataNode[] = [
@@ -80,14 +77,14 @@ function Component() {
                             title: (
                                 <Link
                                     to="/ndp/visions"
-                                    search={(prev) => ({
-                                        ...prev,
+                                    search={() => ({
                                         ou,
                                         v,
                                         program: undefined,
                                         degs: undefined,
                                         deg: undefined,
-                                        pe: undefined,
+                                        pe: visionPeriods,
+                                        requiresProgram: false,
                                     })}
                                     activeOptions={{
                                         exact: true,
@@ -117,10 +114,11 @@ function Component() {
                                         ...prev,
                                         ou,
                                         v,
-                                        degs: "All",
-                                        deg: "All",
+                                        degs: undefined,
+                                        deg: undefined,
                                         program: undefined,
-                                        pe: undefined,
+                                        pe,
+                                        requiresProgram: false,
                                     })}
                                     activeOptions={{
                                         exact: true,
@@ -153,9 +151,10 @@ function Component() {
                                         ou,
                                         v,
                                         degs: "All",
-                                        deg: "All",
+                                        deg: undefined,
                                         program: undefined,
-                                        pe: undefined,
+                                        pe,
+                                        requiresProgram: false,
                                     })}
                                     activeOptions={{
                                         exact: true,
@@ -188,12 +187,19 @@ function Component() {
                                         program: undefined,
                                         degs: undefined,
                                         deg: undefined,
-                                        pe: undefined,
+                                        pe,
+                                        quarters: v === "NDPIII" ? false : true,
+                                        requiresProgram: true,
                                     })}
                                     activeProps={{
                                         style: {
                                             color: "white",
                                         },
+                                    }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
                                     }}
                                     style={{
                                         color: "#2B6998",
@@ -226,7 +232,9 @@ function Component() {
                                         program: undefined,
                                         degs: undefined,
                                         deg: undefined,
-                                        pe: undefined,
+                                        pe,
+                                        quarters: v === "NDPIII" ? false : true,
+                                        requiresProgram: true,
                                     })}
                                     activeProps={{
                                         style: {
@@ -254,7 +262,9 @@ function Component() {
                                         program: undefined,
                                         degs: undefined,
                                         deg: undefined,
-                                        pe: undefined,
+                                        pe,
+                                        quarters: v === "NDPIII" ? false : true,
+                                        requiresProgram: true,
                                     })}
                                     activeProps={{
                                         style: {
@@ -282,7 +292,9 @@ function Component() {
                                         program: undefined,
                                         degs: undefined,
                                         deg: undefined,
-                                        pe: undefined,
+                                        pe,
+                                        quarters: v === "NDPIII" ? false : true,
+                                        requiresProgram: true,
                                     })}
                                     activeProps={{
                                         style: {
@@ -482,32 +494,9 @@ function Component() {
                 </Link>
             ),
             key: "/ndp/libraries",
-            // to: "/ndp/libraries",
             style: { fontSize: "20px" },
         },
     ];
-
-    // const onSelect: TreeProps<TreeDataNode>["onSelect"] = (
-    //     selectedKeys,
-    //     { node },
-    // ) => {
-    //     if (selectedKeys.length > 0 && node.to) {
-    //         navigate({
-    //             to: node.to as Parameters<typeof navigate>[0]["to"],
-    //             search: (prev) => {
-    //                 return {
-    //                     ...prev,
-    //                     v,
-    //                     ou,
-    //                     degs: undefined,
-    //                     deg: undefined,
-    //                     program: undefined,
-    //                     pe: undefined,
-    //                 };
-    //             },
-    //         });
-    //     }
-    // };
     return (
         <Splitter
             style={{
@@ -535,14 +524,9 @@ function Component() {
                             style={{ width: "100%" }}
                             onChange={(value) => {
                                 navigate({
-                                    search: (prev) => ({
-                                        ...prev,
+                                    to: "/ndp",
+                                    search: () => ({
                                         v: value,
-                                        ou,
-                                        degs: undefined,
-                                        deg: undefined,
-                                        program: undefined,
-                                        pe: undefined,
                                     }),
                                 });
                             }}

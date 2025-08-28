@@ -51,7 +51,7 @@ function Component() {
     //             search: (prev) => ({
     //                 ...prev,
     //                 degs: data?.[0]?.id ?? "",
-		// 								quarters: false,
+    // 								quarters: false,
     //             }),
     //         });
     //     }
@@ -67,7 +67,7 @@ function Component() {
                             search: (prev) => ({
                                 ...prev,
                                 ...val,
-                                [next]: undefined,
+                                [next]: "All",
                             }),
                         });
                     } else {
@@ -84,11 +84,13 @@ function Component() {
                         key: "degs",
                         options: convertToDataElementGroupSetsOptions(data),
                         label: "Objective",
+                        defaultValue: "All",
                     },
                     {
                         key: "deg",
                         options: convertToDataElementGroupsOptions(degs, data),
                         label: "Key Result Area",
+                        defaultValue: "All",
                     },
                 ]}
             />

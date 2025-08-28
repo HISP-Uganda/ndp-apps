@@ -5,19 +5,13 @@ import {
     useAnalyticsQuery,
     useDataElementGroups,
 } from "../../../../hooks/data-hooks";
-import { makeDataElementData } from "../../../../utils";
+import { makeDataElementData, textPxWidth } from "../../../../utils";
 import { VisionRoute } from "./route";
 
 const visionColumns: Record<number, string> = {
     0: "bqIaasqpTas",
     1: "HKtncMjp06U",
     2: "Px8Lqkxy2si",
-};
-
-const visionLabels: Record<number, string> = {
-    0: "Baseline 2010",
-    1: "Target 2025",
-    2: "Vision Target 2040",
 };
 
 export const VisionIndexRoute = createRoute({
@@ -29,12 +23,13 @@ export const VisionIndexRoute = createRoute({
 
 function Component() {
     const { engine } = VisionIndexRoute.useRouteContext();
-    const { ou, pe, degs, deg, program, v } = VisionRoute.useSearch();
+    const { ou, pe, degs, deg, program, v, requiresProgram } =
+        VisionRoute.useSearch();
     const dataElementGroupSets = VisionRoute.useLoaderData();
     const { configurations } = useLoaderData({ from: "__root__" });
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs },
+        { deg, pe, ou, program, degs, requiresProgram },
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
@@ -49,7 +44,6 @@ function Component() {
 
     const [baseline = "", target = "", value = ""] =
         data.data.analytics.metaData.dimensions["Duw5yep8Vae"] ?? [];
-
     const nameColumn: TableColumnsType<{
         [key: string]: string | number | undefined;
     }> = [
@@ -62,12 +56,15 @@ function Component() {
     const periodColumns: TableColumnsType<{
         [key: string]: string | number | undefined;
     }> = periods.map((pe, index) => ({
-        // title:data.data.analytics.metaData.items[pe]?.name ?? visionLabels[index],
         title:
             configurations[v]?.data?.baseline === pe
-                ? data.data.analytics.metaData.items[baseline].name
-                : visionLabels[index],
+                ? `${data.data.analytics.metaData.items[pe]?.name} ${data.data.analytics.metaData.items[baseline].name}`
+                : index === 1
+                ? `${data.data.analytics.metaData.items[pe]?.name} Target`
+                : "Vision Target 2040",
         dataIndex: `${pe}${visionColumns[index]}`,
+        minWidth:
+            textPxWidth(data.data.analytics.metaData.items[pe]?.name) + 40,
         align: "center",
     }));
     return (

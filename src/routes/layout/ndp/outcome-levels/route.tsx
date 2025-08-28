@@ -1,5 +1,5 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
-import React, { useEffect } from "react";
+import React from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Flex } from "antd";
@@ -37,17 +37,17 @@ function Component() {
     );
     const navigate = OutcomeLevelRoute.useNavigate();
 
-    useEffect(() => {
-        if (degs === undefined) {
-            navigate({
-                search: (prev) => ({
-                    ...prev,
-                    program: data.options?.[0]?.code ?? "",
-                    quarters: v === "NDPIII" ? false : true,
-                }),
-            });
-        }
-    }, [v]);
+    // useEffect(() => {
+    //     if (degs === undefined) {
+    //         navigate({
+    //             search: (prev) => ({
+    //                 ...prev,
+    //                 program: data.options?.[0]?.code ?? "",
+    //                 quarters: v === "NDPIII" ? false : true,
+    //             }),
+    //         });
+    //     }
+    // }, [v]);
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
@@ -72,7 +72,7 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "programme",
+                        key: "program",
                         options: data.options.map(({ name, code }) => ({
                             value: code,
                             label: name,

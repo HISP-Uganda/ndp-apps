@@ -11,20 +11,7 @@ export const RootRoute = createRootRouteWithContext<{
     loader: async ({ context }) => {
         const { engine, queryClient } = context;
         const data = queryClient.ensureQueryData(
-            initialQueryOptions(
-                engine,
-                [
-                    "vision2040",
-                    "goal",
-                    "resultsFrameworkObjective",
-                    "objective",
-                    "sub-programme",
-                    "sub-intervention4action",
-                    "sub-intervention",
-                ],
-                "uV4fZlNvUsw",
-                "nZffnMQwoWr",
-            ),
+            initialQueryOptions(engine, "uV4fZlNvUsw", "nZffnMQwoWr"),
         );
         return data;
     },

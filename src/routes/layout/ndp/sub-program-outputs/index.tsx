@@ -19,12 +19,12 @@ export const SubProgramOutputIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramOutputIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs, quarters } =
+    const { ou, deg, pe, tab, program, degs, quarters, requiresProgram } =
         SubProgramOutputIndexRoute.useSearch();
     const navigate = SubProgramOutputIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramOutputRoute.useLoaderData();
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs },
+        { deg, pe, ou, program, degs, requiresProgram },
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {

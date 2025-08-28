@@ -18,12 +18,13 @@ export const GoalIndexRoute = createRoute({
 
 function Component() {
     const { engine } = GoalIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs } = GoalIndexRoute.useSearch();
+    const { ou, deg, pe, tab, program, degs, requiresProgram } =
+        GoalIndexRoute.useSearch();
     const navigate = GoalIndexRoute.useNavigate();
     const dataElementGroupSets = GoalRoute.useLoaderData();
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs },
+        { deg, pe, ou, program, degs, requiresProgram },
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {

@@ -70,9 +70,11 @@ export default function PeriodSelector({
         "YYYY-MM",
     ).year();
 
-    const initialPeriods = useMemo(() => {
-        if (!selectedPeriods?.length) return [];
+    console.log({ selectedPeriods });
 
+    const initialPeriods = useMemo(() => {
+        if (selectedPeriods === undefined || selectedPeriods.length === 0)
+            return [];
         return selectedPeriods.map(getFixedPeriod);
     }, [selectedPeriods]);
 
@@ -93,7 +95,7 @@ export default function PeriodSelector({
                 !selectedIds.has(p.id) &&
                 [baselineYear, ...financialYears].includes(p.id),
         );
-    }, [year, periods]);
+    }, [year, periods, selectedPeriods]);
 
     const handleAddPeriod = useCallback((period: FixedPeriod) => {
         setPeriods((prev) => orderBy([...prev, period], ["id"]));

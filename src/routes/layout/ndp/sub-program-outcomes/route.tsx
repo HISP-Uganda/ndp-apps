@@ -1,12 +1,12 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
-import React, { useEffect } from "react";
+import React from "react";
 
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Flex } from "antd";
-import { NDPRoute } from "../route";
+import Filter from "../../../../components/Filter";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import Filter from "../../../../components/Filter";
+import { NDPRoute } from "../route";
 
 export const SubProgramOutcomeRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -42,22 +42,6 @@ function Component() {
         ),
     );
     const navigate = SubProgramOutcomeRoute.useNavigate();
-
-
-    useEffect(() => {
-        if (degs === undefined) {
-            navigate({
-                search: (prev) => ({
-                    ...prev,
-                    program:
-                        program === undefined
-                            ? data.options?.[0]?.code ?? ""
-                            : program,
-                    quarters: v === "NDPIII" ? false : true,
-                }),
-            });
-        }
-    }, [v]);
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
@@ -82,17 +66,12 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "programme",
+                        key: "program",
                         options: data.options.map(({ name, code }) => ({
                             value: code,
                             label: name,
                         })),
                         label: "Programme",
-                    },
-                    {
-                        key: "sub-programme",
-                        options: [],
-                        label: "Sub Programme",
                     },
                 ]}
             />

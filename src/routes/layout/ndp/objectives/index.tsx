@@ -18,12 +18,13 @@ export const ObjectIndexRoute = createRoute({
 
 function Component() {
     const { engine } = ObjectIndexRoute.useRouteContext();
-    const { ou, deg, degs, pe, tab, program } = ObjectIndexRoute.useSearch();
+    const { ou, deg, degs, pe, tab, program, requiresProgram } =
+        ObjectIndexRoute.useSearch();
     const navigate = ObjectIndexRoute.useNavigate();
     const dataElementGroupSets = ObjectiveRoute.useLoaderData();
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs },
+        { deg, pe, ou, program, degs, requiresProgram },
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {

@@ -18,13 +18,13 @@ export const SubProgramActionIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramActionIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs,quarters } =
+    const { ou, deg, pe, tab, program, degs, quarters, requiresProgram } =
         SubProgramActionIndexRoute.useSearch();
     const navigate = SubProgramActionIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramActionRoute.useLoaderData();
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs },
+        { deg, pe, ou, program, degs, requiresProgram },
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {

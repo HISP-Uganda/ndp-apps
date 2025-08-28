@@ -1,4 +1,9 @@
-import type { TableColumnsType, TableColumnType, TreeDataNode,TableProps } from "antd";
+import type {
+    TableColumnsType,
+    TableColumnType,
+    TreeDataNode,
+    TableProps,
+} from "antd";
 
 import { ToOptions } from "@tanstack/react-router";
 import { z } from "zod";
@@ -18,6 +23,7 @@ export const GoalValidator = z.object({
     pe: z.string().array().optional(),
     program: z.string().optional(),
     quarters: z.boolean().optional(),
+    requiresProgram: z.boolean().optional(),
     ou: z.string(),
 });
 

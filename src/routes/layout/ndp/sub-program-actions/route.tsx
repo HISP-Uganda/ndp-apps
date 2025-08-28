@@ -77,7 +77,7 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "programme",
+                        key: "program",
                         options: data.options.map(({ name, code }) => ({
                             value: code,
                             label: name,

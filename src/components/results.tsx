@@ -2,7 +2,7 @@ import { DownloadOutlined } from "@ant-design/icons";
 import { useLoaderData, useSearch } from "@tanstack/react-router";
 import { Button, Flex, Table, TableProps, Tabs, TabsProps } from "antd";
 import ExcelJS from "exceljs";
-import { orderBy } from "lodash";
+import { orderBy, uniqBy } from "lodash";
 import React, { useCallback, useMemo } from "react";
 import { ResultsProps } from "../types";
 import { makeDataElementData, PERFORMANCE_COLORS, textPxWidth } from "../utils";
@@ -629,7 +629,6 @@ export function Results({
         },
         [columns, finalData],
     );
-
     const tableProps = useMemo<TableProps<Record<string, any>>>(
         () => ({
             scroll: { y: "calc(100vh - 460px)", x: "max-content" },
@@ -637,9 +636,9 @@ export function Results({
             bordered: true,
             sticky: true,
             tableLayout: "auto",
-            dataSource: finalData,
             pagination: false,
             size: "middle",
+            dataSource: uniqBy(finalData, "id"),
         }),
         [finalData],
     );

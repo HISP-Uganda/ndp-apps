@@ -15,7 +15,8 @@ export default function Filter({
         options: SelectProps["options"];
         key: string;
         label: string;
-        includeAll?: boolean;
+        displayIfEmpty?: boolean;
+        defaultValue?: string;
     }>;
     data: {
         ou?: string | string[];
@@ -64,11 +65,7 @@ export default function Filter({
                                     undefined,
                                 )
                             }
-                            selectedPeriods={orderBy(
-                                data.pe ?? [],
-                                [],
-                                ["asc"],
-                            )}
+                            selectedPeriods={data.pe ?? []}
                         />
                     </Form.Item>
                 </>
@@ -88,44 +85,52 @@ export default function Filter({
                     borderRadius: "3px",
                 }}
             >
-                {options.map((option, index) => (
-                    <Form.Item
-                        label={option.label}
-                        layout="horizontal"
-                        labelCol={{ span: 4 }}
-                        wrapperCol={{ span: 20 }}
-                        labelAlign="left"
-                        key={option.key}
-                    >
-                        <Select
-                            options={option.options}
-                            style={{ width: "100%" }}
-                            allowClear
-                            value={data[option.key]}
-                            placeholder={`Select ${option.label}`}
-                            defaultValue={"All"}
-                            filterOption={(input, option) =>
-                                String(option?.label ?? "")
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase()) ||
-                                String(option?.value ?? "")
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase())
-                            }
-                            showSearch
-                            onChange={(value) => {
-                                onChange(
-                                    {
-                                        [option.key]: value ?? "All",
-                                    },
-                                    index < options.length - 1
-                                        ? options[index + 1].key
-                                        : undefined,
-                                );
-                            }}
-                        />
-                    </Form.Item>
-                ))}
+                {options.map((option, index) => {
+                    if (
+                        option.displayIfEmpty ||
+                        (option.options && option.options.length > 0)
+                    ) {
+                        return (
+                            <Form.Item
+                                label={option.label}
+                                layout="horizontal"
+                                labelCol={{ span: 4 }}
+                                wrapperCol={{ span: 20 }}
+                                labelAlign="left"
+                                key={option.key}
+                            >
+                                <Select
+                                    options={option.options}
+                                    style={{ width: "100%" }}
+                                    allowClear
+                                    value={data[option.key]}
+                                    placeholder={`Select ${option.label}`}
+                                    filterOption={(input, option) =>
+                                        String(option?.label ?? "")
+                                            .toLowerCase()
+                                            .includes(input.toLowerCase()) ||
+                                        String(option?.value ?? "")
+                                            .toLowerCase()
+                                            .includes(input.toLowerCase())
+                                    }
+                                    showSearch
+                                    onChange={(value) => {
+                                        onChange(
+                                            {
+                                                [option.key]:
+                                                    value ||
+                                                    option.defaultValue,
+                                            },
+                                            index < options.length - 1
+                                                ? options[index + 1].key
+                                                : undefined,
+                                        );
+                                    }}
+                                />
+                            </Form.Item>
+                        );
+                    }
+                })}
             </Flex>
             <Flex
                 vertical

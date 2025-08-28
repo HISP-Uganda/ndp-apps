@@ -28,21 +28,20 @@ function Component() {
     const { engine } = VisionRoute.useRouteContext();
     const { v, degs } = VisionRoute.useSearch();
     const navigate = VisionRoute.useNavigate();
-    const { configurations } = useLoaderData({ from: "__root__" });
 
     const { data } = useSuspenseQuery(
         dataElementGroupSetsQueryOptions(engine, "vision2040", v),
     );
-
     useEffect(() => {
         if (degs === undefined) {
             navigate({
-                search: (prev) => ({
-                    ...prev,
-                    degs: data?.[0]?.id ?? "",
-                    pe: [ configurations[v]?.data?.baseline, "2024July", "2039July"],
-                    quarters: false,
-                }),
+                search: (prev) => {
+                    console.log(prev);
+                    return {
+                        ...prev,
+                        degs: data?.[0]?.id ?? "",
+                    };
+                },
             });
         }
     }, []);
