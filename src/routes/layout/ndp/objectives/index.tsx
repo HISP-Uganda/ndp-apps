@@ -67,15 +67,12 @@ function Component() {
                                 break;
                             }
                         }
-                        return <TruncatedText text={current} />;
+                        return current;
                     },
                 },
                 {
                     title: "Key Result Areas",
                     dataIndex: "dataElementGroup",
-                    render: (text) => {
-                        return <TruncatedText text={text} />;
-                    },
                 },
             ],
         }),

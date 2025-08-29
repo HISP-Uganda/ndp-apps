@@ -5,8 +5,7 @@ import ExcelJS from "exceljs";
 import { orderBy, uniqBy } from "lodash";
 import React, { useCallback, useMemo } from "react";
 import { ResultsProps } from "../types";
-import { makeDataElementData, PERFORMANCE_COLORS, textPxWidth } from "../utils";
-import TruncatedText from "./TrancatedText";
+import { makeDataElementData, PERFORMANCE_COLORS } from "../utils";
 
 const PERFORMANCE_LABELS: Record<number, string> = {
     0: "Target",
@@ -124,9 +123,6 @@ export function Results({
                 title: "Indicators",
                 dataIndex: "dx",
                 fixed: "left",
-                render: (text) => {
-                    return <TruncatedText text={text} />;
-                },
             },
         ],
         [prefixColumns],
@@ -151,23 +147,24 @@ export function Results({
                         : `${pe}${target}`;
                 return {
                     title: (
-                        <div
-                            style={{
-                                whiteSpace: "nowrap",
-                                wordBreak: "keep-all",
-                            }}
-                        >
+                        <div style={{ whiteSpace: "nowrap" }}>
                             {analyticsItems[pe].name}
                         </div>
                     ),
                     align: "center" as const,
-                    minWidth: textPxWidth(analyticsItems[pe].name) + 40,
                     children: [
                         {
-                            title,
+                            title: (
+                                <div style={{ whiteSpace: "nowrap" }}>
+                                    {title}
+                                </div>
+                            ),
                             dataIndex,
-                            minWidth: textPxWidth(title) + 40,
                             align: "center" as const,
+                            minWidth:
+                                configurations[v]?.data?.baseline === pe
+                                    ? 100
+                                    : 76,
                         },
                     ],
                 };
@@ -178,17 +175,11 @@ export function Results({
             ...nameColumn,
             ...pe.map((pe) => ({
                 title: (
-                    <div
-                        style={{
-                            whiteSpace: "nowrap",
-                            wordBreak: "keep-all",
-                        }}
-                    >
+                    <div style={{ whiteSpace: "nowrap" }}>
                         {analyticsItems[pe].name}
                     </div>
                 ),
                 align: "center" as const,
-                minWidth: textPxWidth(analyticsItems[pe].name) + 40,
                 children: (configurations[v]?.data?.baseline === pe
                     ? [baseline]
                     : [target, value, "performance"]
@@ -201,17 +192,9 @@ export function Results({
                                     ? year + 1
                                     : year;
                             return {
-                                title: (
-                                    <div
-                                        style={{
-                                            whiteSpace: "nowrap",
-                                            wordBreak: "keep-all",
-                                        }}
-                                    >{`Q${index + 1}`}</div>
-                                ),
+                                title: `Q${index + 1}`,
                                 key: `${pe}${currentYear}Q${quarter}`,
                                 align: "center",
-                                minWidth: textPxWidth(`Q${index + 1}`) + 40,
                                 children: [
                                     {
                                         title: `A`,
@@ -245,15 +228,17 @@ export function Results({
                                 <div
                                     style={{
                                         whiteSpace: "nowrap",
-                                        wordBreak: "keep-all",
                                     }}
                                 >
                                     {title}
                                 </div>
-                            ),
+                            ) as any,
                             key: `${pe}${currentValue}`,
+                            minWidth:
+                                configurations[v]?.data?.baseline === pe
+                                    ? 100
+                                    : 56,
                             align: "center",
-                            minWidth: textPxWidth(title) + 40,
                             onCell: (row: Record<string, any>) => {
                                 if (index === 2) {
                                     return {
@@ -603,10 +588,7 @@ export function Results({
                 let calculatedHeight = 20;
 
                 if (hasTextContent && maxLinesNeeded > 1) {
-                    calculatedHeight = Math.max(
-                        20,
-                        Math.min(maxLinesNeeded * 16 + 8, 120),
-                    );
+                    calculatedHeight = Math.max(20);
                 }
 
                 worksheet.getRow(row).height = calculatedHeight;
@@ -631,7 +613,7 @@ export function Results({
     );
     const tableProps = useMemo<TableProps<Record<string, any>>>(
         () => ({
-            scroll: { y: "calc(100vh - 460px)", x: "max-content" },
+            scroll: { y: "calc(100vh - 460px)" },
             rowKey: "id",
             bordered: true,
             sticky: true,
@@ -646,7 +628,11 @@ export function Results({
         () => [
             {
                 key: "target",
-                label: "Targets",
+                label: (
+                    <div style={{ width: 200, textAlign: "center" }}>
+                        Targets
+                    </div>
+                ),
                 children: (
                     <Flex
                         vertical
@@ -671,7 +657,11 @@ export function Results({
             },
             {
                 key: "performance",
-                label: "Performance",
+                label: (
+                    <div style={{ width: 200, textAlign: "center" }}>
+                        Performance
+                    </div>
+                ),
                 children: (
                     <Flex
                         vertical
@@ -708,7 +698,24 @@ export function Results({
             items={items}
             onChange={onChange}
             size="large"
-            // tabBarStyle={{ backgroundColor: "yellow" }}
+            renderTabBar={(props, DefaultTabBar) => (
+                <DefaultTabBar
+                    {...props}
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyItems: "center",
+                        flexDirection: "row",
+                    }}
+                />
+            )}
+            style={{
+                "--tab-bg": "#f5f5f5",
+                "--tab-active-bg": "#ffffff",
+                "--tab-border": "#e8e8e8",
+                "--tab-shadow": "0 2px 8px rgba(0,0,0,0.1)",
+            } as React.CSSProperties}
+            className="file-icon-tabs"
         />
     );
 }

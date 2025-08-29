@@ -98,7 +98,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Vision 2040
@@ -132,7 +132,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Goal
@@ -168,7 +168,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Objective
@@ -203,7 +203,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Outcome Level
@@ -243,7 +243,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Intermediate Outcomes
@@ -273,7 +273,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Output Level
@@ -303,7 +303,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "20px",
+                                        fontSize: "16px",
                                     }}
                                 >
                                     Action Level
@@ -320,7 +320,7 @@ function Component() {
             key: "1",
             selectable: false,
             checkable: false,
-            style: { fontSize: "20px", margin: "20px 0 20px 0" },
+            style: { fontSize: "16px", margin: "20px 0 20px 0" },
             children: [
                 {
                     title: (
@@ -340,7 +340,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "20px",
+                                fontSize: "16px",
                             }}
                         >
                             Project Performance
@@ -367,7 +367,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "20px",
+                                fontSize: "16px",
                             }}
                         >
                             Policy Actions
@@ -383,7 +383,7 @@ function Component() {
             key: "2",
             selectable: false,
             checkable: false,
-            style: { fontSize: "20px", margin: "20px 0 20px 0" },
+            style: { fontSize: "16px", margin: "20px 0 20px 0" },
 
             children: [
                 {
@@ -404,7 +404,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "20px",
+                                fontSize: "16px",
                             }}
                         >
                             Indicator Dictionary
@@ -431,7 +431,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "20px",
+                                fontSize: "16px",
                             }}
                         >
                             Workflow & Guidelines
@@ -458,7 +458,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "20px",
+                                fontSize: "16px",
                             }}
                         >
                             FAQs
@@ -487,7 +487,7 @@ function Component() {
                     }}
                     style={{
                         color: "#2B6998",
-                        fontSize: "20px",
+                        fontSize: "16px",
                     }}
                 >
                     Library
@@ -534,7 +534,7 @@ function Component() {
                         />
                         <Link to="/settings">
                             <SettingOutlined
-                                style={{ fontSize: "20px", cursor: "pointer" }}
+                                style={{ fontSize: "16px", cursor: "pointer" }}
                             />
                         </Link>
                     </Flex>

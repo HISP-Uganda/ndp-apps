@@ -20,7 +20,7 @@ export const SubProgramOutputRoute = createRoute({
         const data = queryClient.ensureQueryData(
             dataElementGroupSetsWithProgramsQueryOptions(
                 engine,
-                "sub-intervention",
+                v === "NDPIII" ? "sub-intervention" : "intervention",
                 v,
             ),
         );
@@ -35,13 +35,13 @@ function Component() {
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
             engine,
-            "sub-intervention",
+            v === "NDPIII" ? "sub-intervention" : "intervention",
             v,
         ),
     );
     const navigate = SubProgramOutputRoute.useNavigate();
     useEffect(() => {
-        if (program === undefined) {	
+        if (program === undefined) {
             navigate({
                 search: (prev) => ({
                     ...prev,
@@ -81,7 +81,7 @@ function Component() {
                             label: name,
                         })),
                         label: "Programme",
-                    }
+                    },
                 ]}
             />
             <Outlet />

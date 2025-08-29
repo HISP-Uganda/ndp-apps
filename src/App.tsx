@@ -30,8 +30,11 @@ const MyApp: FC = () => {
                     },
                     Tree: {
                         nodeSelectedBg: "#2B6998",
-												nodeSelectedColor: "#FFFFFF",
-											
+                        nodeSelectedColor: "#FFFFFF",
+                    },
+                    Tabs: {
+                        cardBg: "#B4CDCD",
+                        horizontalItemMargin: "auto",
                     },
                 },
             }}
