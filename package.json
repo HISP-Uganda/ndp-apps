@@ -1,36 +1,48 @@
 {
-    "name": "dhis-web-results-framework",
-    "version": "1.0.0",
-    "description": "",
-    "license": "BSD-3-Clause",
-    "private": true,
-    "scripts": {
-        "build": "d2-app-scripts build",
-        "start": "d2-app-scripts start --proxy https://train.ndpme.go.ug/ndpdb",
-        "test": "d2-app-scripts test",
-        "deploy": "d2-app-scripts deploy"
-    },
-    "devDependencies": {
-        "@dhis2/cli-app-scripts": "^12.6.4",
-        "@types/jest": "^30.0.0",
-        "@types/lodash": "^4.17.20",
-        "@types/react": "^19.1.8",
-        "@types/react-dom": "^19.1.6",
-        "typescript": "^5"
-    },
-    "dependencies": {
-        "@dhis2/app-runtime": "^3.14.4",
-        "@dhis2/multi-calendar-dates": "^2.1.2",
-        "@tanstack/react-query": "^5.81.5",
-        "@tanstack/react-router": "^1.124.0",
-        "@types/react-resizable": "^3.0.8",
-        "antd": "^5.26.3",
-        "dayjs": "^1.11.13",
-        "dexie": "^4.0.11",
-        "dexie-react-hooks": "^1.1.7",
-        "exceljs": "^4.4.0",
-        "lodash": "^4.17.21",
-        "react-resizable": "^3.0.5",
-        "zod": "^3.25.67"
-    }
+  "name": "ndp-apps",
+  "version": "1.0.0",
+  "description": "DHIS2 Applications for Uganda National Development Plan (NDP) Data Management",
+  "private": true,
+  "workspaces": [
+    "dhis-web-results-framework",
+    "performance-data-entry", 
+    "target-baseline-data-entry"
+  ],
+  "scripts": {
+    "start:results": "yarn workspace dhis-web-results-framework start",
+    "start:performance": "yarn workspace performance-data-entry start",
+    "start:target": "yarn workspace target-baseline-data-entry start",
+    "build": "yarn workspaces run build",
+    "build:results": "yarn workspace dhis-web-results-framework build",
+    "build:performance": "yarn workspace performance-data-entry build", 
+    "build:target": "yarn workspace target-baseline-data-entry build",
+    "test": "yarn workspaces run test",
+    "test:results": "yarn workspace dhis-web-results-framework test",
+    "test:performance": "yarn workspace performance-data-entry test",
+    "test:target": "yarn workspace target-baseline-data-entry test",
+    "deploy:results": "yarn workspace dhis-web-results-framework deploy",
+    "deploy:performance": "yarn workspace performance-data-entry deploy",
+    "deploy:target": "yarn workspace target-baseline-data-entry deploy",
+    "clean": "yarn workspaces run clean && rm -rf node_modules",
+    "postinstall": "echo 'Workspaces installed successfully'"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": ">=1.22.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/ndp-apps.git"
+  },
+  "license": "BSD-3-Clause",
+  "keywords": [
+    "dhis2",
+    "ndp",
+    "uganda",
+    "national-development-plan",
+    "data-management"
+  ]
 }
