@@ -72,7 +72,7 @@ function Component() {
     const treeData: TreeDataNode[] = [
         {
             title: "NDP RESULTS",
-            style: { fontSize: "17px", fontWeight: "600" },
+            style: { fontSize: "18px", fontWeight: "600" },
             key: "0",
             selectable: false,
             checkable: false,
@@ -81,7 +81,7 @@ function Component() {
                     title: "High Level Results",
                     selectable: false,
                     checkable: false,
-                    style: { fontSize: "17px" },
+                    style: { fontSize: "18px" },
                     key: "0-0",
                     children: [
                         {
@@ -110,7 +110,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
                                     Vision 2040
@@ -145,10 +145,10 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
-                                    Goal
+                                    Overall Goal
                                 </Link>
                             ),
                             key: "/ndp/goals",
@@ -180,13 +180,36 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
-                                    Objective
+                                    Strategic Objective
                                 </Link>
                             ),
                             key: "/ndp/objectives",
+                        },
+                    ],
+                },
+                {
+                    title: "Programme Level Results",
+                    selectable: false,
+                    checkable: false,
+                    style: { fontSize: "18px" },
+                    key: "programme-level-results",
+                    children: [
+                        {
+                            title: "Programme Goal",
+                            selectable: false,
+                            checkable: false,
+                            style: { fontSize: "18px" },
+                            key: "programme-goal",
+                        },
+                        {
+                            title: "Programme Objective",
+                            selectable: false,
+                            checkable: false,
+                            style: { fontSize: "18px" },
+                            key: "programme-objective",
                         },
                         {
                             title: (
@@ -215,10 +238,10 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
-                                    Outcome Level
+                                    Programme Outcomes
                                 </Link>
                             ),
                             key: "/ndp/outcome-levels",
@@ -230,7 +253,7 @@ function Component() {
                     key: "0-1",
                     selectable: false,
                     checkable: false,
-                    style: { fontSize: "17px" },
+                    style: { fontSize: "18px" },
 
                     children: [
                         {
@@ -255,7 +278,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
                                     Intermediate Outcomes
@@ -285,7 +308,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
                                     Output Level
@@ -315,7 +338,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "17px",
+                                        fontSize: "18px",
                                     }}
                                 >
                                     Action Level
@@ -332,7 +355,7 @@ function Component() {
             key: "1",
             selectable: false,
             checkable: false,
-            style: { fontSize: "17px", margin: "20px 0 20px 0" },
+            style: { fontSize: "18px", margin: "20px 0 20px 0" },
             children: [
                 {
                     title: (
@@ -352,7 +375,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "17px",
+                                fontSize: "18px",
                             }}
                         >
                             Project Performance
@@ -379,7 +402,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "17px",
+                                fontSize: "18px",
                             }}
                         >
                             Policy Actions
@@ -395,7 +418,7 @@ function Component() {
             key: "2",
             selectable: false,
             checkable: false,
-            style: { fontSize: "17px", margin: "20px 0 20px 0" },
+            style: { fontSize: "18px", margin: "20px 0 20px 0" },
 
             children: [
                 {
@@ -416,7 +439,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "17px",
+                                fontSize: "18px",
                             }}
                         >
                             Indicator Dictionary
@@ -443,7 +466,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "17px",
+                                fontSize: "18px",
                             }}
                         >
                             Workflow & Guidelines
@@ -470,7 +493,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "17px",
+                                fontSize: "18px",
                             }}
                         >
                             FAQs
@@ -499,14 +522,14 @@ function Component() {
                     }}
                     style={{
                         color: "#2B6998",
-                        fontSize: "17px",
+                        fontSize: "18px",
                     }}
                 >
                     Library
                 </Link>
             ),
             key: "/ndp/libraries",
-            style: { fontSize: "17px" },
+            style: { fontSize: "18px" },
         },
     ];
     return (
@@ -563,7 +586,7 @@ function Component() {
 
                         <Link to="/settings">
                             <SettingOutlined
-                                style={{ fontSize: "17px", cursor: "pointer" }}
+                                style={{ fontSize: "18px", cursor: "pointer" }}
                             />
                         </Link>
                     </Flex>

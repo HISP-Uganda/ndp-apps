@@ -1,13 +1,16 @@
 import Dexie, { Table } from "dexie";
-import { OrgUnit } from "./types";
-export class CQIDexie extends Dexie {
+import { DataValue, OrgUnit } from "./types";
+export class PerformanceDB extends Dexie {
     organisationUnits!: Table<OrgUnit>;
+    dataValues!: Table<DataValue>;
     constructor() {
         super("ndp-performance");
-        this.version(1).stores({
+        this.version(2).stores({
             organisationUnits: "id,value,key,title,pId",
+            dataValues:
+                "[dataElement+attributeOptionCombo+categoryOptionCombo+orgUnit+period]",
         });
     }
 }
 
-export const db = new CQIDexie();
+export const db = new PerformanceDB();

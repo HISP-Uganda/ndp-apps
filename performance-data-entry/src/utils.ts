@@ -1,5 +1,12 @@
+import { orderBy } from "lodash";
 import { TreeDataNode } from "antd";
-import { DHIS2OrgUnit } from "./types";
+import {
+    DataValue,
+    DHIS2OrgUnit,
+    IDataElement,
+    IDataSet,
+    TableDataRow,
+} from "./types";
 
 export function convertToAntdTree(data: DHIS2OrgUnit[]): TreeDataNode[] {
     // Create a map for quick lookup
@@ -123,7 +130,9 @@ export function filterTree(
     const searchTerm = searchText.toLowerCase();
 
     function filterNode(node: TreeDataNode): TreeDataNode | null {
-        const titleMatches = String(node.title ?? "").toLowerCase().includes(searchTerm);
+        const titleMatches = String(node.title ?? "")
+            .toLowerCase()
+            .includes(searchTerm);
 
         let filteredChildren: TreeDataNode[] = [];
         if (node.children) {
@@ -132,7 +141,6 @@ export function filterTree(
                 .filter((child) => child !== null) as TreeDataNode[];
         }
 
-        // Keep node if it matches or has matching children
         if (titleMatches || filteredChildren.length > 0) {
             return {
                 ...node,
@@ -226,7 +234,10 @@ export function searchAndHighlight(
 
         if (highlightedTitle.toLowerCase().includes(searchTerm)) {
             const regex = new RegExp(`(${searchText})`, "gi");
-            highlightedTitle = highlightedTitle.replace(regex, "<mark>$1</mark>");
+            highlightedTitle = highlightedTitle.replace(
+                regex,
+                "<mark>$1</mark>",
+            );
         }
 
         return {
@@ -239,4 +250,36 @@ export function searchAndHighlight(
     }
 
     return treeData.map(highlightNode);
+}
+
+export function generateTableData(
+    dataSet: IDataSet,
+    dataElements: IDataElement[],
+    dataValues: Array<DataValue>,
+): TableDataRow[] {
+    const tableData: TableDataRow[] = [];
+    const allData = {};
+    dataElements.forEach((de) => {
+        const row: TableDataRow = {
+            key: de.id,
+            dataElement: de.name,
+            ...de,
+        };
+        dataSet.categoryCombo.categoryOptionCombos.forEach((dataSetCOC) => {
+            de.categoryCombo.categoryOptionCombos.forEach((coc) => {
+                const columnKey = `${de.id}_${dataSetCOC.id}_${coc.id}`;
+                const dataValue = dataValues.find(
+                    (dv) =>
+                        dv.dataElement === de.id &&
+                        dv.categoryOptionCombo === coc.id &&
+                        dataSetCOC.id === dv.attributeOptionCombo,
+                );
+                allData[columnKey] = dataValue ? dataValue.value : null;
+                row[columnKey] = dataValue ? dataValue.value : null;
+            });
+        });
+
+        tableData.push(row);
+    });
+    return orderBy(tableData, ["name"], ["asc"]);
 }
