@@ -2724,6 +2724,11 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
+"@standard-schema/spec@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@standard-schema/spec/-/spec-1.0.0.tgz#f193b73dc316c4170f2e82a881da0f550d551b9c"
+  integrity sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA==
+
 "@surma/rollup-plugin-off-main-thread@^2.2.3":
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/@surma/rollup-plugin-off-main-thread/-/rollup-plugin-off-main-thread-2.2.3.tgz#ee34985952ca21558ab0d952f00298ad2190c053"
@@ -2741,6 +2746,22 @@
   dependencies:
     defer-to-connect "^1.0.1"
 
+"@tanstack/db-ivm@0.1.6":
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/@tanstack/db-ivm/-/db-ivm-0.1.6.tgz#01711feedc66b656ce3692ae33faf36dd21acfc3"
+  integrity sha512-E9M4lP4PlUW6Su54xmqYjGRLMrjtq9akDC3G1DNYr7sqlDKQeR654kGbFc+XNqajr4pFZvA9hV/oQO8DTHNYxQ==
+  dependencies:
+    fractional-indexing "^3.2.0"
+    sorted-btree "^1.8.1"
+
+"@tanstack/db@0.2.4":
+  version "0.2.4"
+  resolved "https://registry.yarnpkg.com/@tanstack/db/-/db-0.2.4.tgz#a5516ba9b789587bb94fc227ce8da6fbda311ec6"
+  integrity sha512-cVMbfLhvb9HFeNBFOEwyfZFXI6k636eYA5mrALRnEUrVXeKvW1uRR6FZMlkR0UJft2rzypyHeIlLjU7QS17knA==
+  dependencies:
+    "@standard-schema/spec" "^1.0.0"
+    "@tanstack/db-ivm" "0.1.6"
+
 "@tanstack/history@1.131.2":
   version "1.131.2"
   resolved "https://registry.yarnpkg.com/@tanstack/history/-/history-1.131.2.tgz#54ff9e28a4235de51a5ee0f2f13edf25f6f54c45"
@@ -2755,6 +2776,22 @@
   version "5.85.9"
   resolved "https://registry.yarnpkg.com/@tanstack/query-core/-/query-core-5.85.9.tgz#69e800f4d1c42ca4a110469229d8ecca409d477a"
   integrity sha512-5fxb9vwyftYE6KFLhhhDyLr8NO75+Wpu7pmTo+TkwKmMX2oxZDoLwcqGP8ItKSpUMwk3urWgQDZfyWr5Jm9LsQ==
+
+"@tanstack/query-db-collection@^0.2.16":
+  version "0.2.16"
+  resolved "https://registry.yarnpkg.com/@tanstack/query-db-collection/-/query-db-collection-0.2.16.tgz#ebe69a1147e0bbd3de33c71dd8783fe0b6361ab2"
+  integrity sha512-ZQuw8w93jrL4Bv4ZomLEeErho2R3E/VfXm5pEiNcabpO9ouRS3pnSZq2qjVP5xq//h3RR4deccv/0QqqBr4fJQ==
+  dependencies:
+    "@standard-schema/spec" "^1.0.0"
+    "@tanstack/db" "0.2.4"
+
+"@tanstack/react-db@^0.1.17":
+  version "0.1.17"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-db/-/react-db-0.1.17.tgz#3fb551d2a7db70d83ffc47a5e3e976f4cd43c748"
+  integrity sha512-B9i5rUK1O8RYTo6mUPqBrVPFHt19bfffpKogUzp2ODht4h+weAfIV8fOyrQTliH/4ddjBSCj/EhdDL0i6T+gXg==
+  dependencies:
+    "@tanstack/db" "0.2.4"
+    use-sync-external-store "^1.5.0"
 
 "@tanstack/react-query@^4.36.1":
   version "4.40.1"
@@ -5252,6 +5289,11 @@ form-data@~2.3.2:
     asynckit "^0.4.0"
     combined-stream "^1.0.6"
     mime-types "^2.1.12"
+
+fractional-indexing@^3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/fractional-indexing/-/fractional-indexing-3.2.0.tgz#1193e63d54ff4e0cbe0c79a9ed6cfbab25d91628"
+  integrity sha512-PcOxmqwYCW7O2ovKRU8OoQQj2yqTfEB/yeTYk4gPid6dN5ODRfU1hXd9tTVZzax/0NkO7AxpHykvZnT1aYp/BQ==
 
 fs-constants@^1.0.0:
   version "1.0.0"
@@ -8859,6 +8901,11 @@ smob@^1.0.0:
   version "1.5.0"
   resolved "https://registry.yarnpkg.com/smob/-/smob-1.5.0.tgz#85d79a1403abf128d24d3ebc1cdc5e1a9548d3ab"
   integrity sha512-g6T+p7QO8npa+/hNx9ohv1E5pVCmWrVCUzUXJyLdMmftX6ER0oiWY/w9knEonLpnOp6b6FenKnMfR8gqwWdwig==
+
+sorted-btree@^1.8.1:
+  version "1.8.1"
+  resolved "https://registry.yarnpkg.com/sorted-btree/-/sorted-btree-1.8.1.tgz#6e6275f7955e5892bb8737149cbe495be10f426f"
+  integrity sha512-395+XIP+wqNn3USkFSrNz7G3Ss/MXlZEqesxvzCRFwL14h6e8LukDHdLBePn5pwbm5OQ9vGu8mDyz2lLDIqamQ==
 
 sortobject@^4.0.0:
   version "4.17.0"

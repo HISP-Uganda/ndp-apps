@@ -22,6 +22,8 @@ const MyApp: FC = () => {
             theme={{
                 token: {
                     // borderRadius: 0,
+                    colorPrimary: "#2B6998",
+                    colorTextDisabled: "rgba(0,0,0,0.60)",
                 },
                 components: {
                     Table: {
@@ -35,9 +37,8 @@ const MyApp: FC = () => {
                         nodeSelectedColor: "#FFFFFF",
                     },
                     Tabs: {
-                        cardBg: "#B4CDCD"
+                        cardBg: "#B4CDCD",
                     },
-                    
                 },
             }}
         >

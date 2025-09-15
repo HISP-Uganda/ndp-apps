@@ -1,6 +1,11 @@
 import { useDataEngine } from "@dhis2/app-runtime";
-import { queryOptions } from "@tanstack/react-query";
 import {
+    queryOptions,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
+import {
+    CompleteDataSetRegistrations,
     DataSetValues,
     DHIS2OrgUnit,
     IDataElement,
@@ -8,7 +13,6 @@ import {
     Search,
 } from "./types";
 import { convertToAntdTree } from "./utils";
-import { db } from "./db";
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
@@ -23,18 +27,31 @@ export const initialQueryOptions = (
                         fields: "organisationUnits[id],dataSets",
                     },
                 },
+                configuration: {
+                    resource: "dataStore/ndp-configurations",
+                    params: {
+                        fields: "baseline,financialYears",
+                        paging: false,
+                    },
+                },
             });
             const {
                 orgUnits: { organisationUnits },
+                configuration,
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
                     dataSets: string[];
                 };
+                configuration: Array<{
+                    key: string;
+                    baseline: string;
+                    financialYears: string[];
+                }>;
             };
 
-            const nextQuery = organisationUnits.reduce<Record<string, any>>(
-                (acc, unit) => {
+            const nextQuery = (await engine.query(
+                organisationUnits.reduce<Record<string, any>>((acc, unit) => {
                     acc[unit.id] = {
                         resource: `organisationUnits/${unit.id}`,
                         params: {
@@ -44,88 +61,53 @@ export const initialQueryOptions = (
                         },
                     };
                     return acc;
-                },
-                {},
-            );
-
-            const unitsResponse = (await engine.query(nextQuery)) as Record<
+                }, {}),
+            )) as unknown as Record<
                 string,
-                { organisationUnits: DHIS2OrgUnit[] }
+                { organisationUnits: DHIS2OrgUnit[] } | DHIS2OrgUnit
             >;
-
-            const allUnits = Object.values(unitsResponse).flatMap(
-                (res) => res.organisationUnits,
-            );
-
-            const orgUnitDataSets = allUnits.reduce<
-                Record<
-                    string,
-                    Array<{
-                        id: string;
-                        name: string;
-                        periodType: string;
-                        orgUnit: string;
-                    }>
-                >
-            >((acc, unit) => {
-                if (unit.dataSets) {
-                    acc[unit.id] = unit.dataSets.flatMap((ds) => {
-                        if (ds.name.includes("IV")) {
-                            return {
-                                id: ds.id,
-                                name: ds.name,
-                                periodType: ds.periodType,
-                                orgUnit: unit.name,
-                            };
-                        }
-                        return [];
-                    });
-                } else {
-                    acc[unit.id] = [];
+            const allUnits = Object.values(nextQuery).flatMap((res) => {
+                if ("organisationUnits" in res) {
+                    return res.organisationUnits;
                 }
-                return acc;
-            }, {});
+                return res;
+            });
+
+            const orgUnitDataSets = Object.fromEntries(
+                allUnits.map((unit) => [
+                    unit.id,
+                    unit.dataSets
+                        ? unit.dataSets.map((ds) => ({
+                              ...ds,
+                              orgUnit: unit.name,
+                          }))
+                        : [],
+                ]),
+            );
             return {
                 organisationTree: convertToAntdTree(allUnits),
                 orgUnitDataSets,
+                configuration,
             };
         },
     });
 };
 
-export const dataSetValuesQueryOptions = (
+export const dataValuesQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
     search: Search,
+    fields: IDataElement[],
 ) => {
     return queryOptions({
-        queryKey: ["data-values", search.orgUnit, search.dataSet, search.pe],
+        queryKey: [
+            "data-values",
+            search.orgUnit,
+            search.dataSet,
+            search.pe,
+            search.baseline,
+            search.targetYear,
+        ],
         queryFn: async () => {
-            const { baseline, dataSet } = (await engine.query({
-                baseline: {
-                    resource: "dataStore/ndp-configurations",
-                    params: {
-                        fields: "baseline",
-                        paging: false,
-                    },
-                },
-                dataSet: {
-                    resource: `dataSets/${search.dataSet}.json`,
-                    params: {
-                        fields: "name,categoryCombo[id,name,categoryOptionCombos[id,name,categoryOptions[id,name]],categories[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,formName,valueType,optionSetValue,optionSet,code[options[id,name,code]],categoryCombo[id,name,categoryOptionCombos[id,name,categoryOptions[id,name]],categories[id,name,categoryOptions[id,name]]]]]",
-                    },
-                },
-            })) as unknown as {
-                dataSet: IDataSet;
-                baseline: Array<{ key: string; baseline: string }>;
-            };
-            let targetYear = search.pe;
-            const dataSetNames = dataSet.name.split(" - ");
-            const baselineYear =
-                baseline
-                    .find((b) => b.key === dataSetNames[1])
-                    ?.baseline.split(" ")
-                    .join("") ?? "2023July";
-
             let query: Record<string, any> = {
                 dataSetValues: {
                     resource: "dataValueSets",
@@ -140,18 +122,21 @@ export const dataSetValuesQueryOptions = (
                     params: {
                         orgUnit: search.orgUnit,
                         dataSet: search.dataSet,
-                        period: baselineYear,
+                        period: search.baseline,
+                    },
+                },
+                completeDataSetRegistrations: {
+                    resource: "completeDataSetRegistrations",
+                    params: {
+                        orgUnit: search.orgUnit,
+                        dataSet: search.dataSet,
+                        attributeOptionCombo: "VHmIifPr01a",
+                        period: search.pe,
                     },
                 },
             };
 
-            if (search.pe?.includes("Q")) {
-                const [year, quarter] = search.pe.split("Q");
-                const prev =
-                    quarter === "1" || quarter === "2"
-                        ? String(Number(year) - 1)
-                        : year;
-                targetYear = `${prev}July`;
+            if (search.targetYear && search.targetYear !== search.pe) {
                 query = {
                     ...query,
                     targetDataValues: {
@@ -159,18 +144,82 @@ export const dataSetValuesQueryOptions = (
                         params: {
                             orgUnit: search.orgUnit,
                             dataSet: search.dataSet,
-                            period: targetYear,
+                            period: search.targetYear,
                         },
                     },
                 };
             }
 
-            const { dataSetValues, baselineDataValues, targetDataValues } =
-                (await engine.query(query)) as unknown as {
-                    dataSetValues: DataSetValues;
-                    baselineDataValues: DataSetValues;
-                    targetDataValues: DataSetValues;
-                };
+            const {
+                dataSetValues,
+                completeDataSetRegistrations,
+                baselineDataValues,
+                targetDataValues,
+            } = (await engine.query(query)) as unknown as {
+                dataSetValues: DataSetValues;
+                completeDataSetRegistrations: CompleteDataSetRegistrations;
+                baselineDataValues: DataSetValues;
+                targetDataValues: DataSetValues;
+            };
+
+            const allDataValues: DataSetValues = {
+                ...dataSetValues,
+                dataValues: [
+                    ...(dataSetValues?.dataValues ?? []),
+                    ...(targetDataValues?.dataValues ?? []),
+                    ...(baselineDataValues?.dataValues ?? []),
+                ],
+            };
+            return {
+                completeDataSetRegistrations:
+                    completeDataSetRegistrations.completeDataSetRegistrations,
+                dataValues: fields.map((field) => {
+                    const dataValue = allDataValues.dataValues
+                        .filter((dv) => dv.dataElement === field.id)
+                        .reduce((acc, dv) => {
+                            const key = `${dv.orgUnit}_${dv.period}_${dv.attributeOptionCombo}_${dv.categoryOptionCombo}`;
+                            acc[key] = dv.value;
+                            return acc;
+                        }, {} as Record<string, string>);
+                    return {
+                        ...field,
+                        dataValue,
+                        pe: search.pe!,
+                        ou: search.orgUnit!,
+                        targetYear: search.targetYear!,
+                        baselineYear: search.baseline!,
+                    };
+                }),
+            };
+        },
+        enabled:
+            !!search.orgUnit &&
+            !!search.pe &&
+            !!search.dataSet &&
+            !!search.baseline &&
+            !!search.targetYear,
+        refetchOnWindowFocus: false,
+        staleTime: 0,
+    });
+};
+
+export const dataSetQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    id: string | undefined,
+) => {
+    return queryOptions({
+        queryKey: ["data-set", id],
+        queryFn: async () => {
+            const { dataSet } = (await engine.query({
+                dataSet: {
+                    resource: `dataSets/${id}.json`,
+                    params: {
+                        fields: "id,name,categoryCombo[id,name,categoryOptionCombos[id,name,categoryOptions[id,name]],categories[id,name,categoryOptions[id,name]]],dataSetElements[dataElement[id,name,formName,valueType,optionSetValue,optionSet,code[options[id,name,code]],categoryCombo[id,name,categoryOptionCombos[id,name,categoryOptions[id,name]],categories[id,name,categoryOptions[id,name]]]]]",
+                    },
+                },
+            })) as unknown as {
+                dataSet: IDataSet;
+            };
 
             const groupedDataSetElements = dataSet.dataSetElements.reduce(
                 (acc, el) => {
@@ -184,34 +233,52 @@ export const dataSetValuesQueryOptions = (
                 {} as Record<string, IDataElement[]>,
             );
 
-            const allDataValues: DataSetValues = {
-                ...dataSetValues,
-                dataValues: [
-                    ...(dataSetValues?.dataValues ?? []),
-                    ...(targetDataValues?.dataValues ?? []),
-                    ...(baselineDataValues?.dataValues ?? []),
-                ],
-            };
-
-            await db.dataValues.clear();
-            await db.dataValues.bulkPut(allDataValues.dataValues);
-
-            const dataValues = allDataValues.dataValues.reduce((acc, dv) => {
-                const key = `${dv.dataElement}_${dv.attributeOptionCombo}_${dv.categoryOptionCombo}`;
-                acc[key] = dv.value;
-                return acc;
-            }, {} as Record<string, string | undefined>);
-
             return {
-                dataSetValues: allDataValues,
                 dataSet,
                 groupedDataSetElements,
-                dataValues,
-                baselineYear,
-                targetYear,
             };
         },
-        enabled: !!search.orgUnit && !!search.dataSet && !!search.pe,
+        enabled: !!id,
         refetchOnWindowFocus: false,
+    });
+};
+
+// Hook for saving data values
+export const useSaveDataValue = () => {
+    return useMutation({
+        mutationFn: async ({
+            engine,
+            dataValue,
+        }: {
+            engine: ReturnType<typeof useDataEngine>;
+            dataValue: {
+                value: string;
+                de: string;
+                pe: string;
+                ou: string;
+                co: string;
+                cc: string;
+                cp: string;
+            };
+        }) => {
+            const response = await engine.mutate({
+                type: "create",
+                resource: `dataValues?${new URLSearchParams({
+                    de: dataValue.de,
+                    pe: dataValue.pe,
+                    ou: dataValue.ou,
+                    co: dataValue.co,
+                    cc: dataValue.cc,
+                    cp: dataValue.cp,
+                    value: dataValue.value,
+                }).toString()}`,
+                data: {},
+            });
+            return response;
+        },
+        onSuccess: () => {},
+        onError: (error) => {
+            console.error("Failed to save data value:", error);
+        },
     });
 };

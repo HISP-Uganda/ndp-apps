@@ -46,6 +46,10 @@ export function convertToAntdTree(data: DHIS2OrgUnit[]): TreeDataNode[] {
         }
     });
 
+    if (rootNodes.length === 0 && data.length > 0) {
+        return Array.from(treeNodeMap.values());
+    }
+
     return rootNodes;
 }
 

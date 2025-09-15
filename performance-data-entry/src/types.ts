@@ -7,6 +7,10 @@ export const search = z.object({
     pe: z.string().optional(),
     dataSet: z.string().optional(),
     expanded: z.string().optional(),
+    baseline: z.string().optional(),
+    targetYear: z.string().optional(),
+    minPeriod: z.string().optional(),
+    maxPeriod: z.string().optional(),
 });
 
 export type Search = z.infer<typeof search>;
@@ -23,7 +27,7 @@ export type DHIS2OrgUnit = {
     name: string;
     leaf: boolean;
     parent?: { id: string };
-    dataSets?: Array<{ id: string; name: string; periodType: string }>;
+    dataSets: IDataSet[];
 };
 
 export type PeriodType = (typeof periodTypes)[number];
@@ -105,6 +109,9 @@ export interface IDataSet {
     displayName: string;
     dataSetElements: IDataSetElement[];
     categoryCombo: ICategoryCombo;
+    access: IAccess;
+    id: string;
+    periodType: PeriodType;
 }
 
 export interface IDataSetElement {
@@ -140,6 +147,8 @@ export interface ICategoryOptionCombo {
 export interface ICategoryOption {
     name: string;
     id: string;
+    access: IAccess;
+    attributeValues: IAttributeValue[];
 }
 
 export interface TableDataRow extends IDataElement {
@@ -154,3 +163,54 @@ export type Option = {
     code: string;
     created: string;
 };
+
+interface IAttributeValue {
+    attribute: IAttribute;
+    value: string;
+}
+
+interface IAttribute {
+    code: string;
+    name: string;
+    valueType: string;
+    id: string;
+}
+
+interface IAccess {
+    manage: boolean;
+    externalize: boolean;
+    write: boolean;
+    read: boolean;
+    update: boolean;
+    delete: boolean;
+    data: IData;
+}
+
+interface IData {
+    write: boolean;
+    read: boolean;
+}
+
+export interface DataElementDataValue extends IDataElement {
+    dataValue: Record<string, string>;
+		pe:string;
+		ou:string
+		targetYear:string;
+		baselineYear:string;
+};
+
+
+
+export interface CompleteDataSetRegistrations {
+    completeDataSetRegistrations: CompleteDataSetRegistration[];
+}
+
+export interface CompleteDataSetRegistration {
+  period: string;
+  dataSet: string;
+  organisationUnit: string;
+  attributeOptionCombo: string;
+  date: string;
+  storedBy: string;
+  completed: boolean;
+}

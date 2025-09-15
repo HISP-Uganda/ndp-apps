@@ -1,9 +1,8 @@
-import { Input, InputNumber } from "antd";
-import { useLiveQuery } from "dexie-react-hooks";
-import React from "react";
-import { db } from "../db";
-import { IndexRoute } from "../routes";
-import { IDataElement } from "../types";
+import { Input, InputNumber, message, Spin } from "antd";
+import React, { useState, useEffect } from "react";
+import { DataElementDataValue } from "../types";
+import { useSaveDataValue } from "../query-options";
+import { useDataEngine } from "@dhis2/app-runtime";
 
 export default function TableCell({
     dataElement,
@@ -15,85 +14,106 @@ export default function TableCell({
     cc,
     cp,
     co,
+		disabled = true
 }: {
-    dataElement: IDataElement;
+    dataElement: DataElementDataValue;
     coc: string;
     aoc: string;
-
     co: string;
     cc: string;
     cp: string;
     de: string;
     ou: string;
     pe: string;
+		disabled?: boolean;
 }) {
-    const { engine } = IndexRoute.useRouteContext();
-    const value = useLiveQuery(() => db.dataValues.get([de, aoc, coc, ou, pe]));
+    const engine = useDataEngine();
+    const saveDataValue = useSaveDataValue();
+    const [currentValue, setCurrentValue] = useState<
+        string | number | undefined
+    >(dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    useEffect(() => {
+        if (!isEditing && !isLoading) {
+            const newValue = dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`];
+            setCurrentValue(newValue);
+        }
+    }, [ou, pe, aoc, coc]); 
 
-    const onUpdate = async (newValue: string) => {
-        const prevValue = await db.dataValues.get([de, aoc, coc, ou, pe]);
+    const handleUpdate = async (value: string | number | null) => {
+        const stringValue = value?.toString() || "";
 
-        await db.dataValues.put(
-            {
-                ...(value ?? {}),
-                value: newValue,
-                dataElement: de,
-                categoryOptionCombo: co,
-                attributeOptionCombo: aoc,
-                orgUnit: ou,
-                period: pe,
-            },
-            [de, aoc, coc, ou, pe],
-        );
+        const originalValue =
+            dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`];
+        if (stringValue === originalValue) {
+            setIsEditing(false);
+            return;
+        }
 
-        const params = new URLSearchParams({
-            de,
-            co,
-            cc,
-            ou,
-            pe,
-            cp,
-            value: newValue,
-        }).toString();
+        const previousValue = currentValue;
+        setIsLoading(true);
 
         try {
-            await engine.mutate({
-                type: "create",
-                resource: `dataValues.json?${params}`,
-                data: {},
+            await saveDataValue.mutateAsync({
+                engine,
+                dataValue: {
+                    de,
+                    pe,
+                    ou,
+                    co,
+                    cc,
+                    cp,
+                    value: stringValue,
+                },
             });
-        } catch (err) {
-            if (err && err instanceof Error) {
-                if (err.message.includes("Unexpected end of JSON input")) {
-                } else if (prevValue) {
-                    await db.dataValues.put(prevValue);
-                }
-            }
+            message.success("Data saved successfully", 2);
+        } catch (error) {
+            message.error("Failed to save data. Please try again.", 4);
+            setCurrentValue(previousValue);
+            console.error("Save error:", error);
+        } finally {
+            setIsLoading(false);
+            setIsEditing(false);
         }
     };
-    if (
+
+    const inputComponent =
         dataElement.valueType.toLowerCase().includes("number") ||
         dataElement.valueType.toLowerCase().includes("integer") ||
-        dataElement.valueType.toLowerCase().includes("unit")
-    ) {
-        return (
+        dataElement.valueType.toLowerCase().includes("unit") ? (
             <InputNumber
                 style={{
                     width: "100%",
                 }}
-                value={value?.value}
-                onBlur={(e) => onUpdate(e.target.value)}
+                value={currentValue as number}
+                onChange={(value) => {
+                    setIsEditing(true);
+                    setCurrentValue(value || undefined);
+                }}
+                onBlur={(e) => handleUpdate(e.target.value)}
+                onFocus={() => setIsEditing(true)}
+                disabled={isLoading || disabled}
+            />
+        ) : (
+            <Input
+                style={{
+                    width: "100%",
+                }}
+                value={currentValue as string}
+                onChange={(e) => {
+                    setIsEditing(true);
+                    setCurrentValue(e.target.value);
+                }}
+                onBlur={(e) => handleUpdate(e.target.value)}
+                onFocus={() => setIsEditing(true)}
+                disabled={isLoading || disabled}
             />
         );
-    }
 
     return (
-        <Input
-            style={{
-                width: "100%",
-            }}
-            value={value?.value}
-            onBlur={(e) => onUpdate(e.target.value)}
-        />
+        <Spin spinning={isLoading} size="small">
+            {inputComponent}
+        </Spin>
     );
 }

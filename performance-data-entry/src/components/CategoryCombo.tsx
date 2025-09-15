@@ -1,8 +1,27 @@
 import { UploadOutlined } from "@ant-design/icons";
-import { Button, Flex, Input, Modal, Table, TableProps, Upload } from "antd";
-import React, { useState } from "react";
-import { ICategoryOption, IDataElement, IDataSet } from "../types";
+import {
+    Button,
+    Flex,
+    Input,
+    Modal,
+    Table,
+    TableProps,
+    Typography,
+    Upload,
+} from "antd";
+import React, { useMemo, useState } from "react";
+import {
+    DataElementDataValue,
+    ICategoryOption,
+    IDataElement,
+    IDataSet,
+    Search,
+} from "../types";
 import { generateGroupedColumns } from "./data-entry";
+import { useQuery } from "@tanstack/react-query";
+import { dataValuesQueryOptions } from "../query-options";
+import { useDataEngine } from "@dhis2/app-runtime";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function CategoryCombo({
     dataSet,
@@ -11,6 +30,8 @@ export default function CategoryCombo({
     pe,
     targetYear,
     baselineYear,
+    search,
+    engine,
 }: {
     dataSet: IDataSet;
     fields: IDataElement[];
@@ -18,18 +39,67 @@ export default function CategoryCombo({
     pe: string;
     targetYear: string;
     baselineYear: string;
+    search: Search;
+    engine: ReturnType<typeof useDataEngine>;
 }) {
+    const queryClient = useQueryClient();
+    const [currentData, setCurrentData] = useState<DataElementDataValue | null>(
+        null,
+    );
     const explanationColumns: TableProps<ICategoryOption>["columns"] = [
         { title: "Dimension", dataIndex: "name", key: "name" },
-        { title: "Value", dataIndex: "id", key: "id" },
+        {
+            title: "Value",
+            key: "id",
+            render: (_, record) => {
+                const coc1 = dataSet.categoryCombo.categoryOptionCombos.find(
+                    (c) =>
+                        c.categoryOptions.some(
+                            (opt) => opt.name === record.name,
+                        ),
+                );
+                let period = pe;
+                if (coc1?.name.includes("Target")) {
+                    period = targetYear;
+                } else if (coc1?.name.includes("Baseline")) {
+                    period = baselineYear;
+                }
+                return currentData?.dataValue[
+                    `${ou}_${pe}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
+                ];
+            },
+        },
         {
             title: "Attachment",
             key: "attachment",
-            render: () => (
-                <Upload>
-                    <Button icon={<UploadOutlined />}>Click to Upload</Button>
-                </Upload>
-            ),
+            render: (_, record) => {
+                const coc1 = dataSet.categoryCombo.categoryOptionCombos.find(
+                    (c) =>
+                        c.categoryOptions.some(
+                            (opt) => opt.name === record.name,
+                        ),
+                );
+                let period = pe;
+                if (coc1?.name.includes("Target")) {
+                    period = targetYear;
+                } else if (coc1?.name.includes("Baseline")) {
+                    period = baselineYear;
+                }
+                const val =
+                    currentData?.dataValue[
+                        `${ou}_${pe}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
+                    ];
+                return (
+                    <Upload>
+                        <Button
+                            icon={<UploadOutlined />}
+                            disabled={!val || !coc1?.name.includes("Actual")}
+                        >
+                            Click to Upload
+                        </Button>
+                    </Upload>
+                );
+            },
         },
         {
             title: "Explanation",
@@ -37,10 +107,19 @@ export default function CategoryCombo({
             render: () => <Input.TextArea rows={6} />,
         },
     ];
-
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDataSetModalOpen, setIsDataSetModalOpen] = useState(false);
 
-    const onClick = () => {
+    const [modalValues, setModalValues] = useState<{
+        title: string;
+        body: string;
+    }>({
+        title: "Submit data and lock",
+        body: "Are you finished with data entry and ready to submit?",
+    });
+
+    const onClick = (data: DataElementDataValue) => {
+        setCurrentData(() => data);
         setIsModalOpen(true);
     };
 
@@ -51,28 +130,136 @@ export default function CategoryCombo({
     const handleCancel = () => {
         setIsModalOpen(false);
     };
-    const columns = generateGroupedColumns({
-        dataSet,
-        dataElements: fields,
-        pe,
-        ou,
-        onClick,
-        targetYear,
-        baselineYear,
+
+    const openDataSetCompleteModal = () => {
+        if (data?.completeDataSetRegistrations ?? [].length > 0) {
+            setModalValues({
+                title: "Recall data and edit",
+                body: "Are you sure to recall submitted data and do editing?",
+            });
+        } else {
+            setModalValues({
+                title: "Submit data and lock",
+                body: "Are you finished with data entry and ready to submit?",
+            });
+        }
+        setIsDataSetModalOpen(true);
+    };
+
+    const success = () => {
+        Modal.success({
+            title: "Success",
+            content: "Data is now submitted",
+        });
+    };
+
+    const errorModal = () => {
+        Modal.error({
+            title: "This is an error message",
+            content: "Data submission failed",
+        });
+    };
+
+    const handleDataSetOk = async () => {
+        setIsDataSetModalOpen(false);
+        try {
+            if (data?.completeDataSetRegistrations ?? [].length > 0) {
+                await engine.mutate({
+                    resource: "completeDataSetRegistrations.json",
+                    type: "delete",
+                    id: "",
+                    params: {
+                        ds: dataSet.id,
+                        pe,
+                        ou,
+                        cc: "NWhCUsy6l47",
+                        cp: "HKtncMjp06U",
+                        multiOu: false,
+                    },
+                });
+            } else {
+                await engine.mutate({
+                    resource: "completeDataSetRegistrations.json",
+                    type: "create",
+                    data: {
+                        completeDataSetRegistrations: [
+                            {
+                                dataSet: dataSet.id,
+                                organisationUnit: ou,
+                                period: pe,
+                                attributeOptionCombo: "VHmIifPr01a",
+                            },
+                        ],
+                    },
+                });
+            }
+            success();
+        } catch (error) {
+            console.log(error);
+            errorModal();
+        } finally {
+            queryClient.invalidateQueries({
+                queryKey: [
+                    "data-values",
+                    search.orgUnit,
+                    search.dataSet,
+                    search.pe,
+                    search.baseline,
+                    search.targetYear,
+                ],
+            });
+        }
+    };
+
+    const handleDataSetCancel = () => {
+        setIsDataSetModalOpen(false);
+    };
+
+    const { data, isError, isLoading } = useQuery({
+        ...dataValuesQueryOptions(engine, search, fields),
     });
+
+    const columns = useMemo(
+        () =>
+            generateGroupedColumns({
+                dataSet,
+                dataElements: fields,
+                pe,
+                ou,
+                onClick,
+                targetYear,
+                baselineYear,
+            }),
+        [dataSet, fields, pe, ou, targetYear, baselineYear],
+    );
+
+    if (isLoading) return <div>Loading...</div>;
+    if (isError) return <div>Error loading data values</div>;
     return (
         <Flex vertical gap={8}>
             <Table
                 columns={columns}
-                dataSource={fields}
+                dataSource={data?.dataValues || []}
                 pagination={false}
                 bordered
                 size="small"
                 rowKey="id"
             />
             <Flex>
-                <Button type="primary" onClick={() => {}}>
-                    Submit data and lock
+                <Button
+                    onClick={openDataSetCompleteModal}
+                    style={{
+                        backgroundColor:
+                            (data?.completeDataSetRegistrations ?? []).length >
+                            0
+                                ? "#D9534F"
+                                : "#5CB85C",
+                        color: "white",
+                    }}
+                >
+                    {data?.completeDataSetRegistrations ?? [].length > 0
+                        ? "Recall data and edit"
+                        : "Submit data and lock"}
                 </Button>
             </Flex>
 
@@ -94,6 +281,15 @@ export default function CategoryCombo({
                     size="small"
                     rowKey="id"
                 />
+            </Modal>
+            <Modal
+                title={modalValues.title}
+                closable={{ "aria-label": "Custom Close Button" }}
+                open={isDataSetModalOpen}
+                onOk={handleDataSetOk}
+                onCancel={handleDataSetCancel}
+            >
+                <Typography.Text>{modalValues.body}</Typography.Text>
             </Modal>
         </Flex>
     );

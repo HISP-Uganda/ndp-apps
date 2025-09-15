@@ -5,7 +5,7 @@
   "private": true,
   "workspaces": [
     "dhis-web-results-framework",
-    "performance-data-entry", 
+    "performance-data-entry",
     "target-baseline-data-entry"
   ],
   "scripts": {
@@ -14,7 +14,7 @@
     "start:target": "yarn workspace target-baseline-data-entry start",
     "build": "yarn workspaces run build",
     "build:results": "yarn workspace dhis-web-results-framework build",
-    "build:performance": "yarn workspace performance-data-entry build", 
+    "build:performance": "yarn workspace performance-data-entry build",
     "build:target": "yarn workspace target-baseline-data-entry build",
     "test": "yarn workspaces run test",
     "test:results": "yarn workspace dhis-web-results-framework test",
@@ -27,6 +27,8 @@
     "postinstall": "echo 'Workspaces installed successfully'"
   },
   "devDependencies": {
+    "@tanstack/query-db-collection": "^0.2.16",
+    "@tanstack/react-db": "^0.1.17",
     "@types/node": "^20.0.0"
   },
   "engines": {
