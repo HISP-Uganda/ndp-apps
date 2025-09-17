@@ -1,5 +1,5 @@
 import { PaperClipOutlined } from "@ant-design/icons";
-import { Button, Input, Space } from "antd";
+import { Button, Input, Space, Typography, Flex } from "antd";
 import { TableProps } from "antd/es/table";
 import React from "react";
 import {
@@ -9,6 +9,7 @@ import {
     ICategoryOptionCombo,
     IDataElement,
     IDataSet,
+    PeriodType,
 } from "../types";
 import TableCell from "./TableCell";
 
@@ -20,6 +21,8 @@ export function generateGroupedColumns({
     onClick,
     baselineYear,
     targetYear,
+    disabled,
+    periodType,
 }: {
     dataSet: IDataSet;
     dataElements: IDataElement[];
@@ -28,10 +31,16 @@ export function generateGroupedColumns({
     onClick: (row: DataElementDataValue) => void;
     targetYear: string;
     baselineYear: string;
+    disabled: boolean;
+    periodType?: PeriodType;
 }): TableProps<DataElementDataValue>["columns"] {
     const columns: TableProps<DataElementDataValue>["columns"] = [];
     columns?.push({
-        title: "Data Element",
+        title: (
+            <Typography.Text style={{ color: "#05416eff" }}>
+                Indicator
+            </Typography.Text>
+        ),
         dataIndex: "name",
         key: "dataElement",
         fixed: "left",
@@ -61,14 +70,40 @@ export function generateGroupedColumns({
                                     ),
                             );
                         let period = pe;
+                        let periodText = "";
                         if (dataSetCOC.name.includes("Target")) {
                             period = targetYear;
+                            periodText = `${Number(
+                                targetYear.slice(0, 4),
+                            )}/${String(
+                                Number(targetYear.slice(0, 4)) + 1,
+                            ).slice(2)}`;
                         } else if (dataSetCOC.name.includes("Baseline")) {
                             period = baselineYear;
+                            periodText = `${Number(
+                                baselineYear.slice(0, 4),
+                            )}/${String(
+                                Number(baselineYear.slice(0, 4)) + 1,
+                            ).slice(2)}`;
                         }
                         columns?.push({
-                            title: `${dataSetCOC.name}`,
+                            title: (
+                                <Flex vertical gap={2}>
+                                    <Typography.Text
+                                        style={{ color: "#05416eff" }}
+                                    >
+                                        {`${dataSetCOC.name}`}
+                                    </Typography.Text>
+                                    <Typography.Text
+                                        style={{ color: "#05416eff" }}
+                                    >
+                                        {periodText}
+                                    </Typography.Text>
+                                </Flex>
+                            ),
                             key: `${coc1?.id}_${coc.id}`,
+                            align: "center",
+                            width: 200,
                             render: (_, record) => (
                                 <TableCell
                                     dataElement={record}
@@ -80,7 +115,7 @@ export function generateGroupedColumns({
                                     ou={ou}
                                     pe={period}
                                     de={record.id}
-                                    disabled={index < 2}
+                                    disabled={index < 2 || disabled}
                                 />
                             ),
                         });
@@ -90,10 +125,18 @@ export function generateGroupedColumns({
     });
 
     columns?.push({
-        title: "Explanation/Attachment",
+        title: (
+            <Typography.Text style={{ color: "#05416eff" }}>
+                Explanation/Attachment
+            </Typography.Text>
+        ),
         key: "explanation",
+        width: 200,
         render: (_, row) => (
-            <Space.Compact style={{ width: "100%" }} onClick={() => onClick(row)}>
+            <Space.Compact
+                style={{ width: "100%" }}
+                onClick={() => onClick(row)}
+            >
                 <Input />
                 <Button
                     type="primary"

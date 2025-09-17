@@ -23,7 +23,7 @@ const MyApp: FC = () => {
                 token: {
                     // borderRadius: 0,
                     colorPrimary: "#2B6998",
-                    colorTextDisabled: "rgba(0,0,0,0.60)",
+                    colorTextDisabled: "rgba(0,0,0,0.75)",
                 },
                 components: {
                     Table: {

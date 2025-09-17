@@ -18,8 +18,7 @@ const MyApp: FC = () => {
         <ConfigProvider
             theme={{
                 token: {
-                    borderRadius: 0,
-                    // lineWidth: 2,
+                    fontSize: 14,
                 },
                 components: {
                     Table: {
@@ -34,18 +33,6 @@ const MyApp: FC = () => {
                     },
                     Tabs: {
                         cardBg: "#B4CDCD",
-                        // horizontalItemMargin: "auto",
-                        // inkBarColor: "#ff4d4f",
-                        // itemActiveColor: "#ff4d4f",
-                        // itemHoverColor: "#ff7875",
-                        // itemSelectedColor: "#ff4d4f",
-                    },
-                    Select: {
-                        optionFontSize: 17,
-                        // optionSelectedColor: "#FF0000",
-                        // colorText: "#FF0000",
-                        // optionSelectedBg: "#3875D7",
-                        // colorText: "#ffffff",
                     },
                 },
             }}

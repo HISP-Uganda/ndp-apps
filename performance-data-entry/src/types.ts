@@ -11,6 +11,7 @@ export const search = z.object({
     targetYear: z.string().optional(),
     minPeriod: z.string().optional(),
     maxPeriod: z.string().optional(),
+    periodType: z.enum(periodTypes).optional(),
 });
 
 export type Search = z.infer<typeof search>;
@@ -100,7 +101,7 @@ export interface DataValue {
     storedBy?: string;
     created?: string;
     lastUpdated?: string;
-    comment?: any[];
+    comment?: any;
     followup?: boolean;
 }
 
@@ -193,24 +194,22 @@ interface IData {
 
 export interface DataElementDataValue extends IDataElement {
     dataValue: Record<string, string>;
-		pe:string;
-		ou:string
-		targetYear:string;
-		baselineYear:string;
-};
-
-
+    pe: string;
+    ou: string;
+    targetYear: string;
+    baselineYear: string;
+}
 
 export interface CompleteDataSetRegistrations {
     completeDataSetRegistrations: CompleteDataSetRegistration[];
 }
 
 export interface CompleteDataSetRegistration {
-  period: string;
-  dataSet: string;
-  organisationUnit: string;
-  attributeOptionCombo: string;
-  date: string;
-  storedBy: string;
-  completed: boolean;
+    period: string;
+    dataSet: string;
+    organisationUnit: string;
+    attributeOptionCombo: string;
+    date: string;
+    storedBy: string;
+    completed: boolean;
 }

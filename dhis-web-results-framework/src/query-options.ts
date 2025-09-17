@@ -47,6 +47,9 @@ export const initialQueryOptions = (
                 programs: {
                     resource: `optionSets/${programOptionSet}/options`,
                 },
+                programGoals: {
+                    resource: `optionSets/D5J653eYk73/options`,
+                },
             });
 
             const {
@@ -54,6 +57,7 @@ export const initialQueryOptions = (
                 options: { options },
                 ndpVersions: { options: ndpVersions },
                 programs: { options: programs },
+                programGoals: { options: programGoals },
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
@@ -64,6 +68,9 @@ export const initialQueryOptions = (
                     options: Option[];
                 };
                 programs: {
+                    options: Option[];
+                };
+                programGoals: {
                     options: Option[];
                 };
             };
@@ -109,6 +116,7 @@ export const initialQueryOptions = (
                 ndpVersions,
                 ou: dataViewOrganisationUnits[0].id,
                 configurations,
+                programGoals,
             };
         },
     });

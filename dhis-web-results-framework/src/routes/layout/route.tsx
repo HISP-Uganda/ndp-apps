@@ -111,6 +111,7 @@ function Component() {
                                     style={{
                                         color: "#2B6998",
                                         fontSize: "18px",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Vision 2040
@@ -146,6 +147,7 @@ function Component() {
                                     style={{
                                         color: "#2B6998",
                                         fontSize: "18px",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Overall Goal
@@ -181,6 +183,7 @@ function Component() {
                                     style={{
                                         color: "#2B6998",
                                         fontSize: "18px",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Strategic Objective
@@ -191,26 +194,12 @@ function Component() {
                     ],
                 },
                 {
-                    title: "Programme Level Results",
+                    title: "Program Level Results",
                     selectable: false,
                     checkable: false,
                     style: { fontSize: "18px" },
                     key: "programme-level-results",
                     children: [
-                        {
-                            title: "Programme Goal",
-                            selectable: false,
-                            checkable: false,
-                            style: { fontSize: "18px" },
-                            key: "programme-goal",
-                        },
-                        {
-                            title: "Programme Objective",
-                            selectable: false,
-                            checkable: false,
-                            style: { fontSize: "18px" },
-                            key: "programme-objective",
-                        },
                         {
                             title: (
                                 <Link
@@ -239,23 +228,14 @@ function Component() {
                                     style={{
                                         color: "#2B6998",
                                         fontSize: "18px",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
-                                    Programme Outcomes
+                                    Program Outcomes
                                 </Link>
                             ),
                             key: "/ndp/outcome-levels",
                         },
-                    ],
-                },
-                {
-                    title: voteLevelLabel,
-                    key: "0-1",
-                    selectable: false,
-                    checkable: false,
-                    style: { fontSize: "18px" },
-
-                    children: [
                         {
                             title: (
                                 <Link
@@ -279,6 +259,7 @@ function Component() {
                                     style={{
                                         color: "#2B6998",
                                         fontSize: "18px",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Intermediate Outcomes
@@ -286,6 +267,16 @@ function Component() {
                             ),
                             key: "/ndp/sub-program-outcomes",
                         },
+                    ],
+                },
+                {
+                    title: voteLevelLabel,
+                    key: "0-1",
+                    selectable: false,
+                    checkable: false,
+                    style: { fontSize: "18px" },
+
+                    children: [
                         {
                             title: (
                                 <Link
@@ -376,13 +367,13 @@ function Component() {
                             style={{
                                 color: "#2B6998",
                                 fontSize: "18px",
+                                whiteSpace: "nowrap",
                             }}
                         >
                             Project Performance
                         </Link>
                     ),
                     key: "/ndp/project-performances",
-                    // to: "/ndp/project-performances",
                 },
                 {
                     title: (
@@ -540,8 +531,8 @@ function Component() {
         >
             <Splitter.Panel
                 defaultSize="20%"
-                min="10%"
-                max="30%"
+                max="20%"
+                min="20%"
                 style={{ padding: "10px", backgroundColor: "#F3F3F3" }}
             >
                 <Flex vertical gap={20}>
@@ -591,15 +582,17 @@ function Component() {
                         </Link>
                     </Flex>
 
-                    <Tree
-                        showLine
-                        defaultExpandAll
-                        treeData={treeData}
-                        multiple={false}
-                        // onSelect={onSelect}
-                        selectedKeys={[location.pathname]}
-                        style={{ padding: 20 }}
-                    />
+                    <Flex>
+                        <Tree
+                            showLine
+                            defaultExpandAll
+                            treeData={treeData}
+                            multiple={false}
+                            selectedKeys={[location.pathname]}
+                            style={{ padding: 20, width: "100%" }}
+                            scrollWidth={8000}
+                        />
+                    </Flex>
                 </Flex>
             </Splitter.Panel>
             <Splitter.Panel>

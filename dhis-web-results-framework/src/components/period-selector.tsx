@@ -69,8 +69,6 @@ export default function PeriodSelector({
         "YYYY-MM",
     ).year();
 
-    console.log({ selectedPeriods });
-
     const initialPeriods = useMemo(() => {
         if (selectedPeriods === undefined || selectedPeriods.length === 0)
             return [];

@@ -40,17 +40,7 @@ function Component() {
         ),
     );
     const navigate = SubProgramOutputRoute.useNavigate();
-    // useEffect(() => {
-    //     if (program === undefined) {
-    //         navigate({
-    //             search: (prev) => ({
-    //                 ...prev,
-    //                 program: data.options?.[0]?.code ?? "",
-    //                 quarters: v === "NDPIII" ? false : true,
-    //             }),
-    //         });
-    //     }
-    // }, [v]);
+    
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
@@ -80,7 +70,17 @@ function Component() {
                             value: code,
                             label: name,
                         })),
-                        label: "Programme",
+                        label: "NDP Programme",
+                    },
+                    {
+                        key: "degs",
+                        options: data.dataElementGroupSets.map(
+                            ({ name, id }) => ({
+                                value: id,
+                                label: name,
+                            }),
+                        ),
+                        label: "Program Intervention",
                     },
                 ]}
             />

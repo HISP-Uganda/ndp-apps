@@ -2,11 +2,12 @@ import { createRoute, Outlet } from "@tanstack/react-router";
 import React from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Flex } from "antd";
+import { Flex, Typography } from "antd";
 import Filter from "../../../../components/Filter";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
 import { NDPRoute } from "../route";
+import { RootRoute } from "../../../__root";
 
 export const SubProgramOutcomeRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -42,6 +43,11 @@ function Component() {
         ),
     );
     const navigate = SubProgramOutcomeRoute.useNavigate();
+    const { programGoals } = RootRoute.useLoaderData();
+
+    const programGoal = programGoals.find(
+        (pg) => program !== undefined && pg.code.includes(program),
+    );
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
@@ -71,10 +77,39 @@ function Component() {
                             value: code,
                             label: name,
                         })),
-                        label: "Programme",
+                        label: "NDP Programme",
+                    },
+                    {
+                        key: "degs",
+                        options: data.dataElementGroupSets.map(
+                            ({ name, id }) => ({
+                                value: id,
+                                label: name,
+                            }),
+                        ),
+                        label: "Program Objective",
                     },
                 ]}
             />
+            {program && (
+                <Flex gap={10} align="center">
+                    {programGoal && (
+                        <Typography.Title
+                            level={5}
+                            type="warning"
+                            style={{ margin: 0 }}
+                        >
+                            Program Goal:
+                        </Typography.Title>
+                    )}
+                    <Typography.Title
+                        level={5}
+                        style={{ margin: 0, flex: 1, color: "gray" }}
+                    >
+                        {programGoal?.name ?? "Program goal not found"}
+                    </Typography.Title>
+                </Flex>
+            )}
             <Outlet />
         </Flex>
     );

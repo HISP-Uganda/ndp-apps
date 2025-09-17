@@ -75,7 +75,7 @@ function Component() {
                     {
                         key: "degs",
                         options: convertToDataElementGroupSetsOptions(data),
-                        label: "Goal",
+                        label: "Overall Goal",
                         defaultValue: "All",
                     },
                     {

@@ -709,13 +709,7 @@ export function Results({
                     }}
                 />
             )}
-            style={{
-                "--tab-bg": "#f5f5f5",
-                "--tab-active-bg": "#ffffff",
-                "--tab-border": "#e8e8e8",
-                "--tab-shadow": "0 2px 8px rgba(0,0,0,0.1)",
-            } as React.CSSProperties}
-            className="file-icon-tabs"
+            tabBarStyle={{ backgroundColor: "yellow", color: "black" }}
         />
     );
 }

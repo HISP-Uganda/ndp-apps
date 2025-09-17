@@ -4,7 +4,6 @@ import { Collapse, Flex, Form, Select } from "antd";
 import React from "react";
 import { OrgUnitSelect } from "./organisation";
 import PeriodSelector from "./period-selector";
-import { orderBy } from "lodash";
 
 export default function Filter({
     options,
@@ -94,10 +93,11 @@ export default function Filter({
                             <Form.Item
                                 label={option.label}
                                 layout="horizontal"
-                                labelCol={{ span: 4 }}
-                                wrapperCol={{ span: 20 }}
+                                labelCol={{ span: 6 }}
+                                wrapperCol={{ span: 18 }}
                                 labelAlign="left"
                                 key={option.key}
+                                style={{ margin: 0, padding: 5 }}
                             >
                                 <Select
                                     options={option.options}

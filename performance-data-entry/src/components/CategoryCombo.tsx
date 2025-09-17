@@ -58,14 +58,15 @@ export default function CategoryCombo({
                             (opt) => opt.name === record.name,
                         ),
                 );
+
                 let period = pe;
-                if (coc1?.name.includes("Target")) {
+                if (coc1?.name === "Target") {
                     period = targetYear;
-                } else if (coc1?.name.includes("Baseline")) {
+                } else if (coc1?.name === "Baseline") {
                     period = baselineYear;
                 }
                 return currentData?.dataValue[
-                    `${ou}_${pe}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
+                    `${ou}_${period}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
                 ];
             },
         },
@@ -195,7 +196,6 @@ export default function CategoryCombo({
             }
             success();
         } catch (error) {
-            console.log(error);
             errorModal();
         } finally {
             queryClient.invalidateQueries({
@@ -229,6 +229,8 @@ export default function CategoryCombo({
                 onClick,
                 targetYear,
                 baselineYear,
+                disabled: !!(data?.completeDataSetRegistrations ?? []).length,
+                periodType: dataSet.periodType,
             }),
         [dataSet, fields, pe, ou, targetYear, baselineYear],
     );
@@ -241,6 +243,7 @@ export default function CategoryCombo({
                 columns={columns}
                 dataSource={data?.dataValues || []}
                 pagination={false}
+                scroll={{ y: 55 * 11.6 }}
                 bordered
                 size="small"
                 rowKey="id"

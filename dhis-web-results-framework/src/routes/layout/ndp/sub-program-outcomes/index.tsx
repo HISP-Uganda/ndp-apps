@@ -8,7 +8,6 @@ import {
 import { SubProgramOutcomeRoute } from "./route";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
-import TruncatedText from "../../../../components/TrancatedText";
 
 export const SubProgramOutcomeIndexRoute = createRoute({
     path: "/",
@@ -73,7 +72,7 @@ function Component() {
                     },
                 },
                 {
-                    title: "Outcomes",
+                    title: "Intermediate Outcomes",
                     dataIndex: "dataElementGroup",
                 },
             ],

@@ -1,11 +1,11 @@
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import {
-    createFixedPeriodFromPeriodId,
-    generateFixedPeriods,
+	createFixedPeriodFromPeriodId,
+	generateFixedPeriods,
 } from "@dhis2/multi-calendar-dates";
 
 import { Button, Flex, Select } from "antd";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { PeriodType } from "../types";
 
 export default function PeriodPicker({
@@ -25,15 +25,15 @@ export default function PeriodPicker({
     defaultPeriods: string[];
     dataSet: string | undefined;
 }) {
-    const minYear = useMemo(() => parseInt(minPeriod ?? "", 10), [minPeriod]);
-    const maxYear = useMemo(() => parseInt(maxPeriod ?? "", 10), [maxPeriod]);
+    const minYear = useMemo(
+        () => Number(minPeriod?.replace("July", "") ?? 2025),
+        [minPeriod],
+    );
+    const maxYear = useMemo(
+        () => Number(maxPeriod?.replace("July", "") ?? 2029),
+        [maxPeriod],
+    );
     const [year, setYear] = useState<number>(minYear);
-    const [current, setCurrent] = useState<string | undefined>(period);
-
-    useEffect(() => {
-        setCurrent(undefined);
-        onChange(undefined);
-    }, [dataSet]);
 
     const availableFixedPeriods = useMemo(() => {
         if (
@@ -41,7 +41,6 @@ export default function PeriodPicker({
             minPeriod === undefined ||
             maxPeriod === undefined
         ) {
-            setCurrent(undefined);
             return [];
         }
         const minDate = createFixedPeriodFromPeriodId({
@@ -84,16 +83,15 @@ export default function PeriodPicker({
             return [];
         });
     }, [
-        year,
         periodType,
         maxYear,
         minYear,
         minPeriod,
         maxPeriod,
-        current,
         defaultPeriods,
         dataSet,
         onChange,
+				year,
     ]);
 
     return (
@@ -103,7 +101,6 @@ export default function PeriodPicker({
                 allowClear
                 onChange={(val) => {
                     onChange(val);
-                    setCurrent(val);
                 }}
                 showSearch
                 filterOption={(input, option) =>
@@ -112,7 +109,7 @@ export default function PeriodPicker({
                         .includes(input.toLowerCase())
                 }
                 style={{ flex: 1 }}
-                value={current}
+                value={period}
                 placeholder="Select period"
             />
             <Flex>

@@ -36,7 +36,6 @@ function Component() {
         if (degs === undefined) {
             navigate({
                 search: (prev) => {
-                    console.log(prev);
                     return {
                         ...prev,
                         degs: data?.[0]?.id ?? "",

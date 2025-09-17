@@ -1,6 +1,17 @@
 import { createRoute, useLoaderData } from "@tanstack/react-router";
 import type { TreeDataNode } from "antd";
-import { AutoComplete, Flex, Form, Input, Select, Splitter, Tree } from "antd";
+import {
+    AutoComplete,
+    Button,
+    ConfigProvider,
+    Flex,
+    Form,
+    Input,
+    Select,
+    Splitter,
+    Tree,
+    Typography,
+} from "antd";
 import React, { useEffect, useMemo } from "react";
 import DataEntryTable from "../components/DataEntryTable";
 import PeriodPicker from "../components/period-picker";
@@ -31,10 +42,9 @@ function IndexRouteComponent() {
         from: "__root__",
     });
 
-    const { orgUnit, dataSet, pe, expanded, minPeriod, maxPeriod } =
+    const { orgUnit, dataSet, pe, expanded, minPeriod, maxPeriod, periodType } =
         IndexRoute.useSearch();
     const dataSets = orgUnit ? orgUnitDataSets[orgUnit] || [] : [];
-    const currentDataSet = dataSets.find((ds) => ds.id === dataSet);
     const navigate = RootRoute.useNavigate();
 
     const searchOptions = useMemo(() => {
@@ -127,6 +137,7 @@ function IndexRouteComponent() {
                 pe: undefined,
                 minPeriod: conf?.financialYears.at(0) ?? "2025July",
                 maxPeriod: conf?.financialYears.at(-1) ?? "2029July",
+                periodType: getPeriodType(dataSet),
             }),
         });
     };
@@ -157,11 +168,11 @@ function IndexRouteComponent() {
                 height: "calc(100vh - 48px)",
             }}
         >
-            <Splitter.Panel defaultSize="20%" min="10%" max="30%">
+            <Splitter.Panel defaultSize="20%" min="20%" max="20%">
                 <Flex vertical gap={12} style={{ padding: 10 }}>
                     <AutoComplete
                         options={searchOptions}
-                        placeholder="Search for organization unit..."
+                        placeholder="Search for NDP votes..."
                         onSelect={onSelectOrgUnit}
                         allowClear
                         showSearch
@@ -171,27 +182,48 @@ function IndexRouteComponent() {
                                 .toLowerCase()
                                 .includes(inputValue.toLowerCase()) ?? false
                         }
-                        style={{ width: "100%" }}
+                        style={{ width: "100%", flex: 1 }}
                     />
 
-                    <Tree
-                        treeData={organisationTree}
-                        showLine
-                        onSelect={handleSelect}
-                        selectedKeys={orgUnit ? [orgUnit] : []}
-                        expandedKeys={expanded ? expanded.split("-") : []}
-                        onExpand={(keys) => {
-                            navigate({
-                                search: (prev) => ({
-                                    ...prev,
-                                    expanded: keys.join("-"),
-                                }),
-                            });
+                    <Flex
+                        style={{
+                            overflow: "auto",
+                            height: "calc(100vh - 48px - 48px - 20px)",
                         }}
-                    />
+                    >
+                        <Tree
+                            treeData={organisationTree}
+                            showLine
+                            onSelect={handleSelect}
+                            selectedKeys={orgUnit ? [orgUnit] : []}
+                            expandedKeys={expanded ? expanded.split("-") : []}
+                            onExpand={(keys) => {
+                                navigate({
+                                    search: (prev) => ({
+                                        ...prev,
+                                        expanded: keys.join("-"),
+                                    }),
+                                });
+                            }}
+                            style={{ whiteSpace: "nowrap", fontSize: "14px" }}
+                        />
+                    </Flex>
                 </Flex>
             </Splitter.Panel>
-            <Splitter.Panel style={{ padding: 10 }}>
+            <Splitter.Panel
+                style={{
+                    padding: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                }}
+            >
+                <Typography.Title
+                    level={4}
+                    style={{ margin: 0, color: "#585D61" }}
+                >
+                    Performance Results Entry
+                </Typography.Title>
                 <Flex gap={10}>
                     <Flex
                         vertical
@@ -205,15 +237,26 @@ function IndexRouteComponent() {
                         }}
                     >
                         <Form.Item
-                            label="Organisation Unit"
+                            label="NDP Vote"
                             layout="horizontal"
                             labelCol={{ span: 6 }}
                             wrapperCol={{ span: 18 }}
                             labelAlign="left"
-                            required
                             style={{ margin: 0, padding: 5 }}
                         >
-                            <Input value={dataSets[0]?.orgUnit} disabled />
+                            <ConfigProvider
+                                theme={{
+                                    token: {
+                                        colorTextDisabled: "rgba(0,0,0,0.75)",
+                                    },
+                                }}
+                            >
+                                <Input
+                                    value={dataSets[0]?.orgUnit}
+                                    disabled
+                                    placeholder="[Select vote from the tree on the left Panel]"
+                                />
+                            </ConfigProvider>
                         </Form.Item>
 
                         <Form.Item
@@ -222,7 +265,6 @@ function IndexRouteComponent() {
                             labelCol={{ span: 6 }}
                             wrapperCol={{ span: 18 }}
                             labelAlign="left"
-                            required
                             style={{ margin: 0, padding: 5 }}
                         >
                             <Select
@@ -231,6 +273,7 @@ function IndexRouteComponent() {
                                 value={dataSet}
                                 allowClear
                                 showSearch
+                                placeholder="Select data set"
                                 filterOption={(input, option) =>
                                     String(option?.name ?? "")
                                         .toLowerCase()
@@ -246,11 +289,10 @@ function IndexRouteComponent() {
                             labelCol={{ span: 6 }}
                             wrapperCol={{ span: 18 }}
                             labelAlign="left"
-                            required
                             style={{ margin: 0, padding: 5 }}
                         >
                             <PeriodPicker
-                                periodType={getPeriodType(currentDataSet)}
+                                periodType={periodType}
                                 onChange={onPeriodChange}
                                 minPeriod={minPeriod}
                                 period={pe}
@@ -260,7 +302,45 @@ function IndexRouteComponent() {
                             />
                         </Form.Item>
                     </Flex>
+
+                    <Flex
+                        style={{
+                            width: "50%",
+                            maxWidth: "50%",
+                            backgroundColor: "#BBD1EE",
+                            padding: 10,
+                            border: "1px solid #729fcf",
+                            borderRadius: "3px",
+                        }}
+                        vertical
+                        gap={10}
+                        align="flex-end"
+                    >
+                        <div>
+                            <Button
+                                style={{
+                                    backgroundColor: "#7DC18F",
+                                    color: "white",
+                                    width: "160px",
+                                }}
+                            >
+                                NDP Programme List
+                            </Button>
+                        </div>
+                        <div>
+                            <Button
+                                style={{
+                                    backgroundColor: "#4096FF",
+                                    color: "white",
+                                    width: "160px",
+                                }}
+                            >
+                                Print Results Form
+                            </Button>
+                        </div>
+                    </Flex>
                 </Flex>
+
                 <DataEntryTable />
             </Splitter.Panel>
         </Splitter>

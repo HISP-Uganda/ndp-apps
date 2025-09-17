@@ -320,6 +320,7 @@ export const extractDataElementGroups = (
 export const extractDataElementGroupsByProgram = (
     dataElementGroupSets: DataElementGroupSet[],
     program?: string,
+    groupSet?: string,
 ): { groupSets: string[]; dataElementGroups: string[] } => {
     if (program === undefined || dataElementGroupSets.length === 0) {
         return {
@@ -327,20 +328,31 @@ export const extractDataElementGroupsByProgram = (
             dataElementGroups: [],
         };
     }
-    const groupSets = dataElementGroupSets.flatMap((d) => {
-        const hasProgram =
-            d.attributeValues?.some((a) => a.value === program) ?? false;
 
-        if (hasProgram) {
-            return d.id;
-        }
-        return [];
-    });
+    let groupSets: string[] = [];
+
+    if (groupSet) {
+        groupSets = [groupSet];
+    } else {
+        groupSets = dataElementGroupSets.flatMap((d) => {
+            const hasProgram =
+                d.attributeValues?.some((a) => a.value === program) ?? false;
+
+            if (hasProgram) {
+                return d.id;
+            }
+            return [];
+        });
+    }
+
     const dataElementGroups = dataElementGroupSets.flatMap((d) => {
+        if (groupSet && groupSet === d.id) {
+            return d.dataElementGroups.map((g) => g.id);
+        }
         const hasProgram =
             d.attributeValues?.some((a) => a.value === program) ?? false;
 
-        if (hasProgram) {
+        if (groupSet === undefined && hasProgram) {
             return d.dataElementGroups.map((g) => g.id);
         }
 
@@ -373,7 +385,12 @@ export const resolveDataElementGroups = (
     }
 
     if (program !== undefined) {
-        return extractDataElementGroupsByProgram(dataElementGroupSets, program);
+        const values = extractDataElementGroupsByProgram(
+            dataElementGroupSets,
+            program,
+            degs,
+        );
+        return values;
     }
     const dataElementGroups = extractDataElementGroups(
         dataElementGroupSets,
