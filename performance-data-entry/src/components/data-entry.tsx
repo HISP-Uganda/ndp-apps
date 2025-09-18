@@ -71,14 +71,14 @@ export function generateGroupedColumns({
                             );
                         let period = pe;
                         let periodText = "";
-                        if (dataSetCOC.name.includes("Target")) {
+                        if (dataSetCOC.name.includes("Target") && targetYear) {
                             period = targetYear;
                             periodText = `${Number(
                                 targetYear.slice(0, 4),
                             )}/${String(
                                 Number(targetYear.slice(0, 4)) + 1,
                             ).slice(2)}`;
-                        } else if (dataSetCOC.name.includes("Baseline")) {
+                        } else if (dataSetCOC.name.includes("Baseline") && baselineYear) {
                             period = baselineYear;
                             periodText = `${Number(
                                 baselineYear.slice(0, 4),

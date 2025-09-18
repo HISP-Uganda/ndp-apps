@@ -16,7 +16,11 @@ export default function DataEntryTable() {
     if (isLoading) return <div>Loading...</div>;
     if (isError) return <div>Error: {(error as Error).message}</div>;
 
-		if (data) {
+    if (
+        data &&
+        data.groupedDataSetElements &&
+        Object.keys(data.groupedDataSetElements).length > 0
+    ) {
         return (
             <Flex
                 style={{ paddingTop: 16, overflow: "auto" }}

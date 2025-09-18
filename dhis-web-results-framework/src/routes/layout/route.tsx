@@ -72,7 +72,6 @@ function Component() {
     const treeData: TreeDataNode[] = [
         {
             title: "NDP RESULTS",
-            style: { fontSize: "18px", fontWeight: "600" },
             key: "0",
             selectable: false,
             checkable: false,
@@ -81,7 +80,7 @@ function Component() {
                     title: "High Level Results",
                     selectable: false,
                     checkable: false,
-                    style: { fontSize: "18px" },
+
                     key: "0-0",
                     children: [
                         {
@@ -110,7 +109,6 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
                                         whiteSpace: "nowrap",
                                     }}
                                 >
@@ -146,7 +144,6 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
                                         whiteSpace: "nowrap",
                                     }}
                                 >
@@ -182,7 +179,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
+
                                         whiteSpace: "nowrap",
                                     }}
                                 >
@@ -197,7 +194,7 @@ function Component() {
                     title: "Program Level Results",
                     selectable: false,
                     checkable: false,
-                    style: { fontSize: "18px" },
+
                     key: "programme-level-results",
                     children: [
                         {
@@ -227,7 +224,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
+
                                         whiteSpace: "nowrap",
                                     }}
                                 >
@@ -258,7 +255,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
+
                                         whiteSpace: "nowrap",
                                     }}
                                 >
@@ -274,7 +271,6 @@ function Component() {
                     key: "0-1",
                     selectable: false,
                     checkable: false,
-                    style: { fontSize: "18px" },
 
                     children: [
                         {
@@ -299,7 +295,6 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
                                     }}
                                 >
                                     Output Level
@@ -329,7 +324,6 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-                                        fontSize: "18px",
                                     }}
                                 >
                                     Action Level
@@ -346,7 +340,6 @@ function Component() {
             key: "1",
             selectable: false,
             checkable: false,
-            style: { fontSize: "18px", margin: "20px 0 20px 0" },
             children: [
                 {
                     title: (
@@ -366,7 +359,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "18px",
+
                                 whiteSpace: "nowrap",
                             }}
                         >
@@ -393,7 +386,6 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "18px",
                             }}
                         >
                             Policy Actions
@@ -409,8 +401,6 @@ function Component() {
             key: "2",
             selectable: false,
             checkable: false,
-            style: { fontSize: "18px", margin: "20px 0 20px 0" },
-
             children: [
                 {
                     title: (
@@ -430,7 +420,6 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "18px",
                             }}
                         >
                             Indicator Dictionary
@@ -457,7 +446,6 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "18px",
                             }}
                         >
                             Workflow & Guidelines
@@ -484,14 +472,12 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
-                                fontSize: "18px",
                             }}
                         >
                             FAQs
                         </Link>
                     ),
                     key: "/ndp/faqs",
-                    // to: "/ndp/faqs",
                 },
             ],
         },
@@ -513,14 +499,12 @@ function Component() {
                     }}
                     style={{
                         color: "#2B6998",
-                        fontSize: "18px",
                     }}
                 >
                     Library
                 </Link>
             ),
             key: "/ndp/libraries",
-            style: { fontSize: "18px" },
         },
     ];
     return (
@@ -576,9 +560,7 @@ function Component() {
                         </ConfigProvider>
 
                         <Link to="/settings">
-                            <SettingOutlined
-                                style={{ fontSize: "18px", cursor: "pointer" }}
-                            />
+                            <SettingOutlined style={{ cursor: "pointer" }} />
                         </Link>
                     </Flex>
 
@@ -589,8 +571,7 @@ function Component() {
                             treeData={treeData}
                             multiple={false}
                             selectedKeys={[location.pathname]}
-                            style={{ padding: 20, width: "100%" }}
-                            scrollWidth={8000}
+                            style={{ padding: 20, width: "100%", fontSize: 16 }}
                         />
                     </Flex>
                 </Flex>
