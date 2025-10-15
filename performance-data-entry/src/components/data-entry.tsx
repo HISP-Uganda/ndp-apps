@@ -1,5 +1,5 @@
 import { PaperClipOutlined } from "@ant-design/icons";
-import { Button, Input, Space, Typography, Flex } from "antd";
+import { Button, Flex, Input, Space, Typography } from "antd";
 import { TableProps } from "antd/es/table";
 import React from "react";
 import {
@@ -28,7 +28,10 @@ export function generateGroupedColumns({
     dataElements: IDataElement[];
     pe: string;
     ou: string;
-    onClick: (row: DataElementDataValue) => void;
+    onClick: (
+        row: DataElementDataValue,
+        rowData: Record<string, string>,
+    ) => void;
     targetYear: string;
     baselineYear: string;
     disabled: boolean;
@@ -38,7 +41,9 @@ export function generateGroupedColumns({
     columns?.push({
         title: (
             <Typography.Text style={{ color: "#05416eff" }}>
-                Indicator
+                {dataSet.name.includes("- Actions")
+                    ? "PIAP Actions"
+                    : "Indicators"}
             </Typography.Text>
         ),
         dataIndex: "name",
@@ -61,7 +66,7 @@ export function generateGroupedColumns({
             categoryCombo.categoryOptionCombos?.forEach((coc) => {
                 dataSet.categoryCombo.categories
                     .flatMap((cat) => cat.categoryOptions)
-                    .forEach((dataSetCOC, index) => {
+                    .forEach((dataSetCOC, index, arr) => {
                         const coc1 =
                             dataSet.categoryCombo.categoryOptionCombos.find(
                                 (c) =>
@@ -71,14 +76,22 @@ export function generateGroupedColumns({
                             );
                         let period = pe;
                         let periodText = "";
-                        if (dataSetCOC.name.includes("Target") && targetYear) {
+                        if (
+                            (dataSetCOC.name.includes("Target") ||
+                                dataSetCOC.name.includes("Planned") ||
+                                dataSetCOC.name.includes("Approved")) &&
+                            targetYear
+                        ) {
                             period = targetYear;
                             periodText = `${Number(
                                 targetYear.slice(0, 4),
                             )}/${String(
                                 Number(targetYear.slice(0, 4)) + 1,
                             ).slice(2)}`;
-                        } else if (dataSetCOC.name.includes("Baseline") && baselineYear) {
+                        } else if (
+                            dataSetCOC.name.includes("Baseline") &&
+                            baselineYear
+                        ) {
                             period = baselineYear;
                             periodText = `${Number(
                                 baselineYear.slice(0, 4),
@@ -103,7 +116,7 @@ export function generateGroupedColumns({
                             ),
                             key: `${coc1?.id}_${coc.id}`,
                             align: "center",
-                            width: 200,
+                            width: 150,
                             render: (_, record) => (
                                 <TableCell
                                     dataElement={record}
@@ -119,32 +132,66 @@ export function generateGroupedColumns({
                                 />
                             ),
                         });
+                        if (index === arr.length - 1) {
+                            columns?.push({
+                                title: (
+                                    <Typography.Text
+                                        style={{
+                                            color: "#05416eff",
+                                        }}
+                                    >
+                                        Explanation/Attachment
+                                    </Typography.Text>
+                                ),
+                                key: "explanation",
+                                width: 230,
+                                render: (_, row) => {
+                                    const originalValue =
+                                        row.dataValue[
+                                            `${ou}_${pe}_${coc1?.id}_${coc?.id}_comment`
+                                        ];
+                                    return (
+                                        <Space.Compact
+                                            style={{
+                                                width: "100%",
+                                            }}
+                                            onClick={() =>
+                                                onClick(row, {
+                                                    co: coc.id,
+                                                    cc: dataSet.categoryCombo
+                                                        .id,
+                                                    cp: dataSetCOC.id,
+                                                    de: row.id,
+                                                    ou,
+                                                    pe,
+                                                })
+                                            }
+                                        >
+                                            <Input
+                                                value={
+                                                    originalValue !== undefined
+                                                        ? "Explanation available"
+                                                        : ""
+                                                }
+                                            />
+                                            <Button
+                                                type="primary"
+                                                danger={
+                                                    originalValue === undefined
+                                                }
+                                                icon={<PaperClipOutlined />}
+                                                style={{
+                                                    width: "48px",
+                                                }}
+                                            />
+                                        </Space.Compact>
+                                    );
+                                },
+                            });
+                        }
                     });
             });
         }
-    });
-
-    columns?.push({
-        title: (
-            <Typography.Text style={{ color: "#05416eff" }}>
-                Explanation/Attachment
-            </Typography.Text>
-        ),
-        key: "explanation",
-        width: 200,
-        render: (_, row) => (
-            <Space.Compact
-                style={{ width: "100%" }}
-                onClick={() => onClick(row)}
-            >
-                <Input />
-                <Button
-                    type="primary"
-                    icon={<PaperClipOutlined />}
-                    style={{ width: "48px", backgroundColor: "#3276B1" }}
-                />
-            </Space.Compact>
-        ),
     });
 
     return columns;

@@ -3,12 +3,15 @@ import {
     Button,
     Flex,
     Input,
+    message,
     Modal,
+    Spin,
     Table,
     TableProps,
     Typography,
     Upload,
 } from "antd";
+import { Loading3QuartersOutlined } from "@ant-design/icons";
 import React, { useMemo, useState } from "react";
 import {
     DataElementDataValue,
@@ -19,9 +22,10 @@ import {
 } from "../types";
 import { generateGroupedColumns } from "./data-entry";
 import { useQuery } from "@tanstack/react-query";
-import { dataValuesQueryOptions } from "../query-options";
+import { dataValuesQueryOptions, useSaveDataValue } from "../query-options";
 import { useDataEngine } from "@dhis2/app-runtime";
 import { useQueryClient } from "@tanstack/react-query";
+import Spinner from "./Spinner";
 
 export default function CategoryCombo({
     dataSet,
@@ -46,6 +50,19 @@ export default function CategoryCombo({
     const [currentData, setCurrentData] = useState<DataElementDataValue | null>(
         null,
     );
+    const [dataValue, setDataValue] = useState<{
+        value?: string;
+        de: string;
+        pe: string;
+        ou: string;
+        co: string;
+        cc: string;
+        cp: string;
+        comment?: string;
+    } | null>(null);
+
+    const saveDataValue = useSaveDataValue(true);
+
     const explanationColumns: TableProps<ICategoryOption>["columns"] = [
         { title: "Dimension", dataIndex: "name", key: "name" },
         {
@@ -60,7 +77,11 @@ export default function CategoryCombo({
                 );
 
                 let period = pe;
-                if (coc1?.name === "Target") {
+                if (
+                    coc1?.name.includes("Target") ||
+                    coc1?.name.includes("Planned") ||
+                    coc1?.name.includes("Approved")
+                ) {
                     period = targetYear;
                 } else if (coc1?.name === "Baseline") {
                     period = baselineYear;
@@ -81,7 +102,11 @@ export default function CategoryCombo({
                         ),
                 );
                 let period = pe;
-                if (coc1?.name.includes("Target")) {
+                if (
+                    coc1?.name.includes("Target") ||
+                    coc1?.name.includes("Planned") ||
+                    coc1?.name.includes("Approved")
+                ) {
                     period = targetYear;
                 } else if (coc1?.name.includes("Baseline")) {
                     period = baselineYear;
@@ -105,7 +130,39 @@ export default function CategoryCombo({
         {
             title: "Explanation",
             key: "explanation",
-            render: () => <Input.TextArea rows={6} />,
+            render: (_, record) => {
+                const coc1 = dataSet.categoryCombo.categoryOptionCombos.find(
+                    (c) =>
+                        c.categoryOptions.some(
+                            (opt) => opt.name === record.name,
+                        ),
+                );
+                let period = pe;
+                if (
+                    coc1?.name.includes("Target") ||
+                    coc1?.name.includes("Planned") ||
+                    coc1?.name.includes("Approved")
+                ) {
+                    period = targetYear;
+                } else if (coc1?.name.includes("Baseline")) {
+                    period = baselineYear;
+                }
+                let val =
+                    currentData?.dataValue[
+                        `${ou}_${pe}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}_comment`
+                    ];
+
+                if (val) {
+                    val = JSON.parse(val)["explanation"];
+                }
+                return (
+                    <Input.TextArea
+                        rows={6}
+                        onBlur={(e) => saveComment(e.target.value)}
+                        defaultValue={val}
+                    />
+                );
+            },
         },
     ];
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,8 +176,21 @@ export default function CategoryCombo({
         body: "Are you finished with data entry and ready to submit?",
     });
 
-    const onClick = (data: DataElementDataValue) => {
+    const onClick = (
+        data: DataElementDataValue,
+        rowData: {
+            value: string;
+            de: string;
+            pe: string;
+            ou: string;
+            co: string;
+            cc: string;
+            cp: string;
+            comment?: string;
+        },
+    ) => {
         setCurrentData(() => data);
+        setDataValue(() => rowData);
         setIsModalOpen(true);
     };
 
@@ -215,6 +285,65 @@ export default function CategoryCombo({
         setIsDataSetModalOpen(false);
     };
 
+    const saveComment = async (comment: string) => {
+        if (!currentData) return;
+
+        const coc = currentData.categoryCombo.categoryOptionCombos[0];
+        const newDataValue: DataElementDataValue = {
+            ...currentData,
+            dataValue: {
+                ...currentData.dataValue,
+                [`${ou}_${pe}_${coc.id}_${coc.id}_comment`]: JSON.stringify({
+                    explanation: comment,
+                }),
+            },
+        };
+
+        try {
+            if (dataValue) {
+                await saveDataValue.mutateAsync({
+                    engine,
+                    dataValue: {
+                        ...dataValue,
+                        comment: JSON.stringify({ explanation: comment }),
+                    },
+                });
+                message.success("Data saved successfully", 2);
+            }
+        } catch (error) {
+            message.error(
+                `Failed to save data. Please try again. ${error.message}`,
+                4,
+            );
+            // setCurrentValue(previousValue);
+            console.error("Save error:", error);
+        } finally {
+            // setIsLoading(false);
+            // setIsEditing(false);
+        }
+        queryClient.setQueryData(
+            [
+                "data-values",
+                search.orgUnit,
+                search.dataSet,
+                search.pe,
+                search.baseline,
+                search.targetYear,
+            ],
+            (oldData: any) => {
+                if (!oldData) return oldData;
+                const updatedDataValues = oldData.dataValues.map(
+                    (dv: DataElementDataValue) =>
+                        dv.id === newDataValue.id ? newDataValue : dv,
+                );
+                return {
+                    ...oldData,
+                    dataValues: updatedDataValues,
+                };
+            },
+        );
+    };
+
     const { data, isError, isLoading } = useQuery({
         ...dataValuesQueryOptions(engine, search, fields),
     });
@@ -235,7 +364,7 @@ export default function CategoryCombo({
         [dataSet, fields, pe, ou, targetYear, baselineYear],
     );
 
-    if (isLoading) return <div>Loading...</div>;
+    if (isLoading) return <Spinner />;
     if (isError) return <div>Error loading data values</div>;
     return (
         <Flex vertical gap={8}>
@@ -267,7 +396,7 @@ export default function CategoryCombo({
             </Flex>
 
             <Modal
-                title="Basic Modal"
+                title="Explanations and Attachments"
                 closable={{ "aria-label": "Custom Close Button" }}
                 open={isModalOpen}
                 onOk={handleOk}

@@ -5,10 +5,9 @@ import {
     useAnalyticsQuery,
     useDataElementGroups,
 } from "../../../../hooks/data-hooks";
-import { OutcomeLevelRoute } from "./route";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
-import TruncatedText from "../../../../components/TrancatedText";
+import { OutcomeLevelRoute } from "./route";
 
 export const OutcomeLevelIndexRoute = createRoute({
     path: "/",
@@ -18,21 +17,17 @@ export const OutcomeLevelIndexRoute = createRoute({
 });
 function Component() {
     const { engine } = OutcomeLevelIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs, quarters, requiresProgram } =
-        OutcomeLevelIndexRoute.useSearch();
+    const search = OutcomeLevelIndexRoute.useSearch();
     const navigate = OutcomeLevelIndexRoute.useNavigate();
     const { dataElementGroupSets } = OutcomeLevelRoute.useLoaderData();
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs, requiresProgram },
+        search,
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
-        deg,
-        pe: derivePeriods(pe),
-        ou,
-        program,
-        degs,
+        ...search,
+        pe: derivePeriods(search.pe),
     });
     const onChange = useCallback(
         (key: string) => {
@@ -50,11 +45,7 @@ function Component() {
             data: { ...data.data, ...dataElementGroups },
             dataElementGroupSets,
             onChange,
-            tab,
-            deg,
-            ou,
-            pe,
-            quarters,
+            ...search,
             prefixColumns: [
                 {
                     title: "Programme Objectives",
@@ -75,44 +66,8 @@ function Component() {
                     dataIndex: "dataElementGroup",
                 },
             ],
-            // prefixColumns: [
-            //     {
-            //         title: "Programme Objectives",
-            //         dataIndex: degs,
-            //         render: (
-            //             _,
-            //             row: Record<string, string | number | undefined>,
-            //         ) =>
-            //             dataElementGroups.groupSets
-            //                 .flatMap((group) => {
-            //                     const value = row[group];
-            //                     if (value === undefined) {
-            //                         return [];
-            //                     }
-            //                     return value;
-            //                 })
-            //                 .join(" "),
-            //     },
-            //     {
-            //         title: "Outcomes",
-            //         dataIndex: deg,
-            //         render: (
-            //             _,
-            //             row: Record<string, string | number | undefined>,
-            //         ) =>
-            //             dataElementGroups.dataElementGroups
-            //                 .flatMap((group) => {
-            //                     const value = row[group];
-            //                     if (value === undefined) {
-            //                         return [];
-            //                     }
-            //                     return value;
-            //                 })
-            //                 .join(" "),
-            //     },
-            // ],
         }),
-        [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
+        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

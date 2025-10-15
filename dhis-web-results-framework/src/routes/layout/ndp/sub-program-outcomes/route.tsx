@@ -1,5 +1,5 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
-import React from "react";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
+import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Flex, Typography } from "antd";
@@ -33,8 +33,9 @@ export const SubProgramOutcomeRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramOutcomeRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, program } =
+    const { v, deg, degs, ou, pe, program, category, categoryOptions } =
         SubProgramOutcomeRoute.useSearch();
+    const { categories } = useLoaderData({ from: "__root__" });
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
             engine,
@@ -48,6 +49,17 @@ function Component() {
     const programGoal = programGoals.find(
         (pg) => program !== undefined && pg.code.includes(program),
     );
+
+    useEffect(() => {
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
@@ -92,23 +104,22 @@ function Component() {
                 ]}
             />
             {program && (
-                <Flex gap={10} align="center">
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        gap: 10,
+                    }}
+                >
                     {programGoal && (
-                        <Typography.Title
-                            level={5}
-                            type="warning"
-                            style={{ margin: 0 }}
-                        >
+                        <h3 style={{ margin: 0, color: "#1677FF" }}>
                             Program Goal:
-                        </Typography.Title>
+                        </h3>
                     )}
-                    <Typography.Title
-                        level={5}
-                        style={{ margin: 0, flex: 1, color: "gray" }}
-                    >
+                    <h3 style={{ margin: 0, flex: 1 }}>
                         {programGoal?.name ?? "Program goal not found"}
-                    </Typography.Title>
-                </Flex>
+                    </h3>
+                </div>
             )}
             <Outlet />
         </Flex>

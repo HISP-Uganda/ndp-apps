@@ -11,12 +11,7 @@ export const useDataElementGroups = (
 ): { groupSets: string[]; dataElementGroups: string[] } => {
     return useMemo(() => {
         return resolveDataElementGroups(searchParams, dataElementGroupSets);
-    }, [
-        searchParams.deg,
-        searchParams.degs,
-        searchParams.program,
-        dataElementGroupSets,
-    ]);
+    }, [...Object.values(searchParams), dataElementGroupSets]);
 };
 
 export const useAnalyticsQuery = (
@@ -26,15 +21,10 @@ export const useAnalyticsQuery = (
 ) => {
     const queryParams = useMemo(() => {
         return buildQueryParams(dataElementGroups, searchParams);
-    }, [
-        dataElementGroups,
-        searchParams.pe,
-        searchParams.ou,
-        searchParams.program,
-    ]);
+    }, [dataElementGroups, ...Object.values(searchParams)]);
     const queryOptions = useMemo(
         () => analyticsQueryOptions(engine, queryParams),
-        [engine, queryParams, analyticsQueryOptions],
+        [engine, Object.values(queryParams).join(","), analyticsQueryOptions],
     );
     return useSuspenseQuery(queryOptions);
 };
@@ -60,15 +50,7 @@ export const useRouteAnalytics = (
             pe: searchParams.pe,
             degs: searchParams.degs,
         }),
-        [
-            data.data,
-            dataElementGroupSets,
-            searchParams.tab,
-            searchParams.deg,
-            searchParams.ou,
-            searchParams.pe,
-            searchParams.degs,
-        ],
+        [data.data, dataElementGroupSets, ...Object.values(searchParams)],
     );
 
     return {

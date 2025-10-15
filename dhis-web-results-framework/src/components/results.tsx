@@ -57,21 +57,28 @@ const PerformanceLegend = React.memo(() => {
 
 PerformanceLegend.displayName = "PerformanceLegend";
 
-export function Results({
-    tab,
-    data,
-    onChange,
-    postfixColumns = [],
-    prefixColumns = [],
-    quarters = false,
-    pe = [],
-}: ResultsProps) {
+export function Results(props: ResultsProps) {
+    const {
+        tab,
+        data,
+        onChange,
+        postfixColumns = [],
+        prefixColumns = [],
+        quarters = false,
+        pe = [],
+        category,
+        categoryOptions,
+        nonBaseline,
+    } = props;
     const { v } = useSearch({ from: "/layout/ndp" });
     const { configurations } = useLoaderData({ from: "__root__" });
     const { target, value, analyticsItems, finalData, baseline } =
         useMemo(() => {
-            const [baseline, target = "", value = ""] =
-                data.analytics.metaData.dimensions["Duw5yep8Vae"] ?? [];
+            const cats = data.analytics.metaData.dimensions[category] ?? [];
+            const target = cats.at(-2) ?? "";
+            const value = cats.at(-1) ?? "";
+            const baseline = cats.at(0) ?? "";
+            const approved = cats.at(1) ?? "";
             const analyticsItems = data.analytics.metaData.items;
             let finalData = orderBy(
                 makeDataElementData({
@@ -79,6 +86,7 @@ export function Results({
                     targetId: target,
                     actualId: value,
                     baselineId: baseline,
+                    category,
                 }),
                 ["code"],
                 ["asc"],
@@ -113,14 +121,15 @@ export function Results({
                 analyticsItems,
                 finalData,
                 baseline,
+                approved,
             };
-        }, [data.analytics]);
+        }, [data.analytics, category, categoryOptions]);
 
     const nameColumn: TableProps<Record<string, any>>["columns"] = useMemo(
         () => [
             ...prefixColumns,
             {
-                title: "Indicators",
+                title: nonBaseline ? "NDP Actions" : "Indicators",
                 dataIndex: "dx",
                 fixed: "left",
             },
@@ -136,7 +145,7 @@ export function Results({
 
         columnsMap.set("target", [
             ...nameColumn,
-            ...pe.map((pe) => {
+            ...pe.flatMap((pe) => {
                 const title =
                     configurations[v]?.data?.baseline === pe
                         ? analyticsItems[baseline].name
@@ -145,6 +154,79 @@ export function Results({
                     configurations[v]?.data?.baseline === pe
                         ? `${pe}${baseline}`
                         : `${pe}${target}`;
+
+                if (nonBaseline && configurations[v]?.data?.baseline === pe) {
+                    return [];
+                }
+                return {
+                    title: (
+                        <div
+                            style={{
+                                whiteSpace: "nowrap",
+                                display: "flex",
+                                flexDirection: "column",
+                            }}
+                        >
+                            {analyticsItems[pe].name.split(" ").map((word) => (
+                                <span key={word}>{word}</span>
+                            ))}
+                        </div>
+                    ),
+                    align: "center" as const,
+                    children: nonBaseline
+                        ? categoryOptions?.slice(0, 2).map((option) => ({
+                              title: (
+                                  <div
+                                      style={{
+                                          whiteSpace: "nowrap",
+                                          display: "flex",
+                                          flexDirection: "column",
+                                      }}
+                                  >
+                                      {analyticsItems[option]?.name
+                                          .split(" ")
+                                          .map((word) => (
+                                              <span key={word}>{word}</span>
+                                          ))}
+                                  </div>
+                              ),
+                              dataIndex: `${pe}${option}`,
+                              align: "center" as const,
+                              minWidth: 76,
+                          }))
+                        : [
+                              {
+                                  title: (
+                                      <div
+                                          style={{
+                                              whiteSpace: "nowrap",
+                                              display: "flex",
+                                              flexDirection: "column",
+                                          }}
+                                      >
+                                          {title.split(" ").map((word) => (
+                                              <span key={word}>{word}</span>
+                                          ))}
+                                      </div>
+                                  ),
+                                  dataIndex,
+                                  align: "center" as const,
+                                  minWidth:
+                                      configurations[v]?.data?.baseline === pe
+                                          ? 100
+                                          : 76,
+                              },
+                          ],
+                };
+            }),
+            ...postfixColumns,
+        ]);
+        columnsMap.set("performance", [
+            ...nameColumn,
+            ...pe.flatMap((pe) => {
+                if (nonBaseline && configurations[v]?.data?.baseline === pe) {
+                    return [];
+                }
                 return {
                     title: (
                         <div style={{ whiteSpace: "nowrap" }}>
@@ -152,107 +234,194 @@ export function Results({
                         </div>
                     ),
                     align: "center" as const,
-                    children: [
-                        {
-                            title: (
-                                <div style={{ whiteSpace: "nowrap" }}>
-                                    {title}
-                                </div>
-                            ),
-                            dataIndex,
-                            align: "center" as const,
-                            minWidth:
-                                configurations[v]?.data?.baseline === pe
-                                    ? 100
-                                    : 76,
-                        },
-                    ],
+                    children: nonBaseline
+                        ? categoryOptions
+                              ?.flatMap((option, index) => {
+                                  if (index > 1) return [];
+                                  return {
+                                      title: (
+                                          <div
+                                              style={{
+                                                  whiteSpace: "nowrap",
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                              }}
+                                          >
+                                              {analyticsItems[option]?.name
+                                                  .split(" ")
+                                                  .map((word) => (
+                                                      <span key={word}>
+                                                          {word}
+                                                      </span>
+                                                  ))}
+                                          </div>
+                                      ),
+                                      dataIndex: `${pe}${option}`,
+                                      align: "center" as const,
+                                      minWidth: 76,
+                                  };
+                              })
+                              .concat(
+                                  [3, 4, 1, 2].map((quarter, index) => {
+                                      const year = Number(pe.slice(0, 4));
+                                      const currentYear =
+                                          quarter === 1 || quarter === 2
+                                              ? year + 1
+                                              : year;
+                                      return {
+                                          title: <span>{`Q${index + 1}`}</span>,
+                                          key: `${pe}${currentYear}Q${quarter}`,
+                                          align: "center",
+                                          dataIndex: `${pe}${currentYear}Q${quarter}`,
+                                          minWidth: 100,
+                                          children: [
+                                              ...categoryOptions
+                                                  .slice(2)
+                                                  .map((option) => ({
+                                                      title: (
+                                                          <div
+                                                              style={{
+                                                                  whiteSpace:
+                                                                      "nowrap",
+                                                                  display:
+                                                                      "flex",
+                                                                  flexDirection:
+                                                                      "row",
+                                                                  alignItems:
+                                                                      "center",
+                                                                  justifyContent:
+                                                                      "center",
+                                                              }}
+                                                          >
+                                                              {analyticsItems[
+                                                                  option
+                                                              ]?.name
+                                                                  .split(" ")
+                                                                  .map(
+                                                                      (
+                                                                          word,
+                                                                      ) => (
+                                                                          <span
+                                                                              key={
+                                                                                  word
+                                                                              }
+                                                                          >
+                                                                              {
+                                                                                  word
+                                                                              }
+                                                                          </span>
+                                                                      ),
+                                                                  )}
+                                                          </div>
+                                                      ),
+                                                      dataIndex: `${currentYear}Q${quarter}${option}`,
+                                                      key: `${currentYear}Q${quarter}${option}`,
+                                                      align: "center" as const,
+                                                      minWidth: 76,
+                                                  })),
+                                              {
+                                                  title: `%`,
+                                                  dataIndex: `${currentYear}Q${quarter}performance`,
+                                                  key: `${currentYear}Q${quarter}performance`,
+                                                  align: "center",
+                                                  onCell: (
+                                                      row: Record<string, any>,
+                                                  ) => {
+                                                      return {
+                                                          style: row[
+                                                              `${currentYear}Q${quarter}style`
+                                                          ],
+                                                      };
+                                                  },
+                                              },
+                                          ],
+                                      };
+                                  }),
+                              )
+                        : (configurations[v]?.data?.baseline === pe
+                              ? [baseline]
+                              : [target, value, "performance"]
+                          ).flatMap((currentValue, index) => {
+                              const year = Number(pe.slice(0, 4));
+                              if (index === 1 && quarters) {
+                                  return [3, 4, 1, 2].map((quarter, index) => {
+                                      const currentYear =
+                                          quarter === 1 || quarter === 2
+                                              ? year + 1
+                                              : year;
+                                      return {
+                                          title: `Q${index + 1}`,
+                                          key: `${pe}${currentYear}Q${quarter}`,
+                                          align: "center",
+                                          children: [
+                                              {
+                                                  title: `A`,
+                                                  key: `${currentYear}Q${quarter}actual`,
+                                                  dataIndex: `${currentYear}Q${quarter}actual`,
+                                                  align: "center",
+                                              },
+                                              {
+                                                  title: `%`,
+                                                  dataIndex: `${currentYear}Q${quarter}performance`,
+                                                  key: `${currentYear}Q${quarter}performance`,
+                                                  align: "center",
+                                                  onCell: (
+                                                      row: Record<string, any>,
+                                                  ) => {
+                                                      return {
+                                                          style: row[
+                                                              `${currentYear}Q${quarter}style`
+                                                          ],
+                                                      };
+                                                  },
+                                              },
+                                          ],
+                                      };
+                                  });
+                              } else {
+                                  const title =
+                                      analyticsItems[currentValue]?.name ??
+                                      PERFORMANCE_LABELS[index];
+                                  return {
+                                      title: (
+                                          <div
+                                              style={{
+                                                  whiteSpace: "nowrap",
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                              }}
+                                          >
+                                              {title.split(" ").map((word) => (
+                                                  <span key={word}>{word}</span>
+                                              ))}
+                                          </div>
+                                      ) as any,
+                                      key: `${pe}${currentValue}`,
+                                      minWidth:
+                                          configurations[v]?.data?.baseline ===
+                                          pe
+                                              ? 76
+                                              : 56,
+                                      align: "center",
+                                      onCell: (row: Record<string, any>) => {
+                                          if (index === 2) {
+                                              return {
+                                                  style: row[`${pe}style`],
+                                              };
+                                          }
+                                          return {};
+                                      },
+                                      dataIndex: `${pe}${currentValue}`,
+                                      children: [],
+                                  };
+                              }
+                          }),
                 };
             }),
-            ...postfixColumns,
-        ]);
-        columnsMap.set("performance", [
-            ...nameColumn,
-            ...pe.map((pe) => ({
-                title: (
-                    <div style={{ whiteSpace: "nowrap" }}>
-                        {analyticsItems[pe].name}
-                    </div>
-                ),
-                align: "center" as const,
-                children: (configurations[v]?.data?.baseline === pe
-                    ? [baseline]
-                    : [target, value, "performance"]
-                ).flatMap((currentValue, index) => {
-                    const year = Number(pe.slice(0, 4));
-                    if (index === 1 && quarters) {
-                        return [3, 4, 1, 2].map((quarter, index) => {
-                            const currentYear =
-                                quarter === 1 || quarter === 2
-                                    ? year + 1
-                                    : year;
-                            return {
-                                title: `Q${index + 1}`,
-                                key: `${pe}${currentYear}Q${quarter}`,
-                                align: "center",
-                                children: [
-                                    {
-                                        title: `A`,
-                                        key: `${currentYear}Q${quarter}actual`,
-                                        dataIndex: `${currentYear}Q${quarter}actual`,
-                                        align: "center",
-                                    },
-                                    {
-                                        title: `%`,
-                                        dataIndex: `${currentYear}Q${quarter}performance`,
-                                        key: `${currentYear}Q${quarter}performance`,
-                                        align: "center",
-                                        onCell: (row: Record<string, any>) => {
-                                            return {
-                                                style: row[
-                                                    `${currentYear}Q${quarter}style`
-                                                ],
-                                            };
-                                        },
-                                    },
-                                ],
-                            };
-                        });
-                    } else {
-                        const title =
-                            configurations[v]?.data?.baseline === pe
-                                ? analyticsItems[baseline].name
-                                : PERFORMANCE_LABELS[index];
-                        return {
-                            title: (
-                                <div
-                                    style={{
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {title}
-                                </div>
-                            ) as any,
-                            key: `${pe}${currentValue}`,
-                            minWidth:
-                                configurations[v]?.data?.baseline === pe
-                                    ? 100
-                                    : 56,
-                            align: "center",
-                            onCell: (row: Record<string, any>) => {
-                                if (index === 2) {
-                                    return {
-                                        style: row[`${pe}style`],
-                                    };
-                                }
-                                return {};
-                            },
-                            dataIndex: `${pe}${currentValue}`,
-                            children: [],
-                        };
-                    }
-                }),
-            })),
             ...postfixColumns,
         ]);
         return columnsMap;
@@ -693,7 +862,7 @@ export function Results({
 
     return (
         <Tabs
-            activeKey={tab || "target"}
+            activeKey={tab || "performance"}
             type="card"
             items={items}
             onChange={onChange}
@@ -705,7 +874,7 @@ export function Results({
                         display: "flex",
                         alignItems: "center",
                         justifyItems: "center",
-                        flexDirection: "row",
+                        flexDirection: "column",
                     }}
                 />
             )}

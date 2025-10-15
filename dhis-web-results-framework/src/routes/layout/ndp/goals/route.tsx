@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { createRoute, Outlet } from "@tanstack/react-router";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import { Flex } from "antd";
 import React, { useEffect } from "react";
 import Filter from "../../../../components/Filter";
@@ -20,7 +20,7 @@ export const GoalRoute = createRoute({
     }),
     loader: async ({ context, deps: { v } }) => {
         const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
+        const data = await queryClient.ensureQueryData(
             dataElementGroupSetsQueryOptions(engine, "goal", v),
         );
         return data;
@@ -30,7 +30,9 @@ export const GoalRoute = createRoute({
 
 function Component() {
     const { engine } = GoalRoute.useRouteContext();
-    const { v, deg, degs, ou, pe } = GoalRoute.useSearch();
+    const { v, deg, degs, ou, pe, categoryOptions, category } =
+        GoalRoute.useSearch();
+    const { categories } = useLoaderData({ from: "__root__" });
     const { data } = useSuspenseQuery(
         dataElementGroupSetsQueryOptions(engine, "goal", v),
     );
@@ -47,7 +49,15 @@ function Component() {
                 }),
             });
         }
-    }, [v, degs]);
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
 
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>

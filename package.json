@@ -1,50 +1,51 @@
 {
-  "name": "ndp-apps",
-  "version": "1.0.0",
-  "description": "DHIS2 Applications for Uganda National Development Plan (NDP) Data Management",
-  "private": true,
-  "workspaces": [
-    "dhis-web-results-framework",
-    "performance-data-entry",
-    "target-baseline-data-entry"
-  ],
-  "scripts": {
-    "start:results": "yarn workspace dhis-web-results-framework start",
-    "start:performance": "yarn workspace performance-data-entry start",
-    "start:target": "yarn workspace target-baseline-data-entry start",
-    "build": "yarn workspaces run build",
-    "build:results": "yarn workspace dhis-web-results-framework build",
-    "build:performance": "yarn workspace performance-data-entry build",
-    "build:target": "yarn workspace target-baseline-data-entry build",
-    "test": "yarn workspaces run test",
-    "test:results": "yarn workspace dhis-web-results-framework test",
-    "test:performance": "yarn workspace performance-data-entry test",
-    "test:target": "yarn workspace target-baseline-data-entry test",
-    "deploy:results": "yarn workspace dhis-web-results-framework deploy",
-    "deploy:performance": "yarn workspace performance-data-entry deploy",
-    "deploy:target": "yarn workspace target-baseline-data-entry deploy",
-    "clean": "yarn workspaces run clean && rm -rf node_modules",
-    "postinstall": "echo 'Workspaces installed successfully'"
-  },
-  "devDependencies": {
-    "@tanstack/query-db-collection": "^0.2.16",
-    "@tanstack/react-db": "^0.1.17",
-    "@types/node": "^20.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "yarn": ">=1.22.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-org/ndp-apps.git"
-  },
-  "license": "BSD-3-Clause",
-  "keywords": [
-    "dhis2",
-    "ndp",
-    "uganda",
-    "national-development-plan",
-    "data-management"
-  ]
+    "name": "ndp-apps",
+    "version": "1.0.0",
+    "description": "DHIS2 Applications for Uganda National Development Plan (NDP) Data Management",
+    "private": true,
+    "workspaces": [
+        "dhis-web-results-framework",
+        "performance-data-entry",
+        "target-baseline-data-entry"
+    ],
+    "scripts": {
+        "start:results": "yarn workspace dhis-web-results-framework start",
+        "start:performance": "yarn workspace performance-data-entry start",
+        "start:target": "yarn workspace target-baseline-data-entry start",
+        "build": "yarn workspaces run build",
+        "build:results": "yarn workspace dhis-web-results-framework build",
+        "build:performance": "yarn workspace performance-data-entry build",
+        "build:target": "yarn workspace target-baseline-data-entry build",
+        "test": "yarn workspaces run test",
+        "test:results": "yarn workspace dhis-web-results-framework test",
+        "test:performance": "yarn workspace performance-data-entry test",
+        "test:target": "yarn workspace target-baseline-data-entry test",
+        "deploy:results": "yarn workspace dhis-web-results-framework deploy",
+        "deploy:performance": "yarn workspace performance-data-entry deploy",
+        "deploy:target": "yarn workspace target-baseline-data-entry deploy",
+        "clean": "yarn workspaces run clean && rm -rf node_modules",
+        "postinstall": "echo 'Workspaces installed successfully'"
+    },
+    "devDependencies": {
+        "@tanstack/query-db-collection": "^0.2.16",
+        "@tanstack/react-db": "^0.1.17",
+        "@types/node": "^20.0.0"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "yarn": ">=1.22.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-org/ndp-apps.git"
+    },
+    "license": "BSD-3-Clause",
+    "keywords": [
+        "dhis2",
+        "ndp",
+        "uganda",
+        "national-development-plan",
+        "data-management"
+    ],
+    "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

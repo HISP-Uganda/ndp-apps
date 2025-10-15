@@ -1,12 +1,12 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
-import { Flex } from "antd";
-import { NDPRoute } from "../route";
-import { GoalValidator } from "../../../../types";
-import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
-import Filter from "../../../../components/Filter";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { Flex } from "antd";
+import Filter from "../../../../components/Filter";
+import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
+import { GoalValidator } from "../../../../types";
+import { NDPRoute } from "../route";
 
 export const SubProgramOutputRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -31,7 +31,9 @@ export const SubProgramOutputRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramOutputRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, program } = SubProgramOutputRoute.useSearch();
+    const { v, deg, degs, ou, pe, program, category, categoryOptions } =
+        SubProgramOutputRoute.useSearch();
+    const { categories } = useLoaderData({ from: "__root__" });
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
             engine,
@@ -40,7 +42,18 @@ function Component() {
         ),
     );
     const navigate = SubProgramOutputRoute.useNavigate();
-    
+
+    useEffect(() => {
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
+
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter

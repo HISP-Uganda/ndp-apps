@@ -241,6 +241,7 @@ export const makeDataElementData = (data: {
     targetId: string;
     actualId: string;
     baselineId: string;
+    category: string;
 }) => {
     const {
         rows,
@@ -259,9 +260,14 @@ export const makeDataElementData = (data: {
         const current: Map<string, any> = new Map();
         const dataElementDetails = data.dataElements.get(a);
         dimensions["pe"]?.forEach((pe) => {
-            let target = Number(allData.get(`${a}${data.targetId}${pe}`));
-            const actual = Number(allData.get(`${a}${data.actualId}${pe}`));
             const baseline = Number(allData.get(`${a}${data.baselineId}${pe}`));
+
+            const categoryValues = dimensions[data.category]?.map((cat) =>
+                Number(allData.get(`${a}${cat}${pe}`)),
+            );
+
+            let target = categoryValues.at(-2) ?? NaN;
+            let actual = categoryValues.at(-1) ?? NaN;
             let year = pe.slice(0, 4);
             if (pe.indexOf("Q") > -1) {
                 const quarter = pe.slice(-1);
@@ -406,12 +412,16 @@ export const buildQueryParams = (
     { dataElementGroups }: { groupSets: string[]; dataElementGroups: string[] },
     searchParams: GoalSearch,
 ) => {
-    const { pe, ou, program } = searchParams;
+    const { pe, ou, program, category, categoryOptions, degs } = searchParams;
 
     return {
         deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
         pe,
         ou,
+        category,
+        categoryOptions,
+        degs,
+        ...(ou && { ou }),
         ...(program && { program }),
     };
 };

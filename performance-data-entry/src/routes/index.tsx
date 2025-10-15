@@ -1,21 +1,22 @@
 import { createRoute, useLoaderData } from "@tanstack/react-router";
-import type { TreeDataNode } from "antd";
+import type { TableProps, TreeDataNode } from "antd";
 import {
-    AutoComplete,
     Button,
     ConfigProvider,
     Flex,
     Form,
     Input,
+    Modal,
     Select,
     Splitter,
+    Table,
     Tree,
     Typography,
 } from "antd";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DataEntryTable from "../components/DataEntryTable";
 import PeriodPicker from "../components/period-picker";
-import { IDataSet, PeriodType, search } from "../types";
+import { IDataSet, Option, PeriodType, search } from "../types";
 import { getPathToNode } from "../utils";
 import { RootRoute } from "./__root";
 
@@ -38,14 +39,34 @@ const getPeriodType = (
 };
 
 function IndexRouteComponent() {
-    const { organisationTree, orgUnitDataSets, configuration } = useLoaderData({
-        from: "__root__",
-    });
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const { organisationTree, orgUnitDataSets, configuration, ndp3, ndp4 } =
+        useLoaderData({
+            from: "__root__",
+        });
 
     const { orgUnit, dataSet, pe, expanded, minPeriod, maxPeriod, periodType } =
         IndexRoute.useSearch();
     const dataSets = orgUnit ? orgUnitDataSets[orgUnit] || [] : [];
     const navigate = RootRoute.useNavigate();
+
+    const [currentOptions, setCurrentOptions] = useState<Option[]>(ndp4);
+
+    const columns: TableProps<Option>["columns"] = [
+        {
+            title: "Code",
+            dataIndex: "code",
+            key: "code",
+            width: 75,
+            align: "center",
+        },
+        {
+            title: "Name",
+            dataIndex: "name",
+            key: "name",
+        },
+    ];
 
     const searchOptions = useMemo(() => {
         const allNodes: { value: string; label: string }[] = [];
@@ -66,13 +87,36 @@ function IndexRouteComponent() {
         return allNodes;
     }, [organisationTree]);
 
+    const showModal = () => {
+        if (dataSet) {
+            const selectedDataSet = dataSets.find((ds) => ds.id === dataSet);
+            if (selectedDataSet && selectedDataSet.name.includes("NDPIII")) {
+                setCurrentOptions(() => ndp3);
+            } else if (
+                selectedDataSet &&
+                selectedDataSet.name.includes("NDPIV")
+            ) {
+                setCurrentOptions(() => ndp4);
+            }
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleOk = () => {
+        setIsModalOpen(false);
+    };
+
+    const handleCancel = () => {
+        setIsModalOpen(false);
+    };
+
     const onSelectOrgUnit = (value: string) => {
         const pathToNode = getPathToNode(organisationTree, value);
         if (pathToNode) {
             navigate({
                 search: (prev) => ({
                     ...prev,
-                    expanded: pathToNode.slice(0, -1).join("-"), // Expand all parent nodes
+                    expanded: pathToNode.slice(0, -1).join("-"),
                 }),
             });
         }
@@ -170,19 +214,19 @@ function IndexRouteComponent() {
         >
             <Splitter.Panel defaultSize="20%" min="20%" max="20%">
                 <Flex vertical gap={12} style={{ padding: 10 }}>
-                    <AutoComplete
-                        options={searchOptions}
-                        placeholder="Search for NDP votes..."
-                        onSelect={onSelectOrgUnit}
-                        allowClear
+                    <Select
                         showSearch
-                        filterOption={(inputValue, option) =>
-                            option?.label
-                                ?.toString()
-                                .toLowerCase()
-                                .includes(inputValue.toLowerCase()) ?? false
-                        }
+                        allowClear
+                        placeholder="Search for NDP votes..."
                         style={{ width: "100%", flex: 1 }}
+                        options={searchOptions}
+                        filterOption={(input, option) =>
+                            String(option?.label ?? "")
+                                .toLowerCase()
+                                .includes(input.toLowerCase())
+                        }
+                        onSelect={onSelectOrgUnit}
+                        value={orgUnit}
                     />
 
                     <Flex
@@ -237,7 +281,7 @@ function IndexRouteComponent() {
                         }}
                     >
                         <Form.Item
-                            label="NDP Vote"
+                            label="NDP Votes"
                             layout="horizontal"
                             labelCol={{ span: 6 }}
                             wrapperCol={{ span: 18 }}
@@ -260,7 +304,7 @@ function IndexRouteComponent() {
                         </Form.Item>
 
                         <Form.Item
-                            label="Data Set"
+                            label="Programme Dataset"
                             layout="horizontal"
                             labelCol={{ span: 6 }}
                             wrapperCol={{ span: 18 }}
@@ -323,9 +367,32 @@ function IndexRouteComponent() {
                                     color: "white",
                                     width: "160px",
                                 }}
+                                onClick={showModal}
                             >
                                 NDP Programme List
                             </Button>
+
+                            <Modal
+                                title="NDP Programme List"
+                                open={isModalOpen}
+                                onOk={handleOk}
+                                onCancel={handleCancel}
+                                footer={[
+                                    <Button key="ok" onClick={handleCancel}>
+                                        OK
+                                    </Button>,
+                                ]}
+                            >
+                                <Table
+                                    columns={columns}
+                                    dataSource={currentOptions}
+                                    pagination={false}
+                                    rowKey="id"
+                                    bordered
+                                    size="small"
+                                    scroll={{ y: 400 }}
+                                />
+                            </Modal>
                         </div>
                         <div>
                             <Button

@@ -14,7 +14,7 @@ export default function TableCell({
     cc,
     cp,
     co,
-		disabled = true
+    disabled = true,
 }: {
     dataElement: DataElementDataValue;
     coc: string;
@@ -25,7 +25,8 @@ export default function TableCell({
     de: string;
     ou: string;
     pe: string;
-		disabled?: boolean;
+    disabled?: boolean;
+		comment?: boolean;
 }) {
     const engine = useDataEngine();
     const saveDataValue = useSaveDataValue();
@@ -39,7 +40,7 @@ export default function TableCell({
             const newValue = dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`];
             setCurrentValue(newValue);
         }
-    }, [ou, pe, aoc, coc]); 
+    }, [ou, pe, aoc, coc]);
 
     const handleUpdate = async (value: string | number | null) => {
         const stringValue = value?.toString() || "";
@@ -50,7 +51,6 @@ export default function TableCell({
             setIsEditing(false);
             return;
         }
-
         const previousValue = currentValue;
         setIsLoading(true);
 
@@ -69,7 +69,10 @@ export default function TableCell({
             });
             message.success("Data saved successfully", 2);
         } catch (error) {
-            message.error("Failed to save data. Please try again.", 4);
+            message.error(
+                `Failed to save data. Please try again. ${error.message}`,
+                4,
+            );
             setCurrentValue(previousValue);
             console.error("Save error:", error);
         } finally {

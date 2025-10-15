@@ -11,6 +11,7 @@ import {
     IDataElement,
     IDataSet,
     Search,
+    Option,
 } from "./types";
 import { convertToAntdTree } from "./utils";
 
@@ -27,6 +28,14 @@ export const initialQueryOptions = (
                         fields: "organisationUnits[id],dataSets",
                     },
                 },
+                ndp4: {
+                    resource: "optionSets/xLQd0SrtSF8/options",
+                    params: { fields: "id,name,code", paging: false },
+                },
+                ndp3: {
+                    resource: "optionSets/nZffnMQwoWr/options",
+                    params: { fields: "id,name,code", paging: false },
+                },
                 configuration: {
                     resource: "dataStore/ndp-configurations",
                     params: {
@@ -38,6 +47,8 @@ export const initialQueryOptions = (
             const {
                 orgUnits: { organisationUnits },
                 configuration,
+                ndp3: { options: ndp3 },
+                ndp4: { options: ndp4 },
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
@@ -48,6 +59,12 @@ export const initialQueryOptions = (
                     baseline: string;
                     financialYears: string[];
                 }>;
+                ndp3: {
+                    options: Option[];
+                };
+                ndp4: {
+                    options: Option[];
+                };
             };
 
             const nextQuery = (await engine.query(
@@ -88,6 +105,8 @@ export const initialQueryOptions = (
                 organisationTree: convertToAntdTree(allUnits),
                 orgUnitDataSets,
                 configuration,
+                ndp3,
+                ndp4,
             };
         },
     });
@@ -170,26 +189,31 @@ export const dataValuesQueryOptions = (
                     ...(baselineDataValues?.dataValues ?? []),
                 ],
             };
+
+            const dataValues = fields.map((field) => {
+                const dataValue = allDataValues.dataValues
+                    .filter((dv) => dv.dataElement === field.id)
+                    .reduce((acc, dv) => {
+                        const key = `${dv.orgUnit}_${dv.period}_${dv.attributeOptionCombo}_${dv.categoryOptionCombo}`;
+                        acc[key] = dv.value;
+                        if (dv.comment) {
+                            acc[`${key}_comment`] = dv.comment;
+                        }
+                        return acc;
+                    }, {} as Record<string, string>);
+                return {
+                    ...field,
+                    dataValue,
+                    pe: search.pe!,
+                    ou: search.orgUnit!,
+                    targetYear: search.targetYear!,
+                    baselineYear: search.baseline!,
+                };
+            });
             return {
                 completeDataSetRegistrations:
                     completeDataSetRegistrations.completeDataSetRegistrations,
-                dataValues: fields.map((field) => {
-                    const dataValue = allDataValues.dataValues
-                        .filter((dv) => dv.dataElement === field.id)
-                        .reduce((acc, dv) => {
-                            const key = `${dv.orgUnit}_${dv.period}_${dv.attributeOptionCombo}_${dv.categoryOptionCombo}`;
-                            acc[key] = dv.value;
-                            return acc;
-                        }, {} as Record<string, string>);
-                    return {
-                        ...field,
-                        dataValue,
-                        pe: search.pe!,
-                        ou: search.orgUnit!,
-                        targetYear: search.targetYear!,
-                        baselineYear: search.baseline!,
-                    };
-                }),
+                dataValues,
             };
         },
         enabled:
@@ -244,7 +268,7 @@ export const dataSetQueryOptions = (
 };
 
 // Hook for saving data values
-export const useSaveDataValue = () => {
+export const useSaveDataValue = (isComment: boolean = false) => {
     return useMutation({
         mutationFn: async ({
             engine,
@@ -252,26 +276,39 @@ export const useSaveDataValue = () => {
         }: {
             engine: ReturnType<typeof useDataEngine>;
             dataValue: {
-                value: string;
+                value?: string;
                 de: string;
                 pe: string;
                 ou: string;
                 co: string;
                 cc: string;
                 cp: string;
+                comment?: string;
             };
         }) => {
-            const response = await engine.mutate({
-                type: "create",
-                resource: `dataValues?${new URLSearchParams({
+            let resource = `dataValues?${new URLSearchParams({
+                de: dataValue.de,
+                pe: dataValue.pe,
+                ou: dataValue.ou,
+                co: dataValue.co,
+                cc: dataValue.cc,
+                cp: dataValue.cp,
+                value: dataValue.value ?? "",
+            }).toString()}`;
+            if (isComment && dataValue.comment) {
+                resource = `dataValues?${new URLSearchParams({
                     de: dataValue.de,
                     pe: dataValue.pe,
                     ou: dataValue.ou,
                     co: dataValue.co,
                     cc: dataValue.cc,
                     cp: dataValue.cp,
-                    value: dataValue.value,
-                }).toString()}`,
+                    comment: dataValue.comment,
+                }).toString()}`;
+            }
+            const response = await engine.mutate({
+                type: "create",
+                resource,
                 data: {},
             });
             return response;

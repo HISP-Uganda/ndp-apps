@@ -18,13 +18,33 @@ export const SubProgramActionIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramActionIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs, quarters, requiresProgram } =
-        SubProgramActionIndexRoute.useSearch();
+    const {
+        ou,
+        deg,
+        pe,
+        tab,
+        program,
+        degs,
+        quarters,
+        requiresProgram,
+        category,
+        categoryOptions,
+				nonBaseline
+    } = SubProgramActionIndexRoute.useSearch();
     const navigate = SubProgramActionIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramActionRoute.useLoaderData();
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs, requiresProgram },
+        {
+            deg,
+            pe,
+            ou,
+            program,
+            degs,
+            requiresProgram,
+            category,
+            categoryOptions,
+        },
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
@@ -33,6 +53,8 @@ function Component() {
         ou,
         program,
         degs,
+        category,
+        categoryOptions,
     });
 
     const onChange = (key: string) => {
@@ -58,8 +80,23 @@ function Component() {
             pe,
             degs,
             quarters,
+            category,
+            categoryOptions,
+						nonBaseline
         }),
-        [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
+        [
+            data.data,
+            dataElementGroupSets,
+            onChange,
+            tab,
+            deg,
+            ou,
+            pe,
+            degs,
+            quarters,
+            category,
+            categoryOptions,
+        ],
     );
 
     return <Results {...resultsProps} />;

@@ -20,7 +20,10 @@ export const GoalValidator = z.object({
     program: z.string().optional(),
     quarters: z.boolean().optional(),
     requiresProgram: z.boolean().optional(),
+    category: z.string(),
+    categoryOptions: z.string().array().optional(),
     ou: z.string(),
+    nonBaseline: z.boolean().optional(),
 });
 
 export type GoalSearch = z.infer<typeof GoalValidator>;

@@ -23,22 +23,15 @@ export const VisionIndexRoute = createRoute({
 
 function Component() {
     const { engine } = VisionIndexRoute.useRouteContext();
-    const { ou, pe, degs, deg, program, v, requiresProgram } =
-        VisionRoute.useSearch();
+    const search = VisionRoute.useSearch();
     const dataElementGroupSets = VisionRoute.useLoaderData();
     const { configurations } = useLoaderData({ from: "__root__" });
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs, requiresProgram },
+        search,
         dataElementGroupSets,
     );
-    const data = useAnalyticsQuery(engine, dataElementGroups, {
-        deg,
-        pe,
-        ou,
-        program,
-        degs,
-    });
+    const data = useAnalyticsQuery(engine, dataElementGroups, search);
 
     const periods = data.data.analytics.metaData.dimensions["pe"] ?? [];
 
@@ -57,7 +50,7 @@ function Component() {
         [key: string]: string | number | undefined;
     }> = periods.map((pe, index) => ({
         title:
-            configurations[v]?.data?.baseline === pe
+            configurations[search.v]?.data?.baseline === pe
                 ? `${data.data.analytics.metaData.items[pe]?.name} ${data.data.analytics.metaData.items[baseline].name}`
                 : index === 1
                 ? `${data.data.analytics.metaData.items[pe]?.name} Target`
@@ -75,6 +68,7 @@ function Component() {
                 targetId: target,
                 actualId: value,
                 baselineId: baseline,
+                category: search.category,
             })}
             pagination={false}
             scroll={{ y: "calc(100vh - 148px)", x: "max-content" }}

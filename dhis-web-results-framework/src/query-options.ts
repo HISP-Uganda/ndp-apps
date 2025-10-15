@@ -50,6 +50,13 @@ export const initialQueryOptions = (
                 programGoals: {
                     resource: `optionSets/D5J653eYk73/options`,
                 },
+                categories: {
+                    resource: "categories",
+                    params: {
+                        filter: "id:in:[Duw5yep8Vae,kfnptfEdnYl]",
+                        fields: "id,categoryOptions[id]",
+                    },
+                },
             });
 
             const {
@@ -58,6 +65,7 @@ export const initialQueryOptions = (
                 ndpVersions: { options: ndpVersions },
                 programs: { options: programs },
                 programGoals: { options: programGoals },
+                categories: { categories },
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
@@ -72,6 +80,14 @@ export const initialQueryOptions = (
                 };
                 programGoals: {
                     options: Option[];
+                };
+                categories: {
+                    categories: Array<{
+                        id: string;
+                        categoryOptions: Array<{
+                            id: string;
+                        }>;
+                    }>;
                 };
             };
 
@@ -117,6 +133,12 @@ export const initialQueryOptions = (
                 ou: dataViewOrganisationUnits[0].id,
                 configurations,
                 programGoals,
+                categories: new Map(
+                    categories.map((c) => [
+                        c.id,
+                        c.categoryOptions.map((co) => co.id),
+                    ]),
+                ),
             };
         },
     });
@@ -254,12 +276,26 @@ export const orgUnitQueryOptions = (
 
 export const analyticsQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
-    { deg, pe, ou, degs }: GoalSearch,
+    { deg, pe, ou, degs, category, categoryOptions }: GoalSearch,
 ) => {
     return queryOptions({
-        queryKey: ["analytics", ...(pe ?? []), degs, deg, ou],
+        queryKey: [
+            "analytics",
+            ...(pe ?? []),
+            degs,
+            deg,
+            ou,
+            category,
+            ...(categoryOptions ?? []),
+        ],
         queryFn: async () => {
-            if (deg === undefined || pe === undefined || ou === undefined) {
+            if (
+                deg === undefined ||
+                pe === undefined ||
+                ou === undefined ||
+                category === undefined ||
+                categoryOptions === undefined
+            ) {
                 throw new Error(
                     "Organisation unit and/or period and/or dimension are missing",
                 );
@@ -270,7 +306,7 @@ export const analyticsQueryOptions = (
                 includeMetadataDetails: "true",
             });
             [
-                "Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U",
+                `${category}:${categoryOptions.join(";")}`,
                 `pe:${pe.join(";")}`,
                 `dx:${deg}`,
             ].forEach((dimension) => params.append("dimension", dimension));

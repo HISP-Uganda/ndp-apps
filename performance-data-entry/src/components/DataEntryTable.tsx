@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { Flex } from "antd";
+import { Flex, Spin } from "antd";
 import { orderBy } from "lodash";
 import React from "react";
+import { Loading3QuartersOutlined } from "@ant-design/icons";
 import { dataSetQueryOptions } from "../query-options";
 import { IndexRoute } from "../routes";
 import { IDataSet } from "../types";
 import CategoryCombo from "./CategoryCombo";
+import Spinner from "./Spinner";
 
 export default function DataEntryTable() {
     const search = IndexRoute.useSearch();
@@ -13,7 +15,7 @@ export default function DataEntryTable() {
     const { data, isLoading, isError, error } = useQuery(
         dataSetQueryOptions(engine, search.dataSet),
     );
-    if (isLoading) return <div>Loading...</div>;
+    if (isLoading) return <Spinner />;
     if (isError) return <div>Error: {(error as Error).message}</div>;
 
     if (

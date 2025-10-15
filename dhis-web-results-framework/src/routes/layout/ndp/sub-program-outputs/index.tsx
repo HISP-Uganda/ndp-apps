@@ -5,10 +5,9 @@ import {
     useAnalyticsQuery,
     useDataElementGroups,
 } from "../../../../hooks/data-hooks";
-import { SubProgramOutputRoute } from "./route";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
-import TruncatedText from "../../../../components/TrancatedText";
+import { SubProgramOutputRoute } from "./route";
 
 export const SubProgramOutputIndexRoute = createRoute({
     path: "/",
@@ -19,20 +18,16 @@ export const SubProgramOutputIndexRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramOutputIndexRoute.useRouteContext();
-    const { ou, deg, pe, tab, program, degs, quarters, requiresProgram, v } =
-        SubProgramOutputIndexRoute.useSearch();
+    const search = SubProgramOutputIndexRoute.useSearch();
     const navigate = SubProgramOutputIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramOutputRoute.useLoaderData();
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs, requiresProgram },
+        search,
         dataElementGroupSets,
     );
     const data = useAnalyticsQuery(engine, dataElementGroups, {
-        deg,
-        pe: derivePeriods(pe),
-        ou,
-        program,
-        degs,
+        ...search,
+        pe: derivePeriods(search.pe),
     });
 
     const onChange = (key: string) => {
@@ -52,15 +47,13 @@ function Component() {
             },
             dataElementGroupSets,
             onChange,
-            tab,
-            deg,
-            ou,
-            pe,
-            quarters,
+            ...search,
             prefixColumns: [
                 {
                     title:
-                        v === "NDPIII" ? "Sub-Interventions" : "Interventions",
+                        search.v === "NDPIII"
+                            ? "Sub-Interventions"
+                            : "Interventions",
                     dataIndex: "dataElementGroupSet",
                     render: (_, record) => {
                         let current = "";
@@ -79,7 +72,7 @@ function Component() {
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
+        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

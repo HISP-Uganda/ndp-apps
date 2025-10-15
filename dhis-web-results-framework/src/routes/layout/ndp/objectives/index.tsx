@@ -5,9 +5,8 @@ import {
     useAnalyticsQuery,
     useDataElementGroups,
 } from "../../../../hooks/data-hooks";
-import { ObjectiveRoute } from "./route";
 import { ResultsProps } from "../../../../types";
-import TruncatedText from "../../../../components/TrancatedText";
+import { ObjectiveRoute } from "./route";
 
 export const ObjectIndexRoute = createRoute({
     path: "/",
@@ -18,22 +17,15 @@ export const ObjectIndexRoute = createRoute({
 
 function Component() {
     const { engine } = ObjectIndexRoute.useRouteContext();
-    const { ou, deg, degs, pe, tab, program, requiresProgram } =
-        ObjectIndexRoute.useSearch();
+    const search = ObjectIndexRoute.useSearch();
     const navigate = ObjectIndexRoute.useNavigate();
     const dataElementGroupSets = ObjectiveRoute.useLoaderData();
 
     const dataElementGroups = useDataElementGroups(
-        { deg, pe, ou, program, degs, requiresProgram },
+        search,
         dataElementGroupSets,
     );
-    const data = useAnalyticsQuery(engine, dataElementGroups, {
-        deg,
-        pe,
-        ou,
-        program,
-        degs,
-    });
+    const data = useAnalyticsQuery(engine, dataElementGroups, search);
 
     const onChange = useCallback(
         (key: string) => {
@@ -51,10 +43,7 @@ function Component() {
             data: { ...data.data, ...dataElementGroups },
             dataElementGroupSets,
             onChange,
-            tab,
-            deg,
-            ou,
-            pe,
+            ...search,
             prefixColumns: [
                 {
                     title: "Objectives",
@@ -76,7 +65,7 @@ function Component() {
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, tab, deg, ou, pe, degs],
+        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

@@ -1,4 +1,4 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
 import { Flex } from "antd";
@@ -35,7 +35,9 @@ export const ObjectiveRoute = createRoute({
 
 function Component() {
     const { engine } = ObjectiveRoute.useRouteContext();
-    const { v, deg, degs, ou, pe } = ObjectiveRoute.useSearch();
+    const { v, deg, degs, ou, pe, category, categoryOptions } =
+        ObjectiveRoute.useSearch();
+    const { categories } = useLoaderData({ from: "__root__" });
     const { data } = useSuspenseQuery(
         dataElementGroupSetsQueryOptions(
             engine,
@@ -44,6 +46,17 @@ function Component() {
         ),
     );
     const navigate = ObjectiveRoute.useNavigate();
+
+    useEffect(() => {
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
 
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>

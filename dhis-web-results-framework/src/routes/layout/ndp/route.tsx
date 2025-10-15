@@ -1,4 +1,4 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import React from "react";
 import { LayoutRoute } from "../route";
 

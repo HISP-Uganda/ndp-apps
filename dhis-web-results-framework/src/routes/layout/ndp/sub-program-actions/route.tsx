@@ -1,5 +1,5 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
-import React from "react";
+import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
+import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Flex, Spin } from "antd";
@@ -17,10 +17,12 @@ export const SubProgramActionRoute = createRoute({
     }),
     loader: async ({ context, deps: { v } }) => {
         const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
+        const data = await queryClient.ensureQueryData(
             dataElementGroupSetsWithProgramsQueryOptions(
                 engine,
-                "sub-intervention4action",
+                v === "NDPIII"
+                    ? "sub-intervention4action"
+                    : "intervention4actions",
                 v,
             ),
         );
@@ -36,15 +38,27 @@ export const SubProgramActionRoute = createRoute({
 
 function Component() {
     const { engine } = SubProgramActionRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, program } = SubProgramActionRoute.useSearch();
+    const { v, deg, degs, ou, pe, program, category, categoryOptions } = SubProgramActionRoute.useSearch();
+    const { categories } = useLoaderData({ from: "__root__" });
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
             engine,
-            "sub-intervention4action",
+            v === "NDPIII" ? "sub-intervention4action" : "intervention4actions",
             v,
         ),
     );
     const navigate = SubProgramActionRoute.useNavigate();
+
+    useEffect(() => {
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
 
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>

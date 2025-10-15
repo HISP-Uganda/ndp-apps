@@ -26,7 +26,8 @@ export const VisionRoute = createRoute({
 
 function Component() {
     const { engine } = VisionRoute.useRouteContext();
-    const { v, degs } = VisionRoute.useSearch();
+    const { v, degs, category, categoryOptions } = VisionRoute.useSearch();
+    const { categories } = useLoaderData({ from: "__root__" });
     const navigate = VisionRoute.useNavigate();
 
     const { data } = useSuspenseQuery(
@@ -41,6 +42,15 @@ function Component() {
                         degs: data?.[0]?.id ?? "",
                     };
                 },
+            });
+        }
+
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
             });
         }
     }, []);
