@@ -43,6 +43,10 @@ export const initialQueryOptions = (
                         paging: false,
                     },
                 },
+                central: {
+                    resource: "organisationUnits/ONXWQ2EoOcP",
+                    params: { level: 1, fields: "id,name,code", paging: false },
+                },
             });
             const {
                 orgUnits: { organisationUnits },
@@ -64,6 +68,11 @@ export const initialQueryOptions = (
                 };
                 ndp4: {
                     options: Option[];
+                };
+                central: {
+                    organisationUnits: Array<
+                        Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">
+                    >;
                 };
             };
 

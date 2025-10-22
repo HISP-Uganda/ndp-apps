@@ -5,19 +5,24 @@ import {
     Analytics,
     DataElement,
     DataElementGroupSet,
+    DHIS2OrgUnit,
     GoalSearch,
     Option,
     OptionSet,
     OrgUnit,
 } from "./types";
 import { flattenDataElements } from "./utils";
+import {
+    chunk,
+    difference,
+    fromPairs,
+    groupBy,
+    orderBy,
+    sortBy,
+    uniq,
+    uniqBy,
+} from "lodash";
 
-type DHIS2OrgUnit = {
-    id: string;
-    name: string;
-    leaf: boolean;
-    parent: { id: string };
-};
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
     optionSet: string,
@@ -57,6 +62,10 @@ export const initialQueryOptions = (
                         fields: "id,categoryOptions[id]",
                     },
                 },
+                central: {
+                    resource: "organisationUnits/ONXWQ2EoOcP",
+                    params: { level: 1, fields: "id,name,code", paging: false },
+                },
             });
 
             const {
@@ -66,6 +75,7 @@ export const initialQueryOptions = (
                 programs: { options: programs },
                 programGoals: { options: programGoals },
                 categories: { categories },
+                central,
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
@@ -89,8 +99,12 @@ export const initialQueryOptions = (
                         }>;
                     }>;
                 };
+                central: {
+                    organisationUnits: Array<
+                        Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">
+                    >;
+                };
             };
-
             const organisationUnits: OrgUnit[] = dataViewOrganisationUnits.map(
                 ({ id, name, leaf }) => {
                     const current: OrgUnit = {
@@ -139,6 +153,7 @@ export const initialQueryOptions = (
                         c.categoryOptions.map((co) => co.id),
                     ]),
                 ),
+                votes: central.organisationUnits,
             };
         },
     });
@@ -328,7 +343,7 @@ export const analyticsQueryOptions = (
                             "dx"
                         ]?.join(",")}]`,
                         paging: "false",
-                        fields: "id,name,attributeValues[attribute[id,name],value],dataElementGroups[id,name,attributeValues[attribute[id,name],value],groupSets[id,name,attributeValues[attribute[id,name],value]]]",
+                        fields: "id,name,aggregationType,dataSetElements[dataSet[name,periodType,id,organisationUnits[code,displayName,id]]],attributeValues[attribute[id,name],value],dataElementGroups[id,name,attributeValues[attribute[id,name],value],groupSets[id,name,attributeValues[attribute[id,name],value]]]",
                     },
                 },
             });
@@ -378,5 +393,349 @@ export const dataStoreQueryOptions = (
             }
             return data;
         },
+    });
+};
+
+export const dataElementsFromGroupQueryOptions = ({
+    engine,
+    dataElementGroupSets,
+    period,
+    quarters,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    dataElementGroupSets: DataElementGroupSet[];
+    period?: string;
+    quarters?: boolean;
+}) => {
+    return queryOptions({
+        queryKey: [
+            "dataElementsFromGroup",
+            ...dataElementGroupSets.map((deg) => deg.id),
+            period,
+        ],
+        queryFn: async () => {
+            if (period === undefined) {
+                throw new Error("Period is undefined");
+            }
+
+            let periodFilter = period;
+            if (quarters) {
+                const year = Number(period?.slice(0, 4));
+                const q1 = `${year}Q3`;
+                const q2 = `${year}Q4`;
+                const q3 = `${year + 1}Q1`;
+                const q4 = `${year + 1}Q2`;
+                periodFilter = `${period};${q1};${q2};${q3};${q4}`;
+            }
+            const dataElementGroups = dataElementGroupSets.flatMap(
+                ({ dataElementGroups }) =>
+                    dataElementGroups.map((deg) => `DE_GROUP-${deg.id}`),
+            );
+            const params = new URLSearchParams({
+                includeMetadataDetails: "true",
+            });
+            params.append("dimension", `ou:ONXWQ2EoOcP;LEVEL-3`);
+            params.append(
+                "dimension",
+                `Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U`,
+            );
+            params.append("dimension", `pe:${periodFilter}`);
+            const response = (await engine.query(
+                fromPairs(
+                    chunk(dataElementGroups, 50).map((degIds, index) => {
+                        const currentParams = new URLSearchParams(params);
+                        currentParams.append(
+                            "dimension",
+                            `dx:${degIds.join(";")}`,
+                        );
+                        return [
+                            `analyticsPage${index}`,
+                            {
+                                resource: `analytics?${currentParams.toString()}`,
+                            },
+                        ];
+                    }),
+                ),
+            )) as {
+                [key: string]: Analytics;
+            };
+            let analyticsCombined: Analytics = {
+                metaData: {
+                    dimensions: {
+                        dx: [],
+                        ou: [],
+                        pe: [],
+                        Duw5yep8Vae: [],
+                    },
+                    items: {},
+                },
+                headers: [],
+                rows: [],
+                width: 4,
+                height: 0,
+                headerWidth: 4,
+            };
+
+            for (const analyticsPage of Object.values(response)) {
+                analyticsCombined = {
+                    ...analyticsCombined,
+                    metaData: {
+                        ...analyticsCombined.metaData,
+                        dimensions: {
+                            ...analyticsCombined.metaData.dimensions,
+                            ...analyticsPage.metaData.dimensions,
+                            ou: [
+                                ...new Set(
+                                    analyticsCombined.metaData.dimensions[
+                                        "ou"
+                                    ].concat(
+                                        analyticsPage.metaData.dimensions["ou"],
+                                    ),
+                                ),
+                            ],
+                            dx: [
+                                ...new Set(
+                                    analyticsCombined.metaData.dimensions[
+                                        "dx"
+                                    ].concat(
+                                        analyticsPage.metaData.dimensions["dx"],
+                                    ),
+                                ),
+                            ],
+                            pe: [
+                                ...new Set(
+                                    analyticsCombined.metaData.dimensions[
+                                        "pe"
+                                    ].concat(
+                                        analyticsPage.metaData.dimensions["pe"],
+                                    ),
+                                ),
+                            ],
+                            Duw5yep8Vae: [
+                                ...new Set(
+                                    analyticsCombined.metaData.dimensions[
+                                        "Duw5yep8Vae"
+                                    ].concat(
+                                        analyticsPage.metaData.dimensions[
+                                            "Duw5yep8Vae"
+                                        ],
+                                    ),
+                                ),
+                            ],
+                        },
+                        items: {
+                            ...analyticsCombined.metaData.items,
+                            ...analyticsPage.metaData.items,
+                        },
+                    },
+                    headers: uniqBy(
+                        [
+                            ...analyticsCombined.headers,
+                            ...analyticsPage.headers,
+                        ],
+                        "name",
+                    ),
+                    rows: analyticsCombined.rows.concat(analyticsPage.rows),
+                };
+            }
+            const dataElements = (await engine.query(
+                fromPairs(
+                    chunk(analyticsCombined.metaData.dimensions["dx"], 200).map(
+                        (deIds, index) => [
+                            `dataElementsPage${index}`,
+                            {
+                                resource: `dataElements.json`,
+                                params: {
+                                    filter: `id:in:[${deIds.join(",")}]`,
+                                    paging: "false",
+                                    fields: "id,dataSetElements[dataSet[organisationUnits[id]]]",
+                                },
+                            },
+                        ],
+                    ),
+                ),
+            )) as {
+                [key: string]: {
+                    dataElements: Array<
+                        Pick<DataElement, "id" | "dataSetElements">
+                    >;
+                };
+            };
+            const allDataElements = Object.values(dataElements).flatMap(
+                ({ dataElements }) =>
+                    dataElements.flatMap(({ dataSetElements, id }) =>
+                        dataSetElements.flatMap(({ dataSet }) =>
+                            dataSet.organisationUnits.map((ou) => ({
+                                dataElement: id,
+                                ou: ou.id,
+                            })),
+                        ),
+                    ),
+            );
+            const data: Map<
+                string,
+                {
+                    denominator: number;
+                    achieved: number;
+                    moderatelyAchieved: number;
+                    notAchieved: number;
+                    noData: number;
+                    percentAchieved: string;
+                    percentModeratelyAchieved: string;
+                    percentNotAchieved: string;
+                    percentNoData: string;
+                }
+            > = new Map();
+
+            const dxIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "dx",
+            );
+
+            const ouIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "ou",
+            );
+            const peIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "pe",
+            );
+            const Duw5yep8VaeIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "Duw5yep8Vae",
+            );
+
+            const valueIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "value",
+            );
+            for (const ou of analyticsCombined.metaData.dimensions["ou"]) {
+                const dataElementsForOrgUnit = allDataElements.flatMap((de) =>
+                    de.ou === ou ? [de.dataElement] : [],
+                );
+
+                const grouped = dataElementsForOrgUnit.map((de) => {
+                    const reportedDataElements = analyticsCombined.rows.flatMap(
+                        (row) => {
+                            if (row[ouIndex] === ou && de === row[dxIndex]) {
+                                return {
+                                    dataElement: row[dxIndex],
+                                    value: row[valueIndex],
+                                    goalStatus: row[Duw5yep8VaeIndex],
+                                    period: row[peIndex],
+                                };
+                            }
+                            return [];
+                        },
+                    );
+                    if (reportedDataElements.length === 0) {
+                        return {
+                            dataElement: de,
+                            performance: 0,
+                            status: "nd",
+                        };
+                    }
+
+                    const target = reportedDataElements.find(
+                        (v) => v.goalStatus === "Px8Lqkxy2si",
+                    );
+                    const actual = reportedDataElements.filter((v) => {
+                        if (quarters) {
+                            return (
+                                v.goalStatus === "HKtncMjp06U" &&
+                                v.period.includes("Q")
+                            );
+                        }
+                        return v.goalStatus === "HKtncMjp06U";
+                    });
+                    const orderedActuals = orderBy(actual, "period", "desc");
+
+                    if (target && orderedActuals.length > 0) {
+                        const latestActual = Number(orderedActuals[0].value);
+                        const targetValue = Number(target.value);
+                        const performance = (latestActual / targetValue) * 100;
+                        if (isNaN(performance) || !isFinite(performance)) {
+                            return {
+                                dataElement: de,
+                                performance,
+                                status: "nd",
+                            };
+                        }
+
+                        if (performance >= 100) {
+                            return {
+                                dataElement: de,
+                                performance,
+                                status: "a",
+                            };
+                        }
+
+                        if (performance >= 75 && performance < 100) {
+                            return {
+                                dataElement: de,
+                                performance,
+                                status: "m",
+                            };
+                        }
+
+                        if (performance < 75) {
+                            return {
+                                dataElement: de,
+                                performance,
+                                status: "n",
+                            };
+                        }
+
+                        return {
+                            dataElement: de,
+                            performance,
+                            status: "nd",
+                        };
+                    }
+                    return {
+                        dataElement: de,
+                        performance: 0,
+                        status: "nd",
+                    };
+                });
+                const groupedPerformance = groupBy(grouped, "status");
+                let denominator = dataElementsForOrgUnit.length;
+                let achieved = groupedPerformance["a"]
+                    ? groupedPerformance["a"].length
+                    : 0;
+                let moderatelyAchieved = groupedPerformance["m"]
+                    ? groupedPerformance["m"].length
+                    : 0;
+                let notAchieved = groupedPerformance["n"]
+                    ? groupedPerformance["n"].length
+                    : 0;
+                let noData = groupedPerformance["nd"]
+                    ? groupedPerformance["nd"].length
+                    : 0;
+                data.set(ou, {
+                    denominator,
+                    achieved,
+                    moderatelyAchieved,
+                    notAchieved,
+                    noData,
+                    percentAchieved: Intl.NumberFormat("en-US", {
+                        style: "percent",
+                    }).format(denominator !== 0 ? achieved / denominator : 0),
+                    percentModeratelyAchieved: Intl.NumberFormat("en-US", {
+                        style: "percent",
+                    }).format(
+                        denominator !== 0
+                            ? moderatelyAchieved / denominator
+                            : 0,
+                    ),
+                    percentNotAchieved: Intl.NumberFormat("en-US", {
+                        style: "percent",
+                    }).format(
+                        denominator !== 0 ? notAchieved / denominator : 0,
+                    ),
+                    percentNoData: Intl.NumberFormat("en-US", {
+                        style: "percent",
+                    }).format(denominator !== 0 ? noData / denominator : 0),
+                });
+            }
+            return data;
+        },
+        enabled: period !== undefined,
+        retry: false,
     });
 };

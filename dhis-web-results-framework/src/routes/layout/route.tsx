@@ -354,6 +354,106 @@ function Component() {
                         },
                     ],
                 },
+                {
+                    title: "Performance Scorecard",
+                    key: "scorecard",
+                    selectable: false,
+                    checkable: false,
+                    children: [
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/overall-performance"
+                                    search={() => ({
+                                        ou,
+                                        v,
+                                        pe: undefined,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Overall Vote Scorecard
+                                </Link>
+                            ),
+                            key: "/ndp/overall-performance",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/outcome-performance"
+                                    search={() => ({
+                                        ou,
+                                        v,
+                                        pe: undefined,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Outcome Performance
+                                </Link>
+                            ),
+                            key: "/ndp/outcome-performance",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/output-performance"
+                                    search={() => ({
+                                        ou,
+                                        v,
+                                        pe: undefined,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Output Performance
+                                </Link>
+                            ),
+                            key: "/ndp/output-performance",
+                        },
+                    ],
+                },
             ],
         },
         {
@@ -431,8 +531,15 @@ function Component() {
                                 ...prev,
                                 ou,
                                 v,
-                                degs: "All",
-                                deg: "All",
+                                degs: undefined,
+                                deg: undefined,
+                                program: undefined,
+                                pe: undefined,
+                                requiresProgram: undefined,
+                                quarters: undefined,
+                                category: undefined,
+                                categoryOptions: undefined,
+                                nonBaseline: undefined,
                             })}
                             activeProps={{
                                 style: {

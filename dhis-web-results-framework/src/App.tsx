@@ -6,7 +6,9 @@ import React, { FC } from "react";
 import "./app.css";
 
 import { router } from "./router";
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+});
 declare module "@tanstack/react-router" {
     interface Register {
         router: typeof router;

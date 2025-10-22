@@ -1,8 +1,9 @@
-import { SelectProps } from "antd";
+import { SelectProps, TableProps } from "antd";
 import {
     Analytics,
     DataElement,
     DataElementGroupSet,
+    DHIS2OrgUnit,
     GoalSearch,
     MapPredicate,
 } from "./types";
@@ -51,24 +52,38 @@ export const onlyDegs = new Set(["goal", "resultsFrameworkObjective"]);
 
 export const flattenDataElements = (dataElements: DataElement[]) => {
     return new Map(
-        dataElements.map(({ id, name, dataElementGroups, attributeValues }) => {
-            const obj: Map<string, string> = new Map();
-            obj.set(id, name);
-            obj.set("id", id);
-            attributeValues.forEach(({ value, attribute: { id, name } }) => {
-                obj.set(id, value);
-                obj.set(name, value);
-            });
-            dataElementGroups.forEach(
-                ({ id, name, groupSets, attributeValues }) => {
-                    obj.set(id, name);
-                    attributeValues.forEach(
-                        ({ value, attribute: { id, name } }) => {
-                            obj.set(id, value);
-                            obj.set(name, value);
+        dataElements.map(
+            ({
+                id,
+                name,
+                aggregationType,
+                dataElementGroups,
+                attributeValues,
+                dataSetElements,
+            }) => {
+                const [
+                    {
+                        dataSet: {
+                            periodType,
+                            organisationUnits: [{ code, displayName }],
                         },
-                    );
-                    groupSets.forEach(({ id, name, attributeValues }) => {
+                    },
+                ] = dataSetElements;
+                const obj: Map<string, string> = new Map();
+                obj.set(id, name);
+                obj.set("id", id);
+                obj.set("dataSetPeriodType", periodType);
+                obj.set("dataSetOrganisationUnitCode", code);
+                obj.set("dataSetOrganisationUnitName", displayName);
+                obj.set("aggregationType", aggregationType);
+                attributeValues.forEach(
+                    ({ value, attribute: { id, name } }) => {
+                        obj.set(id, value);
+                        obj.set(name, value);
+                    },
+                );
+                dataElementGroups.forEach(
+                    ({ id, name, groupSets, attributeValues }) => {
                         obj.set(id, name);
                         attributeValues.forEach(
                             ({ value, attribute: { id, name } }) => {
@@ -76,11 +91,20 @@ export const flattenDataElements = (dataElements: DataElement[]) => {
                                 obj.set(name, value);
                             },
                         );
-                    });
-                },
-            );
-            return [id, Object.fromEntries(obj)];
-        }),
+                        groupSets.forEach(({ id, name, attributeValues }) => {
+                            obj.set(id, name);
+                            attributeValues.forEach(
+                                ({ value, attribute: { id, name } }) => {
+                                    obj.set(id, value);
+                                    obj.set(name, value);
+                                },
+                            );
+                        });
+                    },
+                );
+                return [id, Object.fromEntries(obj)];
+            },
+        ),
     );
 };
 
@@ -485,17 +509,17 @@ export const formatPercentage = (value: number): string => {
 };
 
 export const PERFORMANCE_COLORS = {
-    red: { bg: "#CD615A", fg: "black", end: 75 },
-    yellow: { bg: "#F4CD4D", fg: "black", start: 75, end: 99 },
+    red: { bg: "#EF4444", fg: "black", end: 75 },
+    yellow: { bg: "#FBBF24", fg: "black", start: 75, end: 99 },
     gray: { bg: "#AAAAAA", fg: "black", start: 75, end: 99 },
-    green: { bg: "#339D73", fg: "white", start: 100 },
+    green: { bg: "#10B981", fg: "black", start: 100 },
 } as const;
 
 export const headerColors = {
-    n: { backgroundColor: "#CD615A", color: "black" },
-    m: { backgroundColor: "#F4CD4D", color: "black" },
+    n: { backgroundColor: "#EF4444", color: "black" },
+    m: { backgroundColor: "#FBBF24", color: "black" },
     x: { backgroundColor: "#AAAAAA", color: "black" },
-    a: { backgroundColor: "#339D73", color: "white" },
+    a: { backgroundColor: "#10B981", color: "black" },
 } as const;
 export const findBackground = (
     value: number,
@@ -638,4 +662,169 @@ export const getDefaultPeriods = (financialYears: string[]) => {
             validPeriods: [],
         };
     }
+};
+
+export const createColumns = (
+    votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>,
+
+    data?: Map<
+        string,
+        {
+            denominator: number;
+            achieved: number;
+            moderatelyAchieved: number;
+            notAchieved: number;
+            noData: number;
+            percentAchieved: string;
+            percentModeratelyAchieved: string;
+            percentNotAchieved: string;
+            percentNoData: string;
+        }
+    >,
+) => {
+    const columns: TableProps<
+        Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">
+    >["columns"] = [
+        {
+            title: "Vote",
+            dataIndex: "vote",
+            key: "vote",
+            width: 60,
+            align: "center",
+            render: (_, record) => record.code?.replace("V", ""),
+        },
+        {
+            title: "Institution",
+            dataIndex: "name",
+            key: "name",
+            filterSearch: true,
+            filters: votes.map((v) => ({ text: v.name, value: v.name })),
+            onFilter: (value, record) =>
+                record.name.indexOf(value as string) === 0,
+        },
+        {
+            title: `Achieved`,
+            dataIndex: "achieved",
+            key: "achieved",
+            minWidth: 100,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.achieved ?? 0,
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.green.bg,
+                    color: PERFORMANCE_COLORS.green.fg,
+                },
+            }),
+        },
+        {
+            title: `Moderately Satisfactory`,
+            dataIndex: "Moderately Satisfactory",
+            key: "Moderately Satisfactory",
+            minWidth: 120,
+            align: "center",
+            render: (_, record) =>
+                data?.get(record.id)?.moderatelyAchieved ?? 0,
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.yellow.bg,
+                    color: PERFORMANCE_COLORS.yellow.fg,
+                },
+            }),
+        },
+        {
+            title: `Not Achieved`,
+            dataIndex: "Not Achieved",
+            key: "Not Achieved",
+            minWidth: 100,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.notAchieved ?? 0,
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.red.bg,
+                    color: PERFORMANCE_COLORS.red.fg,
+                },
+            }),
+        },
+        {
+            title: `No Data`,
+            dataIndex: "No Data",
+            key: "No Data",
+            minWidth: 100,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.noData ?? 0,
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.gray.bg,
+                    color: PERFORMANCE_COLORS.gray.fg,
+                },
+            }),
+        },
+        {
+            title: `% Achieved`,
+            dataIndex: "No Data",
+            key: "No Data",
+            minWidth: 100,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.percentAchieved ?? "0",
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.green.bg,
+                    color: PERFORMANCE_COLORS.green.fg,
+                },
+            }),
+        },
+        {
+            title: `% Moderately Satisfactory`,
+            dataIndex: "No Data",
+            key: "No Data",
+            minWidth: 120,
+            align: "center",
+            render: (_, record) =>
+                data?.get(record.id)?.percentModeratelyAchieved ?? "0",
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.yellow.bg,
+                    color: PERFORMANCE_COLORS.yellow.fg,
+                },
+            }),
+        },
+        {
+            title: `% Not Achieved`,
+            dataIndex: "No Data",
+            key: "No Data",
+            minWidth: 100,
+            align: "center",
+            render: (_, record) =>
+                data?.get(record.id)?.percentNotAchieved ?? "0",
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.red.bg,
+                    color: PERFORMANCE_COLORS.red.fg,
+                },
+            }),
+        },
+        {
+            title: `% No Data`,
+            dataIndex: "No Data",
+            key: "No Data",
+            minWidth: 100,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.percentNoData ?? "0",
+            onHeaderCell: () => ({
+                style: {
+                    backgroundColor: PERFORMANCE_COLORS.gray.bg,
+                    color: PERFORMANCE_COLORS.gray.fg,
+                },
+            }),
+        },
+        {
+            title: `No of Indicators`,
+            dataIndex: "No Data",
+            key: "No Data",
+            minWidth: 120,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.denominator ?? 0,
+        },
+    ];
+    return columns;
 };

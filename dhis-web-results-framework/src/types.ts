@@ -26,6 +26,11 @@ export const GoalValidator = z.object({
     nonBaseline: z.boolean().optional(),
 });
 
+export const PerformanceSchema = z.object({
+    period: z.string().optional(),
+    quarters: z.boolean().optional(),
+});
+
 export type GoalSearch = z.infer<typeof GoalValidator>;
 
 export type AdditionalColumn = {
@@ -73,6 +78,19 @@ export type DataElement = NameWithAttribute & {
             groupSets: NameWithAttribute[];
         }
     >;
+    aggregationType: string;
+    dataSetElements: Array<{
+        dataSet: {
+            name: string;
+            periodType: string;
+            id: string;
+            organisationUnits: Array<{
+                code: string;
+                displayName: string;
+                id: string;
+            }>;
+        };
+    }>;
 };
 
 type MetaData = {
@@ -151,3 +169,11 @@ export type OptionSet = {
 export type PeriodType = (typeof periodTypes)[number];
 
 export type FixedPeriod = ReturnType<typeof generateFixedPeriods>[number];
+
+export type DHIS2OrgUnit = {
+    id: string;
+    name: string;
+    leaf: boolean;
+    parent: { id: string };
+    code?: string;
+};

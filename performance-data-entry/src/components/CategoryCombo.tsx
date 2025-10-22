@@ -1,18 +1,19 @@
 import { UploadOutlined } from "@ant-design/icons";
+import { useDataEngine, useConfig } from "@dhis2/app-runtime";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     Button,
     Flex,
     Input,
     message,
     Modal,
-    Spin,
     Table,
     TableProps,
     Typography,
     Upload,
 } from "antd";
-import { Loading3QuartersOutlined } from "@ant-design/icons";
 import React, { useMemo, useState } from "react";
+import { dataValuesQueryOptions, useSaveDataValue } from "../query-options";
 import {
     DataElementDataValue,
     ICategoryOption,
@@ -21,11 +22,8 @@ import {
     Search,
 } from "../types";
 import { generateGroupedColumns } from "./data-entry";
-import { useQuery } from "@tanstack/react-query";
-import { dataValuesQueryOptions, useSaveDataValue } from "../query-options";
-import { useDataEngine } from "@dhis2/app-runtime";
-import { useQueryClient } from "@tanstack/react-query";
 import Spinner from "./Spinner";
+import { fromPairs } from "lodash";
 
 export default function CategoryCombo({
     dataSet,
@@ -47,6 +45,7 @@ export default function CategoryCombo({
     engine: ReturnType<typeof useDataEngine>;
 }) {
     const queryClient = useQueryClient();
+    const { baseUrl } = useConfig();
     const [currentData, setCurrentData] = useState<DataElementDataValue | null>(
         null,
     );
@@ -94,7 +93,7 @@ export default function CategoryCombo({
         {
             title: "Attachment",
             key: "attachment",
-            render: (_, record) => {
+            render:  (_, record) => {
                 const coc1 = dataSet.categoryCombo.categoryOptionCombos.find(
                     (c) =>
                         c.categoryOptions.some(
@@ -115,8 +114,90 @@ export default function CategoryCombo({
                     currentData?.dataValue[
                         `${ou}_${pe}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
                     ];
+
+                const attachments =
+                    currentData?.dataValue[
+                        `${ou}_${pe}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}_comment`
+                    ];
+                // const { attachment } = JSON.parse(
+                //     attachments ?? '{"explanation": "", "attachment": []}',
+                // );
+
+								// console.log("attachments", attachments, attachment);
+
+                // const response = await engine.query(
+                //     fromPairs(
+                //         attachment ?? [].map((id) => [
+                //             id,
+                //             {
+                //                 resource: `events/${id}`,
+                //                 params: {
+                //                     event: id,
+                //                 },
+                //             },
+                //         ]),
+                //     ),
+                // );
+
+                // console.log("response", response);
+
                 return (
-                    <Upload>
+                    <Upload
+                        action={async (file) => {
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            console.log("uploading file", file);
+
+                            const uploadResponse = await fetch(
+                                `${baseUrl}/api/fileResources`,
+                                {
+                                    method: "POST",
+                                    body: formData,
+                                    credentials: "include",
+                                },
+                            );
+
+                            if (!uploadResponse.ok) {
+                                throw new Error("Upload failed");
+                            }
+
+                            const uploadData = await uploadResponse.json();
+                            const fileResourceId =
+                                uploadData.response.fileResource.id;
+
+                            const response2: any = await engine.mutate({
+                                resource: "events",
+                                type: "create",
+                                data: {
+                                    program: "j1relEmr69u",
+                                    programStage: "evywplQ17kH",
+                                    orgUnit: ou,
+                                    status: "ACTIVE",
+                                    eventDate: new Date()
+                                        .toISOString()
+                                        .split("T")[0],
+                                    dataValues: [
+                                        {
+                                            dataElement: "qeGJBGmsr0d",
+                                            value: fileResourceId,
+                                        },
+                                    ],
+                                },
+                            });
+                            const response3 = await saveComment(
+                                dataValue?.comment || "",
+                                response2?.response?.importSummaries?.[0]
+                                    .reference,
+                            );
+                            console.log("comment saved", response3);
+                            return "";
+                        }}
+                        // defaultFileList={attachment.map((index) => ({
+                        //     uid: index.toString(),
+                        //     name: `Attachment-${index + 1}`,
+                        //     status: "done",
+                        // }))}
+                    >
                         <Button
                             icon={<UploadOutlined />}
                             disabled={!val || !coc1?.name.includes("Actual")}
@@ -285,17 +366,25 @@ export default function CategoryCombo({
         setIsDataSetModalOpen(false);
     };
 
-    const saveComment = async (comment: string) => {
+    const saveComment = async (comment: string, attachment: string = "") => {
+        const previous = JSON.parse(
+            dataValue?.comment ?? '{"explanation": "", "attachment": []}',
+        );
         if (!currentData) return;
+        let comments = JSON.stringify(previous);
 
+        if (attachment) {
+            comments = JSON.stringify({
+                explanation: comment,
+                attachment: [...previous.attachment, attachment],
+            });
+        }
         const coc = currentData.categoryCombo.categoryOptionCombos[0];
         const newDataValue: DataElementDataValue = {
             ...currentData,
             dataValue: {
                 ...currentData.dataValue,
-                [`${ou}_${pe}_${coc.id}_${coc.id}_comment`]: JSON.stringify({
-                    explanation: comment,
-                }),
+                [`${ou}_${pe}_${coc.id}_${coc.id}_comment`]: comments,
             },
         };
 
@@ -305,7 +394,7 @@ export default function CategoryCombo({
                     engine,
                     dataValue: {
                         ...dataValue,
-                        comment: JSON.stringify({ explanation: comment }),
+                        comment: comments,
                     },
                 });
                 message.success("Data saved successfully", 2);

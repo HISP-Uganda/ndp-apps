@@ -212,8 +212,13 @@ function IndexRouteComponent() {
                 height: "calc(100vh - 48px)",
             }}
         >
-            <Splitter.Panel defaultSize="20%" min="20%" max="20%">
-                <Flex vertical gap={12} style={{ padding: 10 }}>
+            <Splitter.Panel
+                defaultSize="20%"
+                min="20%"
+                max="20%"
+                style={{ backgroundColor: "#F3F3F3",padding: 10 }}
+            >
+                <Flex vertical gap={12}>
                     <Select
                         showSearch
                         allowClear
@@ -227,12 +232,19 @@ function IndexRouteComponent() {
                         }
                         onSelect={onSelectOrgUnit}
                         value={orgUnit}
+												size="large"
                     />
+
 
                     <Flex
                         style={{
                             overflow: "auto",
-                            height: "calc(100vh - 48px - 48px - 20px)",
+                            height: "calc(100vh - 48px - 48px - 24px)",
+														width: "100%",
+														backgroundColor: "white",
+														padding: 10,
+														border: "1px solid #d9d9d9",
+														borderRadius: "3px",
                         }}
                     >
                         <Tree
@@ -249,7 +261,12 @@ function IndexRouteComponent() {
                                     }),
                                 });
                             }}
-                            style={{ whiteSpace: "nowrap", fontSize: "14px" }}
+                            style={{
+                                whiteSpace: "nowrap",
+                                fontSize: "14px",
+																padding:0,
+																margin:0,
+                            }}
                         />
                     </Flex>
                 </Flex>

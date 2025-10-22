@@ -1,11 +1,79 @@
 import { DownloadOutlined } from "@ant-design/icons";
 import { useLoaderData, useSearch } from "@tanstack/react-router";
-import { Button, Flex, Table, TableProps, Tabs, TabsProps } from "antd";
+
+import { Button, Flex, Modal, Table, TableProps, Tabs, TabsProps } from "antd";
 import ExcelJS from "exceljs";
 import { orderBy, uniqBy } from "lodash";
 import React, { useCallback, useMemo } from "react";
+import { FaInfoCircle } from "react-icons/fa";
 import { ResultsProps } from "../types";
 import { makeDataElementData, PERFORMANCE_COLORS } from "../utils";
+import PerformanceLegend from "./performance-legend";
+
+const makeIndicatorData = (data: Record<string, any>) => {
+    return [
+        { code: "Name", display: data["dx"] },
+        { code: "Description", display: data["description"] },
+        { code: "Computation method", display: data["Computation method"] },
+        { code: "Unit of Measure", display: data["Unit"] },
+        { code: "Indicator Source", display: data["Indicator Source"] },
+
+        {
+            code: "Alternative data source",
+            display: data["Alternative data source"],
+        },
+        {
+            code: "Preferred data source",
+            display: data["Preferred data source"],
+        },
+        { code: "Vote", display: data["dataSetOrganisationUnitName"] },
+        {
+            code: "Accountability for indicator",
+            display: data["Accountability for indicator"],
+        },
+        {
+            code: "Responsibility for indicator",
+            display: data["Responsibility for indicator"],
+        },
+        // { code: "Lead MDA", display: data["Lead MDA"] },
+        { code: "Other MDAs", display: data["Other MDAs"] },
+        { code: "Indicator code", display: data["code"] },
+        { code: "Indicator type", display: data["Indicator type"] },
+        { code: "Aggregation type", display: data["aggregationType"] },
+        {
+            code: "Frequency of data collection",
+            display: data["Frequency of data collection"],
+        },
+        {
+            code: "Reporting Frequency",
+            display:
+                data["dataSetPeriodType"] === "FinancialJuly"
+                    ? "Financial Year"
+                    : data["dataSetPeriodType"],
+        },
+
+        // { code: "Baseline Status 2010", display: data["Baseline Status 2010"] },
+        {
+            code: "Chart of Accounts Code",
+            display: data["Chart of Accounts Code"],
+        },
+        // { code: "Computation type", display: data["Computation type"] },
+        {
+            code: "Descending Indicator",
+            display: data["descending indicator type"] ? "Yes" : "No",
+        },
+        // { code: "Green range", display: data["Green range"] },
+        // { code: "Current Project Cost", display: data["Current Project Cost"] },
+        // { code: "Limitations", display: data["Limitations"] },
+
+        // { code: "Rationale", display: data["Rationale"] },
+        // { code: "Red range", display: data["Red range"] },
+        // { code: "References", display: data["References"] },
+
+        // { code: "Vision 2040", display: data["Vision 2040"] },
+        // { code: "Yellow range", display: data["Yellow range"] },
+    ];
+};
 
 const PERFORMANCE_LABELS: Record<number, string> = {
     0: "Target",
@@ -13,51 +81,8 @@ const PERFORMANCE_LABELS: Record<number, string> = {
     2: "%",
 } as const;
 
-const PerformanceLegend = React.memo(() => {
-    const legendItems = [
-        {
-            bg: PERFORMANCE_COLORS.green.bg,
-            color: "white",
-            label: "Achieved (≤ 100%)",
-        },
-        {
-            bg: PERFORMANCE_COLORS.yellow.bg,
-            color: "black",
-            label: "Moderately achieved (75-99%)",
-        },
-        {
-            bg: PERFORMANCE_COLORS.red.bg,
-            color: "black",
-            label: "Not achieved (< 75%)",
-        },
-        { bg: PERFORMANCE_COLORS.gray.bg, color: "black", label: "No Data" },
-    ];
-
-    return (
-        <Flex justify="between" align="center" gap="4px">
-            {legendItems.map((item, index) => (
-                <div
-                    key={index}
-                    style={{
-                        width: "100%",
-                        height: "40px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: item.bg,
-                        color: item.color,
-                    }}
-                >
-                    {item.label}
-                </div>
-            ))}
-        </Flex>
-    );
-});
-
-PerformanceLegend.displayName = "PerformanceLegend";
-
 export function Results(props: ResultsProps) {
+    const [modal, contextHolder] = Modal.useModal();
     const {
         tab,
         data,
@@ -71,6 +96,7 @@ export function Results(props: ResultsProps) {
         nonBaseline,
     } = props;
     const { v } = useSearch({ from: "/layout/ndp" });
+
     const { configurations } = useLoaderData({ from: "__root__" });
     const { target, value, analyticsItems, finalData, baseline } =
         useMemo(() => {
@@ -125,13 +151,68 @@ export function Results(props: ResultsProps) {
             };
         }, [data.analytics, category, categoryOptions]);
 
+    const indicatorColumns: TableProps<any>["columns"] = useMemo(
+        () => [
+            {
+                title: "Indicator Code",
+                dataIndex: "code",
+                key: "code",
+            },
+            {
+                title: "Indicator Name",
+                dataIndex: "display",
+                key: "display",
+            },
+        ],
+        [],
+    );
+
     const nameColumn: TableProps<Record<string, any>>["columns"] = useMemo(
         () => [
             ...prefixColumns,
             {
                 title: nonBaseline ? "NDP Actions" : "Indicators",
                 dataIndex: "dx",
-                fixed: "left",
+                render: (text: string, record) => {
+                    return (
+                        <div>
+                            {text}
+                            &nbsp;
+                            <FaInfoCircle
+                                style={{
+                                    color: "#428BCA",
+                                    fontSize: "22.4px",
+                                    cursor: "pointer",
+                                }}
+                                onClick={() => {
+                                    modal.info({
+                                        title: "Indicator Dictionary",
+                                        width: 600,
+                                        centered: true,
+                                        content: (
+                                            <Table
+                                                columns={indicatorColumns}
+                                                dataSource={makeIndicatorData(
+                                                    record,
+                                                )}
+                                                style={{
+                                                    margin: 0,
+                                                    padding: 0,
+                                                }}
+                                                pagination={false}
+                                                rowKey="code"
+                                                scroll={{ y: 700 }}
+                                                showHeader={false}
+                                                bordered
+                                            />
+                                        ),
+                                    });
+                                }}
+                            />
+                            {contextHolder}
+                        </div>
+                    );
+                },
             },
         ],
         [prefixColumns],
@@ -861,24 +942,26 @@ export function Results(props: ResultsProps) {
     );
 
     return (
-        <Tabs
-            activeKey={tab || "performance"}
-            type="card"
-            items={items}
-            onChange={onChange}
-            size="large"
-            renderTabBar={(props, DefaultTabBar) => (
-                <DefaultTabBar
-                    {...props}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyItems: "center",
-                        flexDirection: "column",
-                    }}
-                />
-            )}
-            tabBarStyle={{ backgroundColor: "yellow", color: "black" }}
-        />
+        <>
+            <Tabs
+                activeKey={tab || "performance"}
+                type="card"
+                items={items}
+                onChange={onChange}
+                size="large"
+                renderTabBar={(props, DefaultTabBar) => (
+                    <DefaultTabBar
+                        {...props}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyItems: "center",
+                            flexDirection: "column",
+                        }}
+                    />
+                )}
+                tabBarStyle={{ backgroundColor: "yellow", color: "black" }}
+            />
+        </>
     );
 }

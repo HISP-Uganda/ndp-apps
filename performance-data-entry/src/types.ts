@@ -27,6 +27,7 @@ export type DHIS2OrgUnit = {
     id: string;
     name: string;
     leaf: boolean;
+		code?:string;
     parent?: { id: string };
     dataSets: IDataSet[];
 };
