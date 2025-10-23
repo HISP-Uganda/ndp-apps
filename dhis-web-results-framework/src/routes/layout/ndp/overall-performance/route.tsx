@@ -32,7 +32,7 @@ export const OverallPerformanceRoute = createRoute({
 function Component() {
     const { configurations } = RootRoute.useLoaderData();
     const navigate = OverallPerformanceRoute.useNavigate();
-    const { v, period } = OverallPerformanceRoute.useSearch();
+    const { v, pe } = OverallPerformanceRoute.useSearch();
     const config = configurations[v ?? ""]["data"];
 
     const periods = config["financialYears"].map((year: string) =>
@@ -50,12 +50,12 @@ function Component() {
                         value: id,
                     }))}
                     style={{ width: 300 }}
-                    value={period}
+                    value={pe}
                     onChange={(value) =>
                         navigate({
                             search: (prev) => ({
                                 ...prev,
-                                period: value,
+                                pe: value,
                             }),
                         })
                     }

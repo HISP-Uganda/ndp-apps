@@ -45,20 +45,20 @@ function Component() {
             onChange,
             ...search,
             prefixColumns: [
-                {
-                    title: "Objectives",
-                    dataIndex: "dataElementGroupSet",
-                    render: (_, record) => {
-                        let current = "";
-                        for (const group of dataElementGroupSets) {
-                            if (Object(record).hasOwnProperty(group.id)) {
-                                current = group.name;
-                                break;
-                            }
-                        }
-                        return current;
-                    },
-                },
+                // {
+                //     title: "Objectives",
+                //     dataIndex: "dataElementGroupSet",
+                //     render: (_, record) => {
+                //         let current = "";
+                //         for (const group of dataElementGroupSets) {
+                //             if (Object(record).hasOwnProperty(group.id)) {
+                //                 current = group.name;
+                //                 break;
+                //             }
+                //         }
+                //         return current;
+                //     },
+                // },
                 {
                     title: "Key Result Areas",
                     dataIndex: "dataElementGroup",

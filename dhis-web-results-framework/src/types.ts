@@ -27,11 +27,86 @@ export const GoalValidator = z.object({
 });
 
 export const PerformanceSchema = z.object({
-    period: z.string().optional(),
+    pe: z.string().optional(),
     quarters: z.boolean().optional(),
 });
 
+export const DataElementGroupSetResponseSchema = z.object({
+    pager: z.object({
+        page: z.number(),
+        total: z.number(),
+        pageSize: z.number(),
+        nextPage: z.string(),
+        pageCount: z.number(),
+    }),
+    dataElementGroupSets: z.array(
+        z.object({
+            name: z.string(),
+            id: z.string(),
+            attributeValues: z.array(
+                z.object({
+                    attribute: z.object({ name: z.string(), id: z.string() }),
+                    value: z.string(),
+                }),
+            ),
+            dataElementGroups: z.array(
+                z.object({
+                    name: z.string(),
+                    id: z.string(),
+                    attributeValues: z.array(
+                        z.object({
+                            attribute: z.object({
+                                name: z.string(),
+                                id: z.string(),
+                            }),
+                            value: z.string(),
+                        }),
+                    ),
+                    dataElements: z.array(
+                        z.object({
+                            name: z.string(),
+                            dataSetElements: z.array(
+                                z.object({
+                                    dataSet: z.object({
+                                        organisationUnits: z.array(
+                                            z.object({ id: z.string() }),
+                                        ),
+                                    }),
+                                }),
+                            ),
+                            id: z.string(),
+                            attributeValues: z.array(
+                                z.object({
+                                    attribute: z.object({
+                                        name: z.string(),
+                                        id: z.string(),
+                                    }),
+                                    value: z.string(),
+                                }),
+                            ),
+                        }),
+                    ),
+                }),
+            ),
+        }),
+    ),
+});
+
 export type GoalSearch = z.infer<typeof GoalValidator>;
+export type DataElementGroupSetResponse = z.infer<
+    typeof DataElementGroupSetResponseSchema
+>;
+
+export type FlattenedDataElement = {
+    organisationUnitId: string;
+    dataElementGroupName: string;
+    dataElementGroupId: string;
+    dataElementGroupSetName: string;
+    dataElementGroupSetId: string;
+    id: string;
+    name: string;
+    NDP?: string;
+};
 
 export type AdditionalColumn = {
     value: string;

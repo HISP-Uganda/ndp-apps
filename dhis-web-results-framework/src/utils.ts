@@ -1,14 +1,16 @@
 import { SelectProps, TableProps } from "antd";
+import dayjs from "dayjs";
+import { fromPairs, groupBy } from "lodash";
 import {
     Analytics,
     DataElement,
     DataElementGroupSet,
+    DataElementGroupSetResponse,
     DHIS2OrgUnit,
+    FlattenedDataElement,
     GoalSearch,
     MapPredicate,
 } from "./types";
-import { fromPairs, groupBy } from "lodash";
-import dayjs from "dayjs";
 
 export const prepareVisionData = ({
     data,
@@ -641,12 +643,14 @@ export const getDefaultPeriods = (financialYears: string[]) => {
                 firstFinancialYear,
                 lastFinancialYear,
                 validPeriods: [currentFinancialYear],
+                currentFinancialYear,
             };
         } else if (firstFinancialYear < currentFinancialYear) {
             return {
                 firstFinancialYear,
                 lastFinancialYear,
                 validPeriods: financialPeriods.slice(-2),
+                currentFinancialYear,
             };
         }
 
@@ -654,12 +658,14 @@ export const getDefaultPeriods = (financialYears: string[]) => {
             firstFinancialYear,
             lastFinancialYear,
             validPeriods: [previousFinancialYear, currentFinancialYear],
+            currentFinancialYear,
         };
     } else {
         return {
             firstFinancialYear: "",
             lastFinancialYear: "",
             validPeriods: [],
+            currentFinancialYear: "",
         };
     }
 };
@@ -703,12 +709,12 @@ export const createColumns = (
                 record.name.indexOf(value as string) === 0,
         },
         {
-            title: `Achieved`,
+            title: `A`,
             dataIndex: "achieved",
             key: "achieved",
-            minWidth: 100,
+            width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.achieved ?? 0,
+            render: (_, record) => data?.get(record.id)?.achieved ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.green.bg,
@@ -717,13 +723,13 @@ export const createColumns = (
             }),
         },
         {
-            title: `Moderately Satisfactory`,
+            title: `M`,
             dataIndex: "Moderately Satisfactory",
             key: "Moderately Satisfactory",
-            minWidth: 120,
+            width: 70,
             align: "center",
             render: (_, record) =>
-                data?.get(record.id)?.moderatelyAchieved ?? 0,
+                data?.get(record.id)?.moderatelyAchieved ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
@@ -732,12 +738,12 @@ export const createColumns = (
             }),
         },
         {
-            title: `Not Achieved`,
+            title: `N`,
             dataIndex: "Not Achieved",
             key: "Not Achieved",
-            minWidth: 100,
+            width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.notAchieved ?? 0,
+            render: (_, record) => data?.get(record.id)?.notAchieved ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.red.bg,
@@ -746,12 +752,12 @@ export const createColumns = (
             }),
         },
         {
-            title: `No Data`,
+            title: `ND`,
             dataIndex: "No Data",
             key: "No Data",
-            minWidth: 100,
+            width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.noData ?? 0,
+            render: (_, record) => data?.get(record.id)?.noData ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
@@ -760,10 +766,10 @@ export const createColumns = (
             }),
         },
         {
-            title: `% Achieved`,
+            title: `% A`,
             dataIndex: "No Data",
             key: "No Data",
-            minWidth: 100,
+            width: 70,
             align: "center",
             render: (_, record) => data?.get(record.id)?.percentAchieved ?? "0",
             onHeaderCell: () => ({
@@ -774,10 +780,10 @@ export const createColumns = (
             }),
         },
         {
-            title: `% Moderately Satisfactory`,
+            title: `% M`,
             dataIndex: "No Data",
             key: "No Data",
-            minWidth: 120,
+            width: 70,
             align: "center",
             render: (_, record) =>
                 data?.get(record.id)?.percentModeratelyAchieved ?? "0",
@@ -789,10 +795,10 @@ export const createColumns = (
             }),
         },
         {
-            title: `% Not Achieved`,
+            title: `% N`,
             dataIndex: "No Data",
             key: "No Data",
-            minWidth: 100,
+            width: 70,
             align: "center",
             render: (_, record) =>
                 data?.get(record.id)?.percentNotAchieved ?? "0",
@@ -804,10 +810,10 @@ export const createColumns = (
             }),
         },
         {
-            title: `% No Data`,
+            title: `% N/A`,
             dataIndex: "No Data",
             key: "No Data",
-            minWidth: 100,
+            width: 70,
             align: "center",
             render: (_, record) => data?.get(record.id)?.percentNoData ?? "0",
             onHeaderCell: () => ({
@@ -821,10 +827,127 @@ export const createColumns = (
             title: `No of Indicators`,
             dataIndex: "No Data",
             key: "No Data",
-            minWidth: 120,
+            width: 140,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.denominator ?? 0,
+            render: (_, record) => data?.get(record.id)?.denominator ?? "",
         },
     ];
     return columns;
 };
+
+export const flattenDataElementGroupSetsResponse = ({
+    dataElementGroupSets,
+}: DataElementGroupSetResponse): FlattenedDataElement[] => {
+    return dataElementGroupSets.flatMap(
+        ({ attributeValues, id, name, dataElementGroups }) => {
+            const degs = {
+                ...fromPairs(
+                    attributeValues.map(({ value, attribute: { id } }) => [
+                        id,
+                        value,
+                    ]),
+                ),
+                ...fromPairs(
+                    attributeValues.map(({ value, attribute: { name } }) => [
+                        name,
+                        value,
+                    ]),
+                ),
+                dataElementGroupSetName: name,
+                dataElementGroupSetId: id,
+            };
+            return dataElementGroups.flatMap(
+                ({ id, attributeValues, name, dataElements }) => {
+                    const deg = {
+                        ...fromPairs(
+                            attributeValues.map(
+                                ({ value, attribute: { id } }) => [id, value],
+                            ),
+                        ),
+                        ...fromPairs(
+                            attributeValues.map(
+                                ({ value, attribute: { name } }) => [
+                                    name,
+                                    value,
+                                ],
+                            ),
+                        ),
+                        dataElementGroupName: name,
+                        dataElementGroupId: id,
+                    };
+                    return dataElements.flatMap(
+                        ({ attributeValues, id, name, dataSetElements }) => {
+                            const de = {
+                                id,
+                                name,
+                                ...fromPairs(
+                                    attributeValues.map(
+                                        ({ value, attribute: { id } }) => [
+                                            id,
+                                            value,
+                                        ],
+                                    ),
+                                ),
+                                ...fromPairs(
+                                    attributeValues.map(
+                                        ({ value, attribute: { name } }) => [
+                                            name,
+                                            value,
+                                        ],
+                                    ),
+                                ),
+                                ...degs,
+                                ...deg,
+                            };
+                            return dataSetElements.flatMap(
+                                ({ dataSet: { organisationUnits } }) => {
+                                    return organisationUnits.map(({ id }) => ({
+                                        ...de,
+                                        organisationUnitId: id,
+                                    }));
+                                },
+                            );
+                        },
+                    );
+                },
+            );
+        },
+    );
+};
+
+export const legendItems = [
+    {
+        bg: PERFORMANCE_COLORS.green.bg,
+        color: "black",
+        label: "Achieved (>= 100%)",
+    },
+    {
+        bg: PERFORMANCE_COLORS.yellow.bg,
+        color: "black",
+        label: "Moderately achieved (75-99%)",
+    },
+    {
+        bg: PERFORMANCE_COLORS.red.bg,
+        color: "black",
+        label: "Not achieved (< 75%)",
+    },
+    { bg: PERFORMANCE_COLORS.gray.bg, color: "black", label: "No Data" },
+];
+export const performanceLegendItems = [
+    {
+        bg: PERFORMANCE_COLORS.green.bg,
+        color: "black",
+        label: "A - Achieved (>= 100%)",
+    },
+    {
+        bg: PERFORMANCE_COLORS.yellow.bg,
+        color: "black",
+        label: "M - Moderately achieved (75-99%)",
+    },
+    {
+        bg: PERFORMANCE_COLORS.red.bg,
+        color: "black",
+        label: "N - Not achieved (< 75%)",
+    },
+    { bg: PERFORMANCE_COLORS.gray.bg, color: "black", label: " ND - No Data" },
+];

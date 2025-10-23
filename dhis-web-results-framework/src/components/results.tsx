@@ -7,7 +7,7 @@ import { orderBy, uniqBy } from "lodash";
 import React, { useCallback, useMemo } from "react";
 import { FaInfoCircle } from "react-icons/fa";
 import { ResultsProps } from "../types";
-import { makeDataElementData, PERFORMANCE_COLORS } from "../utils";
+import { legendItems, makeDataElementData } from "../utils";
 import PerformanceLegend from "./performance-legend";
 
 const makeIndicatorData = (data: Record<string, any>) => {
@@ -171,7 +171,7 @@ export function Results(props: ResultsProps) {
         () => [
             ...prefixColumns,
             {
-                title: nonBaseline ? "NDP Actions" : "Indicators",
+                title: nonBaseline ? "Budget Actions" : "Indicators",
                 dataIndex: "dx",
                 render: (text: string, record) => {
                     return (
@@ -240,56 +240,22 @@ export function Results(props: ResultsProps) {
                     return [];
                 }
                 return {
-                    title: (
-                        <div
-                            style={{
-                                whiteSpace: "nowrap",
-                                display: "flex",
-                                flexDirection: "column",
-                            }}
-                        >
-                            {analyticsItems[pe].name.split(" ").map((word) => (
-                                <span key={word}>{word}</span>
-                            ))}
-                        </div>
-                    ),
+                    title,
                     align: "center" as const,
+                    minWidth: 90,
                     children: nonBaseline
                         ? categoryOptions?.slice(0, 2).map((option) => ({
-                              title: (
-                                  <div
-                                      style={{
-                                          whiteSpace: "nowrap",
-                                          display: "flex",
-                                          flexDirection: "column",
-                                      }}
-                                  >
-                                      {analyticsItems[option]?.name
-                                          .split(" ")
-                                          .map((word) => (
-                                              <span key={word}>{word}</span>
-                                          ))}
-                                  </div>
+                              title: analyticsItems[option]?.name?.replace(
+                                  "Budget ",
+                                  "",
                               ),
                               dataIndex: `${pe}${option}`,
                               align: "center" as const,
-                              minWidth: 76,
+                              minWidth: 90,
                           }))
                         : [
                               {
-                                  title: (
-                                      <div
-                                          style={{
-                                              whiteSpace: "nowrap",
-                                              display: "flex",
-                                              flexDirection: "column",
-                                          }}
-                                      >
-                                          {title.split(" ").map((word) => (
-                                              <span key={word}>{word}</span>
-                                          ))}
-                                      </div>
-                                  ),
+                                  title,
                                   dataIndex,
                                   align: "center" as const,
                                   minWidth:
@@ -309,39 +275,19 @@ export function Results(props: ResultsProps) {
                     return [];
                 }
                 return {
-                    title: (
-                        <div style={{ whiteSpace: "nowrap" }}>
-                            {analyticsItems[pe].name}
-                        </div>
-                    ),
+                    title: analyticsItems[pe].name,
                     align: "center" as const,
                     children: nonBaseline
                         ? categoryOptions
                               ?.flatMap((option, index) => {
                                   if (index > 1) return [];
                                   return {
-                                      title: (
-                                          <div
-                                              style={{
-                                                  whiteSpace: "nowrap",
-                                                  display: "flex",
-                                                  flexDirection: "column",
-                                                  alignItems: "center",
-                                                  justifyContent: "center",
-                                              }}
-                                          >
-                                              {analyticsItems[option]?.name
-                                                  .split(" ")
-                                                  .map((word) => (
-                                                      <span key={word}>
-                                                          {word}
-                                                      </span>
-                                                  ))}
-                                          </div>
-                                      ),
+                                      title: analyticsItems[
+                                          option
+                                      ]?.name?.replace("Budget ", ""),
                                       dataIndex: `${pe}${option}`,
                                       align: "center" as const,
-                                      minWidth: 76,
+                                      minWidth: 90,
                                   };
                               })
                               .concat(
@@ -352,7 +298,7 @@ export function Results(props: ResultsProps) {
                                               ? year + 1
                                               : year;
                                       return {
-                                          title: <span>{`Q${index + 1}`}</span>,
+                                          title: `Q${index + 1}`,
                                           key: `${pe}${currentYear}Q${quarter}`,
                                           align: "center",
                                           dataIndex: `${pe}${currentYear}Q${quarter}`,
@@ -361,46 +307,13 @@ export function Results(props: ResultsProps) {
                                               ...categoryOptions
                                                   .slice(2)
                                                   .map((option) => ({
-                                                      title: (
-                                                          <div
-                                                              style={{
-                                                                  whiteSpace:
-                                                                      "nowrap",
-                                                                  display:
-                                                                      "flex",
-                                                                  flexDirection:
-                                                                      "row",
-                                                                  alignItems:
-                                                                      "center",
-                                                                  justifyContent:
-                                                                      "center",
-                                                              }}
-                                                          >
-                                                              {analyticsItems[
-                                                                  option
-                                                              ]?.name
-                                                                  .split(" ")
-                                                                  .map(
-                                                                      (
-                                                                          word,
-                                                                      ) => (
-                                                                          <span
-                                                                              key={
-                                                                                  word
-                                                                              }
-                                                                          >
-                                                                              {
-                                                                                  word
-                                                                              }
-                                                                          </span>
-                                                                      ),
-                                                                  )}
-                                                          </div>
-                                                      ),
+                                                      title: analyticsItems[
+                                                          option
+                                                      ]?.name,
                                                       dataIndex: `${currentYear}Q${quarter}${option}`,
                                                       key: `${currentYear}Q${quarter}${option}`,
                                                       align: "center" as const,
-                                                      minWidth: 76,
+                                                      minWidth: 90,
                                                   })),
                                               {
                                                   title: `%`,
@@ -466,27 +379,13 @@ export function Results(props: ResultsProps) {
                                       analyticsItems[currentValue]?.name ??
                                       PERFORMANCE_LABELS[index];
                                   return {
-                                      title: (
-                                          <div
-                                              style={{
-                                                  whiteSpace: "nowrap",
-                                                  display: "flex",
-                                                  flexDirection: "column",
-                                                  alignItems: "center",
-                                                  justifyContent: "center",
-                                              }}
-                                          >
-                                              {title.split(" ").map((word) => (
-                                                  <span key={word}>{word}</span>
-                                              ))}
-                                          </div>
-                                      ) as any,
+                                      title,
                                       key: `${pe}${currentValue}`,
                                       minWidth:
                                           configurations[v]?.data?.baseline ===
                                           pe
-                                              ? 76
-                                              : 56,
+                                              ? 80
+                                              : 70,
                                       align: "center",
                                       onCell: (row: Record<string, any>) => {
                                           if (index === 2) {
@@ -869,7 +768,7 @@ export function Results(props: ResultsProps) {
             sticky: true,
             tableLayout: "auto",
             pagination: false,
-            size: "middle",
+            size: "small",
             dataSource: uniqBy(finalData, "id"),
         }),
         [finalData],
@@ -920,7 +819,7 @@ export function Results(props: ResultsProps) {
                             height: "calc(100vh - 278px)",
                         }}
                     >
-                        <PerformanceLegend />
+                        <PerformanceLegend legendItems={legendItems} />
                         <Flex>
                             <Button
                                 icon={<DownloadOutlined />}

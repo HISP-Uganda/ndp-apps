@@ -7,6 +7,7 @@ import { PerformanceSchema } from "../../../../types";
 import { RootRoute } from "../../../__root";
 import { NDPRoute } from "../route";
 import PerformanceLegend from "../../../../components/performance-legend";
+import { performanceLegendItems } from "../../../../utils";
 
 export const OutcomePerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -32,7 +33,7 @@ export const OutcomePerformanceRoute = createRoute({
 function Component() {
     const { configurations } = RootRoute.useLoaderData();
     const navigate = OutcomePerformanceRoute.useNavigate();
-    const { v, period } = OutcomePerformanceRoute.useSearch();
+    const { v, pe } = OutcomePerformanceRoute.useSearch();
     const config = configurations[v ?? ""]["data"];
 
     const periods = config["financialYears"].map((year: string) =>
@@ -54,18 +55,18 @@ function Component() {
                         value: id,
                     }))}
                     style={{ width: 300 }}
-                    value={period}
+                    value={pe}
                     onChange={(value) =>
                         navigate({
                             search: (prev) => ({
                                 ...prev,
-                                period: value,
+                                pe: value,
                             }),
                         })
                     }
                 />
             </Form.Item>
-            <PerformanceLegend />
+            <PerformanceLegend legendItems={performanceLegendItems} />
             <Outlet />
         </Flex>
     );

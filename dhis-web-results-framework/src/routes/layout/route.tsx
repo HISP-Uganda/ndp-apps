@@ -49,9 +49,8 @@ function Component() {
         return <Navigate to="/settings" />;
     }
 
-    const { lastFinancialYear, validPeriods } = getDefaultPeriods(
-        configurations[v].data.financialYears,
-    );
+    const { lastFinancialYear, validPeriods, currentFinancialYear } =
+        getDefaultPeriods(configurations[v].data.financialYears);
 
     const pe = [configurations[v].data.baseline, ...validPeriods];
 
@@ -367,7 +366,7 @@ function Component() {
                                     search={() => ({
                                         ou,
                                         v,
-                                        pe: undefined,
+                                        pe: currentFinancialYear,
                                         quarters: v === "NDPIV",
                                     })}
                                     activeOptions={{
@@ -398,7 +397,7 @@ function Component() {
                                     search={() => ({
                                         ou,
                                         v,
-                                        pe: undefined,
+                                        pe: currentFinancialYear,
                                         quarters: v === "NDPIV",
                                     })}
                                     activeOptions={{
@@ -429,7 +428,7 @@ function Component() {
                                     search={() => ({
                                         ou,
                                         v,
-                                        pe: undefined,
+                                        pe: currentFinancialYear,
                                         quarters: v === "NDPIV",
                                     })}
                                     activeOptions={{

@@ -7,6 +7,7 @@ import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-
 import { RootRoute } from "../../../__root";
 import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
 import PerformanceLegend from "../../../../components/performance-legend";
+import { performanceLegendItems } from "../../../../utils";
 
 export const OutputPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -32,7 +33,7 @@ export const OutputPerformanceRoute = createRoute({
 function Component() {
     const { configurations } = RootRoute.useLoaderData();
     const navigate = OutputPerformanceRoute.useNavigate();
-    const { v, period } = OutputPerformanceRoute.useSearch();
+    const { v, pe } = OutputPerformanceRoute.useSearch();
     const config = configurations[v ?? ""]["data"];
 
     const periods = config["financialYears"].map((year: string) =>
@@ -54,18 +55,18 @@ function Component() {
                         value: id,
                     }))}
                     style={{ width: 300 }}
-                    value={period}
+                    value={pe}
                     onChange={(value) =>
                         navigate({
                             search: (prev) => ({
                                 ...prev,
-                                period: value,
+                                pe: value,
                             }),
                         })
                     }
                 />
             </Form.Item>
-						<PerformanceLegend />
+            <PerformanceLegend legendItems={performanceLegendItems} />
             <Outlet />
         </Flex>
     );

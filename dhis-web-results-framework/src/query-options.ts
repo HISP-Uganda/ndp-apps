@@ -1,27 +1,23 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions } from "@tanstack/react-query";
+import { chunk, groupBy, orderBy, uniqBy } from "lodash";
 import { db } from "./db";
 import {
     Analytics,
     DataElement,
     DataElementGroupSet,
+    DataElementGroupSetResponse,
     DHIS2OrgUnit,
+    FlattenedDataElement,
     GoalSearch,
     Option,
     OptionSet,
     OrgUnit,
 } from "./types";
-import { flattenDataElements } from "./utils";
 import {
-    chunk,
-    difference,
-    fromPairs,
-    groupBy,
-    orderBy,
-    sortBy,
-    uniq,
-    uniqBy,
-} from "lodash";
+    flattenDataElementGroupSetsResponse,
+    flattenDataElements,
+} from "./utils";
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
@@ -399,38 +395,41 @@ export const dataStoreQueryOptions = (
 export const dataElementsFromGroupQueryOptions = ({
     engine,
     dataElementGroupSets,
-    period,
+    pe,
     quarters,
 }: {
     engine: ReturnType<typeof useDataEngine>;
     dataElementGroupSets: DataElementGroupSet[];
-    period?: string;
+    pe?: string;
     quarters?: boolean;
 }) => {
     return queryOptions({
-        queryKey: [
-            "dataElementsFromGroup",
-            ...dataElementGroupSets.map((deg) => deg.id),
-            period,
-        ],
+        queryKey: ["dataElementsFromGroup", dataElementGroupSets.length, pe],
         queryFn: async () => {
-            if (period === undefined) {
+            if (pe === undefined) {
                 throw new Error("Period is undefined");
             }
-
-            let periodFilter = period;
+            if (!dataElementGroupSets.length) {
+                return new Map();
+            }
+            let periodFilter = pe;
             if (quarters) {
-                const year = Number(period?.slice(0, 4));
+                const year = Number(pe?.slice(0, 4));
                 const q1 = `${year}Q3`;
                 const q2 = `${year}Q4`;
                 const q3 = `${year + 1}Q1`;
                 const q4 = `${year + 1}Q2`;
-                periodFilter = `${period};${q1};${q2};${q3};${q4}`;
+                periodFilter = `${pe};${q1};${q2};${q3};${q4}`;
             }
             const dataElementGroups = dataElementGroupSets.flatMap(
                 ({ dataElementGroups }) =>
                     dataElementGroups.map((deg) => `DE_GROUP-${deg.id}`),
             );
+
+            if (!dataElementGroups.length) {
+                return new Map();
+            }
+
             const params = new URLSearchParams({
                 includeMetadataDetails: "true",
             });
@@ -440,25 +439,9 @@ export const dataElementsFromGroupQueryOptions = ({
                 `Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U`,
             );
             params.append("dimension", `pe:${periodFilter}`);
-            const response = (await engine.query(
-                fromPairs(
-                    chunk(dataElementGroups, 50).map((degIds, index) => {
-                        const currentParams = new URLSearchParams(params);
-                        currentParams.append(
-                            "dimension",
-                            `dx:${degIds.join(";")}`,
-                        );
-                        return [
-                            `analyticsPage${index}`,
-                            {
-                                resource: `analytics?${currentParams.toString()}`,
-                            },
-                        ];
-                    }),
-                ),
-            )) as {
-                [key: string]: Analytics;
-            };
+
+            const analyticsChunkSize = 100;
+
             let analyticsCombined: Analytics = {
                 metaData: {
                     dimensions: {
@@ -476,20 +459,28 @@ export const dataElementsFromGroupQueryOptions = ({
                 headerWidth: 4,
             };
 
-            for (const analyticsPage of Object.values(response)) {
+            for (const degIds of chunk(dataElementGroups, analyticsChunkSize)) {
+                const currentParams = new URLSearchParams(params);
+                currentParams.append("dimension", `dx:${degIds.join(";")}`);
+                const { analytics } = (await engine.query({
+                    analytics: {
+                        resource: `analytics??${currentParams.toString()}`,
+                    },
+                })) as { analytics: Analytics };
+
                 analyticsCombined = {
                     ...analyticsCombined,
                     metaData: {
                         ...analyticsCombined.metaData,
                         dimensions: {
                             ...analyticsCombined.metaData.dimensions,
-                            ...analyticsPage.metaData.dimensions,
+                            ...analytics.metaData.dimensions,
                             ou: [
                                 ...new Set(
                                     analyticsCombined.metaData.dimensions[
                                         "ou"
                                     ].concat(
-                                        analyticsPage.metaData.dimensions["ou"],
+                                        analytics.metaData.dimensions["ou"],
                                     ),
                                 ),
                             ],
@@ -498,7 +489,7 @@ export const dataElementsFromGroupQueryOptions = ({
                                     analyticsCombined.metaData.dimensions[
                                         "dx"
                                     ].concat(
-                                        analyticsPage.metaData.dimensions["dx"],
+                                        analytics.metaData.dimensions["dx"],
                                     ),
                                 ),
                             ],
@@ -507,7 +498,7 @@ export const dataElementsFromGroupQueryOptions = ({
                                     analyticsCombined.metaData.dimensions[
                                         "pe"
                                     ].concat(
-                                        analyticsPage.metaData.dimensions["pe"],
+                                        analytics.metaData.dimensions["pe"],
                                     ),
                                 ),
                             ],
@@ -516,7 +507,7 @@ export const dataElementsFromGroupQueryOptions = ({
                                     analyticsCombined.metaData.dimensions[
                                         "Duw5yep8Vae"
                                     ].concat(
-                                        analyticsPage.metaData.dimensions[
+                                        analytics.metaData.dimensions[
                                             "Duw5yep8Vae"
                                         ],
                                     ),
@@ -525,53 +516,77 @@ export const dataElementsFromGroupQueryOptions = ({
                         },
                         items: {
                             ...analyticsCombined.metaData.items,
-                            ...analyticsPage.metaData.items,
+                            ...analytics.metaData.items,
                         },
                     },
                     headers: uniqBy(
-                        [
-                            ...analyticsCombined.headers,
-                            ...analyticsPage.headers,
-                        ],
+                        [...analyticsCombined.headers, ...analytics.headers],
                         "name",
                     ),
-                    rows: analyticsCombined.rows.concat(analyticsPage.rows),
+                    rows: analyticsCombined.rows.concat(analytics.rows),
                 };
             }
-            const dataElements = (await engine.query(
-                fromPairs(
-                    chunk(analyticsCombined.metaData.dimensions["dx"], 200).map(
-                        (deIds, index) => [
-                            `dataElementsPage${index}`,
-                            {
-                                resource: `dataElements.json`,
-                                params: {
-                                    filter: `id:in:[${deIds.join(",")}]`,
-                                    paging: "false",
-                                    fields: "id,dataSetElements[dataSet[organisationUnits[id]]]",
-                                },
-                            },
-                        ],
-                    ),
-                ),
-            )) as {
-                [key: string]: {
-                    dataElements: Array<
-                        Pick<DataElement, "id" | "dataSetElements">
-                    >;
-                };
-            };
-            const allDataElements = Object.values(dataElements).flatMap(
-                ({ dataElements }) =>
-                    dataElements.flatMap(({ dataSetElements, id }) =>
-                        dataSetElements.flatMap(({ dataSet }) =>
-                            dataSet.organisationUnits.map((ou) => ({
-                                dataElement: id,
-                                ou: ou.id,
-                            })),
-                        ),
-                    ),
+
+            if (analyticsCombined.rows.length === 0) {
+                return new Map();
+            }
+            const dataElementsByOu = new Map<string, string[]>();
+
+            const dataElementQuery = await db.dataElements
+                .where("dataElementGroupId")
+                .anyOf(
+                    dataElementGroups.map((id) => id.replace("DE_GROUP-", "")),
+                )
+                .toArray();
+
+            dataElementQuery.forEach(({ id, organisationUnitId }) => {
+                if (!dataElementsByOu.has(organisationUnitId)) {
+                    dataElementsByOu.set(organisationUnitId, []);
+                }
+                dataElementsByOu.get(organisationUnitId)!.push(id);
+            });
+
+            const dxIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "dx",
             );
+            const ouIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "ou",
+            );
+            const peIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "pe",
+            );
+            const Duw5yep8VaeIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "Duw5yep8Vae",
+            );
+            const valueIndex = analyticsCombined.headers.findIndex(
+                (header) => header.name === "value",
+            );
+
+            const analyticsByKey = new Map<
+                string,
+                Array<{
+                    dataElement: string;
+                    value: string;
+                    goalStatus: string;
+                    period: string;
+                }>
+            >();
+
+            analyticsCombined.rows.forEach((row) => {
+                const key = `${row[ouIndex]}_${row[dxIndex]}`;
+                if (!analyticsByKey.has(key)) {
+                    analyticsByKey.set(key, []);
+                }
+                analyticsByKey.get(key)!.push({
+                    dataElement: row[dxIndex],
+                    value: row[valueIndex],
+                    goalStatus: row[Duw5yep8VaeIndex],
+                    period: row[peIndex],
+                });
+            });
+            const percentFormatter = new Intl.NumberFormat("en-US", {
+                style: "percent",
+            });
             const data: Map<
                 string,
                 {
@@ -587,42 +602,17 @@ export const dataElementsFromGroupQueryOptions = ({
                 }
             > = new Map();
 
-            const dxIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "dx",
-            );
-
-            const ouIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "ou",
-            );
-            const peIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "pe",
-            );
-            const Duw5yep8VaeIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "Duw5yep8Vae",
-            );
-
-            const valueIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "value",
-            );
             for (const ou of analyticsCombined.metaData.dimensions["ou"]) {
-                const dataElementsForOrgUnit = allDataElements.flatMap((de) =>
-                    de.ou === ou ? [de.dataElement] : [],
+                const dataElementsForOrgUnit = dataElementsByOu.get(ou) || [];
+                console.log(
+                    `Data Elements for Org Unit ${ou}:`,
+                    dataElementsForOrgUnit,
                 );
-
                 const grouped = dataElementsForOrgUnit.map((de) => {
-                    const reportedDataElements = analyticsCombined.rows.flatMap(
-                        (row) => {
-                            if (row[ouIndex] === ou && de === row[dxIndex]) {
-                                return {
-                                    dataElement: row[dxIndex],
-                                    value: row[valueIndex],
-                                    goalStatus: row[Duw5yep8VaeIndex],
-                                    period: row[peIndex],
-                                };
-                            }
-                            return [];
-                        },
-                    );
+                    // O(1) lookup instead of O(n) flatMap
+                    const reportedDataElements =
+                        analyticsByKey.get(`${ou}_${de}`) || [];
+
                     if (reportedDataElements.length === 0) {
                         return {
                             dataElement: de,
@@ -694,17 +684,17 @@ export const dataElementsFromGroupQueryOptions = ({
                     };
                 });
                 const groupedPerformance = groupBy(grouped, "status");
-                let denominator = dataElementsForOrgUnit.length;
-                let achieved = groupedPerformance["a"]
+                const denominator = dataElementsForOrgUnit.length;
+                const achieved = groupedPerformance["a"]
                     ? groupedPerformance["a"].length
                     : 0;
-                let moderatelyAchieved = groupedPerformance["m"]
+                const moderatelyAchieved = groupedPerformance["m"]
                     ? groupedPerformance["m"].length
                     : 0;
-                let notAchieved = groupedPerformance["n"]
+                const notAchieved = groupedPerformance["n"]
                     ? groupedPerformance["n"].length
                     : 0;
-                let noData = groupedPerformance["nd"]
+                const noData = groupedPerformance["nd"]
                     ? groupedPerformance["nd"].length
                     : 0;
                 data.set(ou, {
@@ -713,29 +703,59 @@ export const dataElementsFromGroupQueryOptions = ({
                     moderatelyAchieved,
                     notAchieved,
                     noData,
-                    percentAchieved: Intl.NumberFormat("en-US", {
-                        style: "percent",
-                    }).format(denominator !== 0 ? achieved / denominator : 0),
-                    percentModeratelyAchieved: Intl.NumberFormat("en-US", {
-                        style: "percent",
-                    }).format(
+                    percentAchieved: percentFormatter.format(
+                        denominator !== 0 ? achieved / denominator : 0,
+                    ),
+                    percentModeratelyAchieved: percentFormatter.format(
                         denominator !== 0
                             ? moderatelyAchieved / denominator
                             : 0,
                     ),
-                    percentNotAchieved: Intl.NumberFormat("en-US", {
-                        style: "percent",
-                    }).format(
+                    percentNotAchieved: percentFormatter.format(
                         denominator !== 0 ? notAchieved / denominator : 0,
                     ),
-                    percentNoData: Intl.NumberFormat("en-US", {
-                        style: "percent",
-                    }).format(denominator !== 0 ? noData / denominator : 0),
+                    percentNoData: percentFormatter.format(
+                        denominator !== 0 ? noData / denominator : 0,
+                    ),
                 });
             }
             return data;
         },
-        enabled: period !== undefined,
+        enabled: pe !== undefined,
         retry: false,
+    });
+};
+
+export const ndpIndicatorsQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    ndpVersion: string,
+) => {
+    return queryOptions({
+        queryKey: ["ndp-indicators", ndpVersion],
+        queryFn: async () => {
+            const doneCount = await db.dataElements
+                .where("NDP")
+                .equals(ndpVersion)
+                .count();
+            let dataElements: FlattenedDataElement[] = [];
+            if (doneCount === 0) {
+                const response = (await engine.query({
+                    dataElementGroupSets: {
+                        resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,dataElementGroups[id,name,attributeValues[attribute[id,name],value],dataElements[id,name,attributeValues[attribute[id,name],value],dataSetElements[dataSet[organisationUnits[id]]]]],attributeValues[attribute[id,name],value]&paging=false`,
+                    },
+                })) as {
+                    dataElementGroupSets: DataElementGroupSetResponse;
+                };
+
+                const data = flattenDataElementGroupSetsResponse(
+                    response.dataElementGroupSets,
+                );
+
+                dataElements = data;
+
+                await db.dataElements.bulkPut(data);
+            }
+            return "Not implemented yet";
+        },
     });
 };

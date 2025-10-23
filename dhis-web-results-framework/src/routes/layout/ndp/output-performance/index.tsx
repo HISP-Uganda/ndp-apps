@@ -8,6 +8,7 @@ import { DHIS2OrgUnit } from "../../../../types";
 import { RootRoute } from "../../../__root";
 import Spinner from "../../../../components/Spinner";
 import { createColumns, PERFORMANCE_COLORS } from "../../../../utils";
+import Performance from "../../../../components/performance";
 export const OutputPerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => OutputPerformanceRoute,
@@ -19,19 +20,16 @@ function Component() {
     const { votes } = RootRoute.useLoaderData();
     const { engine } = OutputPerformanceRoute.useRouteContext();
     const results = OutputPerformanceRoute.useLoaderData();
-    const { period, quarters } = OutputPerformanceIndexRoute.useSearch();
+    const { pe, quarters } = OutputPerformanceIndexRoute.useSearch();
 
     const { data, isLoading, isError, error } = useQuery(
         dataElementsFromGroupQueryOptions({
             engine,
             dataElementGroupSets: results.dataElementGroupSets,
-            period,
+            pe,
             quarters,
         }),
     );
-
-    const columns = createColumns(votes, data);
-
     if (isLoading) {
         return <Spinner message="Loading Output Performance data..." />;
     }
@@ -39,19 +37,8 @@ function Component() {
     if (isError) {
         return <div>{`Error: ${error}`}</div>;
     }
-    return (
-        <Flex vertical>
-            <Table
-                columns={columns}
-                dataSource={votes}
-                scroll={{ y: "calc(100vh - 192px)" }}
-                rowKey="id"
-                bordered={true}
-                sticky={true}
-                tableLayout="auto"
-                pagination={false}
-                size="small"
-            />
-        </Flex>
-    );
+
+    if (data !== undefined) return <Performance props={[votes, data]} />;
+
+    return null;
 }

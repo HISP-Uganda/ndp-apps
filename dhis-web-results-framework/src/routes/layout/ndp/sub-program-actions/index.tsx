@@ -29,7 +29,7 @@ function Component() {
         requiresProgram,
         category,
         categoryOptions,
-				nonBaseline
+        nonBaseline,
     } = SubProgramActionIndexRoute.useSearch();
     const navigate = SubProgramActionIndexRoute.useNavigate();
     const { dataElementGroupSets } = SubProgramActionRoute.useLoaderData();
@@ -82,7 +82,13 @@ function Component() {
             quarters,
             category,
             categoryOptions,
-						nonBaseline
+            nonBaseline,
+            prefixColumns: [
+                {
+                    title: "Outputs",
+                    dataIndex: "dataElementGroup",
+                },
+            ],
         }),
         [
             data.data,
