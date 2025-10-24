@@ -810,7 +810,7 @@ export const createColumns = (
             }),
         },
         {
-            title: `% N/A`,
+            title: `% ND`,
             dataIndex: "No Data",
             key: "No Data",
             width: 70,

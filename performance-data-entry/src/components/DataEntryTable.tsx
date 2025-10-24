@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Flex, Spin } from "antd";
+import { Flex } from "antd";
 import { orderBy } from "lodash";
 import React from "react";
-import { Loading3QuartersOutlined } from "@ant-design/icons";
 import { dataSetQueryOptions } from "../query-options";
 import { IndexRoute } from "../routes";
 import { IDataSet } from "../types";
@@ -25,7 +24,7 @@ export default function DataEntryTable() {
     ) {
         return (
             <Flex
-                style={{ paddingTop: 16, overflow: "auto" }}
+                style={{ paddingTop: 16, overflow: "auto", height: "100%" }}
                 gap="16px"
                 vertical
             >

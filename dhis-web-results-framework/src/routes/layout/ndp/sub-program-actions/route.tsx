@@ -7,6 +7,7 @@ import Filter from "../../../../components/Filter";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
 import { NDPRoute } from "../route";
+import Spinner from "../../../../components/Spinner";
 
 export const SubProgramActionRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -29,16 +30,13 @@ export const SubProgramActionRoute = createRoute({
         return data;
     },
     validateSearch: GoalValidator,
-    pendingComponent: () => (
-        <Flex justify="center" align="center" style={{ height: "100%" }}>
-            <Spin />
-        </Flex>
-    ),
+    pendingComponent: Spinner,
 });
 
 function Component() {
     const { engine } = SubProgramActionRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, program, category, categoryOptions } = SubProgramActionRoute.useSearch();
+    const { v, deg, degs, ou, pe, program, category, categoryOptions } =
+        SubProgramActionRoute.useSearch();
     const { categories } = useLoaderData({ from: "__root__" });
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
@@ -61,7 +59,7 @@ function Component() {
     }, []);
 
     return (
-        <Flex vertical gap={10} style={{ padding: 10 }}>
+        <Flex vertical gap={10} style={{ padding: 10, height: "100%" }}>
             <Filter
                 data={{ deg, degs, ou, pe, program }}
                 onChange={(val, previous) => {

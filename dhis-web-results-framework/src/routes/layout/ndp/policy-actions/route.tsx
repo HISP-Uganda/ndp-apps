@@ -12,7 +12,7 @@ export const PolicyActionRoute = createRoute({
 
 function Component() {
     return (
-        <Flex>
+        <Flex style={{ height: "100%" }}>
             <Outlet />
         </Flex>
     );

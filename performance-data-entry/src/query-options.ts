@@ -14,6 +14,7 @@ import {
     Option,
 } from "./types";
 import { convertToAntdTree } from "./utils";
+import { UploadProps } from "antd";
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
@@ -49,7 +50,7 @@ export const initialQueryOptions = (
                 },
             });
             const {
-                orgUnits: { organisationUnits },
+                orgUnits: { organisationUnits, dataSets },
                 configuration,
                 ndp3: { options: ndp3 },
                 ndp4: { options: ndp4 },
@@ -116,6 +117,7 @@ export const initialQueryOptions = (
                 configuration,
                 ndp3,
                 ndp4,
+                dataSets,
             };
         },
     });
@@ -325,6 +327,62 @@ export const useSaveDataValue = (isComment: boolean = false) => {
         onSuccess: () => {},
         onError: (error) => {
             console.error("Failed to save data value:", error);
+        },
+    });
+};
+
+export const attachmentsQueryOptions = (
+    baseUrl: string,
+    engine: ReturnType<typeof useDataEngine>,
+    attachments: string,
+) => {
+    return queryOptions({
+        queryKey: ["attachments-query-options", attachments],
+        queryFn: async () => {
+            const defaultFileList: UploadProps<any>["defaultFileList"] = [];
+            try {
+                const { attachment } = JSON.parse(
+                    attachments ?? '{"explanation": "", "attachment": []}',
+                );
+                console.log("attachments", attachments);
+
+                if (
+                    attachment &&
+                    Array.isArray(attachment) &&
+                    attachment.length > 0
+                ) {
+                    for (const a of attachment) {
+                        try {
+                            const event = (await engine.query({
+                                event: {
+                                    resource: `events/${a}`,
+                                    params: {
+                                        event: a,
+                                    },
+                                },
+                            })) as any;
+                            const fileResourceId = event.event.dataValues.find(
+                                (dv: any) => dv.dataElement === "qeGJBGmsr0d",
+                            )?.value;
+                            const { fileResource } = (await engine.query({
+                                fileResource: {
+                                    resource: `fileResources/${fileResourceId}`,
+                                },
+                            })) as any;
+
+                            console.log("fileResource", fileResource);
+
+                            defaultFileList.push({
+                                uid: a,
+                                name: fileResource?.name,
+                                status: "done",
+                                url: `${baseUrl}/api/events/files?dataElementUid=qeGJBGmsr0d&eventUid=${a}`,
+                            });
+                        } catch (error) {}
+                    }
+                }
+            } catch (error) {}
+            return defaultFileList;
         },
     });
 };

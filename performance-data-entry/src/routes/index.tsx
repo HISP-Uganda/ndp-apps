@@ -41,14 +41,22 @@ const getPeriodType = (
 function IndexRouteComponent() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const { organisationTree, orgUnitDataSets, configuration, ndp3, ndp4 } =
-        useLoaderData({
-            from: "__root__",
-        });
+    const {
+        organisationTree,
+        orgUnitDataSets,
+        configuration,
+        ndp3,
+        ndp4,
+        dataSets,
+    } = useLoaderData({
+        from: "__root__",
+    });
 
     const { orgUnit, dataSet, pe, expanded, minPeriod, maxPeriod, periodType } =
         IndexRoute.useSearch();
-    const dataSets = orgUnit ? orgUnitDataSets[orgUnit] || [] : [];
+    const dataSetsForSelectedOrgUnit = (
+        orgUnit ? orgUnitDataSets[orgUnit] || [] : []
+    ).filter((ds) => dataSets.includes(ds.id));
     const navigate = RootRoute.useNavigate();
 
     const [currentOptions, setCurrentOptions] = useState<Option[]>(ndp4);
@@ -89,7 +97,9 @@ function IndexRouteComponent() {
 
     const showModal = () => {
         if (dataSet) {
-            const selectedDataSet = dataSets.find((ds) => ds.id === dataSet);
+            const selectedDataSet = dataSetsForSelectedOrgUnit.find(
+                (ds) => ds.id === dataSet,
+            );
             if (selectedDataSet && selectedDataSet.name.includes("NDPIII")) {
                 setCurrentOptions(() => ndp3);
             } else if (
@@ -216,7 +226,7 @@ function IndexRouteComponent() {
                 defaultSize="20%"
                 min="20%"
                 max="20%"
-                style={{ backgroundColor: "#F3F3F3",padding: 10 }}
+                style={{ backgroundColor: "#F3F3F3", padding: 10 }}
             >
                 <Flex vertical gap={12}>
                     <Select
@@ -232,19 +242,18 @@ function IndexRouteComponent() {
                         }
                         onSelect={onSelectOrgUnit}
                         value={orgUnit}
-												size="large"
+                        size="large"
                     />
-
 
                     <Flex
                         style={{
                             overflow: "auto",
                             height: "calc(100vh - 48px - 48px - 24px)",
-														width: "100%",
-														backgroundColor: "white",
-														padding: 10,
-														border: "1px solid #d9d9d9",
-														borderRadius: "3px",
+                            width: "100%",
+                            backgroundColor: "white",
+                            padding: 10,
+                            border: "1px solid #d9d9d9",
+                            borderRadius: "3px",
                         }}
                     >
                         <Tree
@@ -264,8 +273,8 @@ function IndexRouteComponent() {
                             style={{
                                 whiteSpace: "nowrap",
                                 fontSize: "14px",
-																padding:0,
-																margin:0,
+                                padding: 0,
+                                margin: 0,
                             }}
                         />
                     </Flex>
@@ -283,7 +292,7 @@ function IndexRouteComponent() {
                     level={4}
                     style={{ margin: 0, color: "#585D61" }}
                 >
-                    Performance Results Entry
+                    NDP Results and Budgets Entry
                 </Typography.Title>
                 <Flex gap={10}>
                     <Flex
@@ -313,7 +322,9 @@ function IndexRouteComponent() {
                                 }}
                             >
                                 <Input
-                                    value={dataSets[0]?.orgUnit}
+                                    value={
+                                        dataSetsForSelectedOrgUnit[0]?.orgUnit
+                                    }
                                     disabled
                                     placeholder="[Select vote from the tree on the left Panel]"
                                 />
@@ -329,7 +340,7 @@ function IndexRouteComponent() {
                             style={{ margin: 0, padding: 5 }}
                         >
                             <Select
-                                options={dataSets}
+                                options={dataSetsForSelectedOrgUnit}
                                 fieldNames={{ label: "name", value: "id" }}
                                 value={dataSet}
                                 allowClear

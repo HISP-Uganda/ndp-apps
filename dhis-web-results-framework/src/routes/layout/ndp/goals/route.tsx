@@ -60,7 +60,7 @@ function Component() {
     }, []);
 
     return (
-        <Flex vertical gap={10} style={{ padding: 10 }}>
+        <Flex vertical gap={10} style={{ padding: 10, height: "100%" }}>
             <Filter
                 data={{ deg, degs, ou, pe }}
                 onChange={(val, previous) => {
