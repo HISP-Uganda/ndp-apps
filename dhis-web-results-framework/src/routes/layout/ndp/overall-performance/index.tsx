@@ -1,8 +1,11 @@
 import { createRoute } from "@tanstack/react-router";
 
+import { useSuspenseQueries } from "@tanstack/react-query";
 import { Flex, Table, type TableProps } from "antd";
 import React from "react";
+import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
 import { DHIS2OrgUnit } from "../../../../types";
+import { formatter } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { OverallPerformanceRoute } from "./route";
 export const OverallPerformanceIndexRoute = createRoute({
@@ -14,6 +17,33 @@ export const OverallPerformanceIndexRoute = createRoute({
 
 function Component() {
     const { votes } = RootRoute.useLoaderData();
+    const { engine } = OverallPerformanceRoute.useRouteContext();
+    const { pe, quarters, category, categoryOptions } =
+        OverallPerformanceIndexRoute.useSearch();
+
+    const { outcome, output } = OverallPerformanceRoute.useLoaderData();
+
+    const [{ data: outcomeData }, { data: outputData }] = useSuspenseQueries({
+        queries: [
+            dataElementsFromGroupQueryOptions({
+                engine,
+                dataElementGroupSets: outcome.dataElementGroupSets,
+                pe,
+                quarters,
+                category,
+                categoryOptions,
+            }),
+            dataElementsFromGroupQueryOptions({
+                engine,
+                dataElementGroupSets: output.dataElementGroupSets,
+                pe,
+                quarters,
+                category,
+                categoryOptions,
+            }),
+        ],
+    });
+
     const columns: TableProps<
         Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">
     >["columns"] = [
@@ -38,9 +68,11 @@ function Component() {
             ),
             dataIndex: "absorptionRate",
             key: "absorptionRate",
+            width: 180,
             onCell: () => ({
                 style: { whiteSpace: "nowrap", minWidth: "fit-content" },
             }),
+            align: "center",
         },
         {
             title: (
@@ -49,7 +81,11 @@ function Component() {
                 </div>
             ),
             dataIndex: "outputPerformance",
+            width: 180,
+            render: (_, record) =>
+                formatter.format(outputData?.get(record.id).totalWeighted),
             key: "outputPerformance",
+            align: "center",
         },
         {
             title: (
@@ -59,6 +95,10 @@ function Component() {
             ),
             dataIndex: "outcomePerformance",
             key: "outcomePerformance",
+            width: 180,
+            align: "center",
+            render: (_, record) =>
+                formatter.format(outcomeData?.get(record.id).totalWeighted),
         },
         {
             title: (
@@ -68,27 +108,21 @@ function Component() {
             ),
             dataIndex: "overallScore",
             key: "overallScore",
+            align: "center",
+            width: 180,
         },
     ];
-
-    // if (isLoading) {
-    //     return <div>Loading...</div>;
-    // }
-
-    // if (isError) {
-    //     return <div>{`Error: ${error}`}</div>;
-    // }
     return (
         <Flex vertical>
             <Table
                 columns={columns}
                 dataSource={votes}
-                // scroll={{ y: "calc(100vh - 192px)" }}
+                scroll={{ y: "calc(100vh - 192px)" }}
                 rowKey="id"
                 bordered={true}
                 // sticky={true}
                 tableLayout="auto"
-                pagination={{pageSize:15}}
+                pagination={false}
                 size="small"
             />
         </Flex>

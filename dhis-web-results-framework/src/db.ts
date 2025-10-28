@@ -9,11 +9,11 @@ export class CQIDexie extends Dexie {
 
     constructor() {
         super("ndp-rf");
-        this.version(2).stores({
+        this.version(1).stores({
             organisationUnits: "id,value,key,title,pId",
             dataViewOrgUnits: "id,value,key,title,pId",
             dataElements:
-                "[id+organisationUnitId+NDP],id,organisationUnitId,NDP,dataElementGroupSetId,dataElementGroupId",
+                "[id+organisationUnitId+NDP+dataElementGroupSetId+dataElementGroupId],id,organisationUnitId,NDP,dataElementGroupSetId,dataElementGroupId",
         });
     }
 }

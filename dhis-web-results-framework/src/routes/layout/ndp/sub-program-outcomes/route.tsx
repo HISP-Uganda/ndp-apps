@@ -35,7 +35,7 @@ function Component() {
     const { engine } = SubProgramOutcomeRoute.useRouteContext();
     const { v, deg, degs, ou, pe, program, category, categoryOptions } =
         SubProgramOutcomeRoute.useSearch();
-    const { categories } = useLoaderData({ from: "__root__" });
+    const { categories } = RootRoute.useLoaderData();
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
             engine,

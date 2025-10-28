@@ -60,10 +60,10 @@ function Component() {
         "2039July",
     ];
     const voteLevelLabel =
-        v === "NDPIII" ? "Sub-Programme Results" : "Vote Level Results";
+        v === "NDPIII" ? "Sub-Programme Results" : "Vote Level Performance";
 
     const {
-        data: { ndpVersions, ou },
+        data: { ndpVersions, ou, votes },
     } = useSuspenseQuery(
         initialQueryOptions(engine, "uV4fZlNvUsw", "nZffnMQwoWr"),
     );
@@ -267,6 +267,11 @@ function Component() {
                                             color: "white",
                                         },
                                     }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
                                     style={{
                                         color: "#2B6998",
 
@@ -278,15 +283,7 @@ function Component() {
                             ),
                             key: "/ndp/sub-program-outcomes",
                         },
-                    ],
-                },
-                {
-                    title: voteLevelLabel,
-                    key: "0-1",
-                    selectable: false,
-                    checkable: false,
 
-                    children: [
                         {
                             title: (
                                 <Link
@@ -310,11 +307,16 @@ function Component() {
                                             color: "white",
                                         },
                                     }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
                                     style={{
                                         color: "#2B6998",
                                     }}
                                 >
-                                    Output Level
+                                    Program Outputs
                                 </Link>
                             ),
                             key: "/ndp/sub-program-outputs",
@@ -342,11 +344,16 @@ function Component() {
                                             color: "white",
                                         },
                                     }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
                                     style={{
                                         color: "#2B6998",
                                     }}
                                 >
-                                    Action Level
+                                    Program Actions
                                 </Link>
                             ),
                             key: "/ndp/sub-program-actions",
@@ -354,7 +361,103 @@ function Component() {
                     ],
                 },
                 {
-                    title: "Performance Scorecard",
+                    title: voteLevelLabel,
+                    key: "vote-level-results",
+                    selectable: false,
+                    checkable: false,
+
+                    children: [
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/vote-program-performance"
+                                    search={() => ({
+                                        ou: votes[0].id,
+                                        v,
+                                        pe: currentFinancialYear,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                    }}
+                                >
+                                    Programme Performance
+                                </Link>
+                            ),
+                            key: "/ndp/vote-program-performance",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/vote-outcome-performance"
+                                    search={() => ({
+                                        ou: votes[0].id,
+                                        v,
+                                        pe: currentFinancialYear,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                    }}
+                                >
+                                    Outcome Performance
+                                </Link>
+                            ),
+                            key: "/ndp/vote-outcome-performance",
+                        },
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/vote-output-performance"
+                                    search={(prev) => ({
+                                        ou: votes[0].id,
+                                        v,
+                                        pe: currentFinancialYear,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                    }}
+                                >
+                                    Output Performance
+                                </Link>
+                            ),
+                            key: "/ndp/vote-output-performance",
+                        },
+                    ],
+                },
+                {
+                    title: "Performance Scorecards",
                     key: "scorecard",
                     selectable: false,
                     checkable: false,
@@ -368,6 +471,8 @@ function Component() {
                                         v,
                                         pe: currentFinancialYear,
                                         quarters: v === "NDPIV",
+                                        category: "Duw5yep8Vae",
+                                        categoryOptions: undefined,
                                     })}
                                     activeOptions={{
                                         exact: true,
@@ -385,7 +490,7 @@ function Component() {
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    Overall Vote Scorecard
+                                    Overall Performance Scorecard
                                 </Link>
                             ),
                             key: "/ndp/overall-performance",
@@ -399,6 +504,9 @@ function Component() {
                                         v,
                                         pe: currentFinancialYear,
                                         quarters: v === "NDPIV",
+                                        category: "Duw5yep8Vae",
+                                        categoryOptions: undefined,
+                                        isSum: undefined,
                                     })}
                                     activeOptions={{
                                         exact: true,
@@ -416,7 +524,7 @@ function Component() {
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    Outcome Performance
+                                    Outcome Performance Scorecard
                                 </Link>
                             ),
                             key: "/ndp/outcome-performance",
@@ -430,6 +538,9 @@ function Component() {
                                         v,
                                         pe: currentFinancialYear,
                                         quarters: v === "NDPIV",
+                                        category: "Duw5yep8Vae",
+                                        categoryOptions: undefined,
+                                        isSum: undefined,
                                     })}
                                     activeOptions={{
                                         exact: true,
@@ -446,10 +557,44 @@ function Component() {
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    Output Performance
+                                    Output Performance Scorecard
                                 </Link>
                             ),
                             key: "/ndp/output-performance",
+                        },
+
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/budget-performance"
+                                    search={() => ({
+                                        ou,
+                                        v,
+                                        pe: currentFinancialYear,
+                                        quarters: v === "NDPIV",
+                                        category: "kfnptfEdnYl",
+                                        categoryOptions: undefined,
+                                        isSum: true,
+                                    })}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Budget Performance Scorecard
+                                </Link>
+                            ),
+                            key: "/ndp/budget-performance",
                         },
                     ],
                 },
@@ -477,6 +622,11 @@ function Component() {
                                     color: "white",
                                 },
                             }}
+                            activeOptions={{
+                                exact: true,
+                                includeHash: false,
+                                includeSearch: false,
+                            }}
                             style={{
                                 color: "#2B6998",
 
@@ -503,6 +653,11 @@ function Component() {
                                 style: {
                                     color: "white",
                                 },
+                            }}
+                            activeOptions={{
+                                exact: true,
+                                includeHash: false,
+                                includeSearch: false,
                             }}
                             style={{
                                 color: "#2B6998",
@@ -545,6 +700,11 @@ function Component() {
                                     color: "white",
                                 },
                             }}
+                            activeOptions={{
+                                exact: true,
+                                includeHash: false,
+                                includeSearch: false,
+                            }}
                             style={{
                                 color: "#2B6998",
                             }}
@@ -570,6 +730,11 @@ function Component() {
                                 style: {
                                     color: "white",
                                 },
+                            }}
+                            activeOptions={{
+                                exact: true,
+                                includeHash: false,
+                                includeSearch: false,
                             }}
                             style={{
                                 color: "#2B6998",
@@ -597,6 +762,11 @@ function Component() {
                                     color: "white",
                                 },
                             }}
+                            activeOptions={{
+                                exact: true,
+                                includeHash: false,
+                                includeSearch: false,
+                            }}
                             style={{
                                 color: "#2B6998",
                             }}
@@ -623,6 +793,11 @@ function Component() {
                         style: {
                             color: "white",
                         },
+                    }}
+                    activeOptions={{
+                        exact: true,
+                        includeHash: false,
+                        includeSearch: false,
                     }}
                     style={{
                         color: "#2B6998",

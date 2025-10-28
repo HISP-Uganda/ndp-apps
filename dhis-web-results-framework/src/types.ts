@@ -29,6 +29,14 @@ export const GoalValidator = z.object({
 export const PerformanceSchema = z.object({
     pe: z.string().optional(),
     quarters: z.boolean().optional(),
+    category: z.string(),
+    categoryOptions: z.string().array().optional(),
+});
+export const VoteSchema = z.object({
+    pe: z.string().optional(),
+    quarters: z.boolean().optional(),
+    ou: z.string().optional(),
+    isSum: z.boolean().optional(),
 });
 
 export const DataElementGroupSetResponseSchema = z.object({
@@ -43,6 +51,7 @@ export const DataElementGroupSetResponseSchema = z.object({
         z.object({
             name: z.string(),
             id: z.string(),
+            code: z.string(),
             attributeValues: z.array(
                 z.object({
                     attribute: z.object({ name: z.string(), id: z.string() }),
@@ -53,6 +62,7 @@ export const DataElementGroupSetResponseSchema = z.object({
                 z.object({
                     name: z.string(),
                     id: z.string(),
+                    code: z.string(),
                     attributeValues: z.array(
                         z.object({
                             attribute: z.object({
@@ -68,6 +78,7 @@ export const DataElementGroupSetResponseSchema = z.object({
                             dataSetElements: z.array(
                                 z.object({
                                     dataSet: z.object({
+                                        id: z.string(),
                                         organisationUnits: z.array(
                                             z.object({ id: z.string() }),
                                         ),
@@ -75,6 +86,7 @@ export const DataElementGroupSetResponseSchema = z.object({
                                 }),
                             ),
                             id: z.string(),
+                            code: z.string(),
                             attributeValues: z.array(
                                 z.object({
                                     attribute: z.object({
@@ -105,7 +117,8 @@ export type FlattenedDataElement = {
     dataElementGroupSetId: string;
     id: string;
     name: string;
-    NDP?: string;
+    dataSets: string[];
+    [key: string]: string | string[] | undefined;
 };
 
 export type AdditionalColumn = {
@@ -252,3 +265,27 @@ export type DHIS2OrgUnit = {
     parent: { id: string };
     code?: string;
 };
+
+export type ScorecardData = Map<
+    string,
+    {
+        denominator: number;
+        achieved: number;
+        moderatelyAchieved: number;
+        notAchieved: number;
+        noData: number;
+        percentAchieved: number;
+        percentModeratelyAchieved: number;
+        percentNotAchieved: number;
+        percentNoData: number;
+        achievedWeighted: number;
+        moderatelyAchievedWeighted: number;
+        notAchievedWeighted: number;
+        noDataWeighted: number;
+        totalWeighted: number;
+        actual: number;
+        target: number;
+        baseline: number;
+        performance: number;
+    }
+>;

@@ -1,17 +1,17 @@
-import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
 import { createRoute, Outlet } from "@tanstack/react-router";
-import { Flex, Form, Select } from "antd";
 import React, { useEffect } from "react";
-import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
-import { PerformanceSchema } from "../../../../types";
-import { RootRoute } from "../../../__root";
+import { Flex, Form, Select } from "antd";
 import { NDPRoute } from "../route";
+import { PerformanceSchema } from "../../../../types";
+import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
+import { RootRoute } from "../../../__root";
+import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
 import PerformanceLegend from "../../../../components/performance-legend";
 import { performanceLegendItems } from "../../../../utils";
 
-export const OutcomePerformanceRoute = createRoute({
+export const BudgetPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
-    path: "outcome-performance",
+    path: "budget-performance",
     component: Component,
     loaderDeps: ({ search }) => ({
         v: search.v,
@@ -21,7 +21,9 @@ export const OutcomePerformanceRoute = createRoute({
         const data = queryClient.ensureQueryData(
             dataElementGroupSetsWithProgramsQueryOptions(
                 engine,
-                "objective",
+                v === "NDPIII"
+                    ? "sub-intervention4action"
+                    : "intervention4actions",
                 v,
             ),
         );
@@ -32,9 +34,9 @@ export const OutcomePerformanceRoute = createRoute({
 
 function Component() {
     const { configurations, categories } = RootRoute.useLoaderData();
-    const navigate = OutcomePerformanceRoute.useNavigate();
+    const navigate = BudgetPerformanceRoute.useNavigate();
     const { v, pe, category, categoryOptions } =
-        OutcomePerformanceRoute.useSearch();
+        BudgetPerformanceRoute.useSearch();
     const config = configurations[v ?? ""]["data"];
 
     const periods = config["financialYears"].map((year: string) =>
@@ -57,7 +59,7 @@ function Component() {
     return (
         <Flex
             vertical
-            style={{ padding: 10, flex: 1, height: "100%" }}
+            style={{ padding: 10, height: "100%", flex: 1 }}
             gap={10}
         >
             <Form.Item label="Select Period">

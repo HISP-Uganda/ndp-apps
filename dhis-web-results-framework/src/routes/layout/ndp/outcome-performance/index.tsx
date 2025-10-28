@@ -17,7 +17,8 @@ function Component() {
     const { votes } = RootRoute.useLoaderData();
     const { engine } = OutcomePerformanceRoute.useRouteContext();
     const results = OutcomePerformanceRoute.useLoaderData();
-    const { pe, quarters } = OutcomePerformanceIndexRoute.useSearch();
+    const { pe, quarters, category, categoryOptions } =
+        OutcomePerformanceIndexRoute.useSearch();
 
     const { data, isLoading, isError, error } = useQuery(
         dataElementsFromGroupQueryOptions({
@@ -25,6 +26,8 @@ function Component() {
             dataElementGroupSets: results.dataElementGroupSets,
             pe,
             quarters,
+            category,
+            categoryOptions,
         }),
     );
     if (isLoading)

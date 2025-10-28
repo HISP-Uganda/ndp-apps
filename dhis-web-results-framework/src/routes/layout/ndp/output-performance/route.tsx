@@ -1,5 +1,5 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { Flex, Form, Select } from "antd";
 import { NDPRoute } from "../route";
 import { PerformanceSchema } from "../../../../types";
@@ -31,9 +31,10 @@ export const OutputPerformanceRoute = createRoute({
 });
 
 function Component() {
-    const { configurations } = RootRoute.useLoaderData();
+    const { configurations, categories } = RootRoute.useLoaderData();
     const navigate = OutputPerformanceRoute.useNavigate();
-    const { v, pe } = OutputPerformanceRoute.useSearch();
+    const { v, pe, category, categoryOptions } =
+        OutputPerformanceRoute.useSearch();
     const config = configurations[v ?? ""]["data"];
 
     const periods = config["financialYears"].map((year: string) =>
@@ -42,6 +43,17 @@ function Component() {
             periodId: year,
         }),
     );
+
+    useEffect(() => {
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
     return (
         <Flex
             vertical

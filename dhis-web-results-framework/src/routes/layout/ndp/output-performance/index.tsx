@@ -1,14 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
 import React from "react";
-import { OutputPerformanceRoute } from "./route";
-import { useQuery } from "@tanstack/react-query";
-import { Flex, Table, type TableProps } from "antd";
-import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
-import { DHIS2OrgUnit } from "../../../../types";
-import { RootRoute } from "../../../__root";
-import Spinner from "../../../../components/Spinner";
-import { createColumns, PERFORMANCE_COLORS } from "../../../../utils";
 import Performance from "../../../../components/performance";
+import Spinner from "../../../../components/Spinner";
+import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
+import { RootRoute } from "../../../__root";
+import { OutputPerformanceRoute } from "./route";
 export const OutputPerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => OutputPerformanceRoute,
@@ -20,7 +17,8 @@ function Component() {
     const { votes } = RootRoute.useLoaderData();
     const { engine } = OutputPerformanceRoute.useRouteContext();
     const results = OutputPerformanceRoute.useLoaderData();
-    const { pe, quarters } = OutputPerformanceIndexRoute.useSearch();
+    const { pe, quarters, category, categoryOptions } =
+        OutputPerformanceIndexRoute.useSearch();
 
     const { data, isLoading, isError, error } = useQuery(
         dataElementsFromGroupQueryOptions({
@@ -28,6 +26,8 @@ function Component() {
             dataElementGroupSets: results.dataElementGroupSets,
             pe,
             quarters,
+            category,
+            categoryOptions,
         }),
     );
     if (isLoading) {

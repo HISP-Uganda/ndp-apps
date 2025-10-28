@@ -1,8 +1,8 @@
 import { QueryClient } from "@tanstack/react-query";
 import {
-	createHashHistory,
-	createRouter,
-	ErrorComponent,
+    createHashHistory,
+    createRouter,
+    ErrorComponent,
 } from "@tanstack/react-router";
 import React from "react";
 import Spinner from "./components/Spinner";
@@ -46,6 +46,14 @@ import { WorkflowRoute } from "./routes/layout/ndp/workflows/route";
 import { LayoutRoute } from "./routes/layout/route";
 import { SettingsIndexRoute } from "./routes/settings";
 import { SettingsRoute } from "./routes/settings/route";
+import { VoteOutcomePerformanceRoute } from "./routes/layout/ndp/vote-outcome-performance/route";
+import { VoteOutcomePerformanceIndexRoute } from "./routes/layout/ndp/vote-outcome-performance";
+import { VoteProgramPerformanceRoute } from "./routes/layout/ndp/vote-program-performance/route";
+import { VoteProgramPerformanceIndexRoute } from "./routes/layout/ndp/vote-program-performance";
+import { VoteOutputPerformanceRoute } from "./routes/layout/ndp/vote-output-performance/route";
+import { VoteOutputPerformanceIndexRoute } from "./routes/layout/ndp/vote-output-performance";
+import { BudgetPerformanceRoute } from "./routes/layout/ndp/budget-performance/route";
+import { BudgetPerformanceIndexRoute } from "./routes/layout/ndp/budget-performance";
 
 const routeTree = RootRoute.addChildren([
     IndexRoute,
@@ -71,6 +79,16 @@ const routeTree = RootRoute.addChildren([
             OverallPerformanceRoute.addChildren([OverallPerformanceIndexRoute]),
             OutcomePerformanceRoute.addChildren([OutcomePerformanceIndexRoute]),
             OutputPerformanceRoute.addChildren([OutputPerformanceIndexRoute]),
+            BudgetPerformanceRoute.addChildren([BudgetPerformanceIndexRoute]),
+            VoteOutcomePerformanceRoute.addChildren([
+                VoteOutcomePerformanceIndexRoute,
+            ]),
+            VoteProgramPerformanceRoute.addChildren([
+                VoteProgramPerformanceIndexRoute,
+            ]),
+            VoteOutputPerformanceRoute.addChildren([
+                VoteOutputPerformanceIndexRoute,
+            ]),
         ]),
     ]),
     SettingsRoute.addChildren([SettingsIndexRoute]),

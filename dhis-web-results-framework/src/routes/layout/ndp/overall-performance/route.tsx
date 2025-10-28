@@ -17,14 +17,21 @@ export const OverallPerformanceRoute = createRoute({
 
     loader: async ({ context, deps: { v } }) => {
         const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
+        const outcome = await queryClient.ensureQueryData(
             dataElementGroupSetsWithProgramsQueryOptions(
                 engine,
                 "objective",
                 v,
             ),
         );
-        return data;
+        const output = await queryClient.ensureQueryData(
+            dataElementGroupSetsWithProgramsQueryOptions(
+                engine,
+                v === "NDPIII" ? "sub-intervention" : "intervention",
+                v,
+            ),
+        );
+        return { outcome, output };
     },
     validateSearch: PerformanceSchema,
 });
@@ -59,6 +66,8 @@ function Component() {
                             }),
                         })
                     }
+                    allowClear
+                    showSearch
                 />
             </Form.Item>
             <Outlet />

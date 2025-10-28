@@ -1,6 +1,6 @@
 import { SelectProps, TableProps } from "antd";
 import dayjs from "dayjs";
-import { fromPairs, groupBy } from "lodash";
+import { fromPairs, groupBy, uniq, uniqBy } from "lodash";
 import {
     Analytics,
     DataElement,
@@ -10,7 +10,9 @@ import {
     FlattenedDataElement,
     GoalSearch,
     MapPredicate,
+    ScorecardData,
 } from "./types";
+import { useDataEngine } from "@dhis2/app-runtime";
 
 export const prepareVisionData = ({
     data,
@@ -637,20 +639,25 @@ export const getDefaultPeriods = (financialYears: string[]) => {
                 .subtract(2, "year")
                 .format("YYYY[July]");
         }
-
         if (firstFinancialYear === currentFinancialYear) {
             return {
                 firstFinancialYear,
                 lastFinancialYear,
                 validPeriods: [currentFinancialYear],
-                currentFinancialYear,
+                currentFinancialYear:
+                    currentFinancialYear > lastFinancialYear
+                        ? lastFinancialYear
+                        : currentFinancialYear,
             };
         } else if (firstFinancialYear < currentFinancialYear) {
             return {
                 firstFinancialYear,
                 lastFinancialYear,
                 validPeriods: financialPeriods.slice(-2),
-                currentFinancialYear,
+                currentFinancialYear:
+                    currentFinancialYear > lastFinancialYear
+                        ? lastFinancialYear
+                        : currentFinancialYear,
             };
         }
 
@@ -658,7 +665,10 @@ export const getDefaultPeriods = (financialYears: string[]) => {
             firstFinancialYear,
             lastFinancialYear,
             validPeriods: [previousFinancialYear, currentFinancialYear],
-            currentFinancialYear,
+            currentFinancialYear:
+                currentFinancialYear > lastFinancialYear
+                    ? lastFinancialYear
+                    : currentFinancialYear,
         };
     } else {
         return {
@@ -672,25 +682,16 @@ export const getDefaultPeriods = (financialYears: string[]) => {
 
 export const createColumns = (
     votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>,
-
-    data?: Map<
-        string,
-        {
-            denominator: number;
-            achieved: number;
-            moderatelyAchieved: number;
-            notAchieved: number;
-            noData: number;
-            percentAchieved: string;
-            percentModeratelyAchieved: string;
-            percentNotAchieved: string;
-            percentNoData: string;
-        }
-    >,
+    data?: ScorecardData,
 ) => {
-    const columns: TableProps<
-        Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">
-    >["columns"] = [
+    const finalData = votes.map((vote) => {
+        const dataForVote = data?.get(vote.id);
+        return {
+            ...vote,
+            ...dataForVote,
+        };
+    });
+    const columns: TableProps<(typeof finalData)[number]>["columns"] = [
         {
             title: "Vote",
             dataIndex: "vote",
@@ -709,12 +710,19 @@ export const createColumns = (
                 record.name.indexOf(value as string) === 0,
         },
         {
+            title: `No of Indicators`,
+            dataIndex: "No Data",
+            key: "No Data",
+            width: 140,
+            align: "center",
+            render: (_, record) => data?.get(record.id)?.denominator ?? "",
+        },
+        {
             title: `A`,
             dataIndex: "achieved",
             key: "achieved",
             width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.achieved ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.green.bg,
@@ -724,12 +732,10 @@ export const createColumns = (
         },
         {
             title: `M`,
-            dataIndex: "Moderately Satisfactory",
-            key: "Moderately Satisfactory",
+            dataIndex: "moderatelyAchieved",
+            key: "moderatelyAchieved",
             width: 70,
             align: "center",
-            render: (_, record) =>
-                data?.get(record.id)?.moderatelyAchieved ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
@@ -739,11 +745,10 @@ export const createColumns = (
         },
         {
             title: `N`,
-            dataIndex: "Not Achieved",
-            key: "Not Achieved",
+            dataIndex: "notAchieved",
+            key: "notAchieved",
             width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.notAchieved ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.red.bg,
@@ -753,11 +758,10 @@ export const createColumns = (
         },
         {
             title: `ND`,
-            dataIndex: "No Data",
-            key: "No Data",
+            dataIndex: "noData",
+            key: "noData",
             width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.noData ?? "",
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
@@ -767,11 +771,12 @@ export const createColumns = (
         },
         {
             title: `% A`,
-            dataIndex: "No Data",
-            key: "No Data",
+            dataIndex: "percentAchieved",
+            key: "percentAchieved",
             width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.percentAchieved ?? "0",
+            render: (_, record) =>
+                formatter.format(record.percentAchieved ?? 0),
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.green.bg,
@@ -781,12 +786,12 @@ export const createColumns = (
         },
         {
             title: `% M`,
-            dataIndex: "No Data",
-            key: "No Data",
+            dataIndex: "percentModeratelyAchieved",
+            key: "percentModeratelyAchieved",
             width: 70,
             align: "center",
             render: (_, record) =>
-                data?.get(record.id)?.percentModeratelyAchieved ?? "0",
+                formatter.format(record.percentModeratelyAchieved ?? 0),
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
@@ -796,12 +801,12 @@ export const createColumns = (
         },
         {
             title: `% N`,
-            dataIndex: "No Data",
-            key: "No Data",
+            dataIndex: "percentNotAchieved",
+            key: "percentNotAchieved",
             width: 70,
             align: "center",
             render: (_, record) =>
-                data?.get(record.id)?.percentNotAchieved ?? "0",
+                formatter.format(record.percentNotAchieved ?? 0),
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.red.bg,
@@ -811,11 +816,11 @@ export const createColumns = (
         },
         {
             title: `% ND`,
-            dataIndex: "No Data",
-            key: "No Data",
+            dataIndex: "percentNoData",
+            key: "percentNoData",
             width: 70,
             align: "center",
-            render: (_, record) => data?.get(record.id)?.percentNoData ?? "0",
+            render: (_, record) => formatter.format(record.percentNoData ?? 0),
             onHeaderCell: () => ({
                 style: {
                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
@@ -823,23 +828,59 @@ export const createColumns = (
                 },
             }),
         },
+        // {
+        //     title: `WA`,
+        //     dataIndex: "achievedWeighted",
+        //     key: "achievedWeighted",
+        //     align: "center",
+        //     width: 70,
+        //     render: (_, record) =>
+        //         formatter.format(record.achievedWeighted ?? 0),
+        // },
+        // {
+        //     title: `WM`,
+        //     dataIndex: "moderatelyAchievedWeighted",
+        //     key: "moderatelyAchievedWeighted",
+        //     align: "center",
+        //     width: 70,
+        //     render: (_, record) =>
+        //         formatter.format(record.moderatelyAchievedWeighted ?? 0),
+        // },
+        // {
+        //     title: `WN`,
+        //     dataIndex: "notAchievedWeighted",
+        //     key: "notAchievedWeighted",
+        //     render: (_, record) =>
+        //         formatter.format(record.notAchievedWeighted ?? 0),
+        //     align: "center",
+        //     width: 70,
+        // },
+        // {
+        //     title: `WND`,
+        //     dataIndex: "noDataWeighted",
+        //     key: "noDataWeighted",
+        //     align: "center",
+        //     width: 70,
+        //     render: (_, record) => formatter.format(record.noDataWeighted ?? 0),
+        // },
+
         {
-            title: `No of Indicators`,
-            dataIndex: "No Data",
-            key: "No Data",
-            width: 140,
+            title: `Weighted`,
+            dataIndex: "noDataWeighted",
+            key: "noDataWeighted",
             align: "center",
-            render: (_, record) => data?.get(record.id)?.denominator ?? "",
+            width: 100,
+            render: (_, record) => formatter.format(record.totalWeighted ?? 0),
         },
     ];
-    return columns;
+    return { columns, finalData };
 };
 
 export const flattenDataElementGroupSetsResponse = ({
     dataElementGroupSets,
 }: DataElementGroupSetResponse): FlattenedDataElement[] => {
     return dataElementGroupSets.flatMap(
-        ({ attributeValues, id, name, dataElementGroups }) => {
+        ({ attributeValues, id, name, code, dataElementGroups }) => {
             const degs = {
                 ...fromPairs(
                     attributeValues.map(({ value, attribute: { id } }) => [
@@ -855,9 +896,10 @@ export const flattenDataElementGroupSetsResponse = ({
                 ),
                 dataElementGroupSetName: name,
                 dataElementGroupSetId: id,
+                dataElementGroupSetCode: code,
             };
             return dataElementGroups.flatMap(
-                ({ id, attributeValues, name, dataElements }) => {
+                ({ id, attributeValues, name, code, dataElements }) => {
                     const deg = {
                         ...fromPairs(
                             attributeValues.map(
@@ -874,12 +916,20 @@ export const flattenDataElementGroupSetsResponse = ({
                         ),
                         dataElementGroupName: name,
                         dataElementGroupId: id,
+                        dataElementGroupCode: code,
                     };
                     return dataElements.flatMap(
-                        ({ attributeValues, id, name, dataSetElements }) => {
+                        ({
+                            attributeValues,
+                            id,
+                            name,
+                            code,
+                            dataSetElements,
+                        }) => {
                             const de = {
                                 id,
                                 name,
+                                code,
                                 ...fromPairs(
                                     attributeValues.map(
                                         ({ value, attribute: { id } }) => [
@@ -899,13 +949,21 @@ export const flattenDataElementGroupSetsResponse = ({
                                 ...degs,
                                 ...deg,
                             };
-                            return dataSetElements.flatMap(
-                                ({ dataSet: { organisationUnits } }) => {
-                                    return organisationUnits.map(({ id }) => ({
-                                        ...de,
-                                        organisationUnitId: id,
-                                    }));
-                                },
+
+                            const dataSetOrganizationUnits =
+                                dataSetElements.flatMap(
+                                    ({ dataSet: { organisationUnits } }) =>
+                                        organisationUnits.map((ou) => ou.id),
+                                );
+                            const dataSets = dataSetElements.flatMap(
+                                ({ dataSet }) => dataSet.id,
+                            );
+                            return uniq(dataSetOrganizationUnits).map(
+                                (organisationUnitId) => ({
+                                    ...de,
+                                    organisationUnitId,
+                                    dataSets,
+                                }),
                             );
                         },
                     );
@@ -951,3 +1009,24 @@ export const performanceLegendItems = [
     },
     { bg: PERFORMANCE_COLORS.gray.bg, color: "black", label: " ND - No Data" },
 ];
+
+export const queryAnalytics = ({
+    engine,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    pe?: string;
+    quarters: string;
+    dx: string;
+    ou: string;
+}) => {};
+
+export const convertAnalyticsToObjects = (analytics: Analytics) => {
+    const headers = analytics.headers.map((header) => header.name);
+    return analytics.rows.map((row) => {
+        return fromPairs(row.map((value, index) => [headers[index], value]));
+    });
+};
+
+export const formatter = new Intl.NumberFormat("en-US", {
+    style: "percent",
+});

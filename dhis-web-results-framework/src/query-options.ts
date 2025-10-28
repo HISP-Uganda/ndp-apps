@@ -1,6 +1,6 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions } from "@tanstack/react-query";
-import { chunk, groupBy, orderBy, uniqBy } from "lodash";
+import { chunk, groupBy, orderBy, sum, uniqBy } from "lodash";
 import { db } from "./db";
 import {
     Analytics,
@@ -13,8 +13,10 @@ import {
     Option,
     OptionSet,
     OrgUnit,
+    ScorecardData,
 } from "./types";
 import {
+    convertAnalyticsToObjects,
     flattenDataElementGroupSetsResponse,
     flattenDataElements,
 } from "./utils";
@@ -339,7 +341,7 @@ export const analyticsQueryOptions = (
                             "dx"
                         ]?.join(",")}]`,
                         paging: "false",
-                        fields: "id,name,aggregationType,dataSetElements[dataSet[name,periodType,id,organisationUnits[code,displayName,id]]],attributeValues[attribute[id,name],value],dataElementGroups[id,name,attributeValues[attribute[id,name],value],groupSets[id,name,attributeValues[attribute[id,name],value]]]",
+                        fields: "id,name,code,aggregationType,dataSetElements[dataSet[name,periodType,id,organisationUnits[code,displayName,id]]],attributeValues[attribute[id,name],value],dataElementGroups[id,name,code,attributeValues[attribute[id,name],value],groupSets[id,name,attributeValues[attribute[id,name],value]]]",
                     },
                 },
             });
@@ -397,14 +399,26 @@ export const dataElementsFromGroupQueryOptions = ({
     dataElementGroupSets,
     pe,
     quarters,
+    category,
+    categoryOptions,
+    isSum,
 }: {
     engine: ReturnType<typeof useDataEngine>;
     dataElementGroupSets: DataElementGroupSet[];
     pe?: string;
     quarters?: boolean;
+    category?: string;
+    categoryOptions?: string[];
+    isSum?: boolean;
 }) => {
     return queryOptions({
-        queryKey: ["dataElementsFromGroup", dataElementGroupSets.length, pe],
+        queryKey: [
+            "dataElementsFromGroup",
+            dataElementGroupSets.length,
+            pe,
+            category,
+            ...(categoryOptions ?? []),
+        ],
         queryFn: async () => {
             if (pe === undefined) {
                 throw new Error("Period is undefined");
@@ -436,7 +450,7 @@ export const dataElementsFromGroupQueryOptions = ({
             params.append("dimension", `ou:ONXWQ2EoOcP;LEVEL-3`);
             params.append(
                 "dimension",
-                `Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U`,
+                `${category}:${categoryOptions?.join(";")}`,
             );
             params.append("dimension", `pe:${periodFilter}`);
 
@@ -477,38 +491,46 @@ export const dataElementsFromGroupQueryOptions = ({
                             ...analytics.metaData.dimensions,
                             ou: [
                                 ...new Set(
-                                    analyticsCombined.metaData.dimensions[
-                                        "ou"
-                                    ].concat(
+                                    (
+                                        analyticsCombined.metaData.dimensions?.[
+                                            "ou"
+                                        ] ?? []
+                                    ).concat(
                                         analytics.metaData.dimensions["ou"],
                                     ),
                                 ),
                             ],
                             dx: [
                                 ...new Set(
-                                    analyticsCombined.metaData.dimensions[
-                                        "dx"
-                                    ].concat(
+                                    (
+                                        analyticsCombined.metaData.dimensions[
+                                            "dx"
+                                        ] ?? []
+                                    ).concat(
                                         analytics.metaData.dimensions["dx"],
                                     ),
                                 ),
                             ],
                             pe: [
                                 ...new Set(
-                                    analyticsCombined.metaData.dimensions[
-                                        "pe"
-                                    ].concat(
+                                    (
+                                        analyticsCombined.metaData.dimensions[
+                                            "pe"
+                                        ] ?? []
+                                    ).concat(
                                         analytics.metaData.dimensions["pe"],
                                     ),
                                 ),
                             ],
-                            Duw5yep8Vae: [
+                            [category!]: [
                                 ...new Set(
-                                    analyticsCombined.metaData.dimensions[
-                                        "Duw5yep8Vae"
-                                    ].concat(
+                                    (
+                                        analyticsCombined.metaData.dimensions[
+                                            category!
+                                        ] ?? []
+                                    ).concat(
                                         analytics.metaData.dimensions[
-                                            "Duw5yep8Vae"
+                                            category!
                                         ],
                                     ),
                                 ),
@@ -556,7 +578,7 @@ export const dataElementsFromGroupQueryOptions = ({
                 (header) => header.name === "pe",
             );
             const Duw5yep8VaeIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "Duw5yep8Vae",
+                (header) => header.name === category,
             );
             const valueIndex = analyticsCombined.headers.findIndex(
                 (header) => header.name === "value",
@@ -584,32 +606,12 @@ export const dataElementsFromGroupQueryOptions = ({
                     period: row[peIndex],
                 });
             });
-            const percentFormatter = new Intl.NumberFormat("en-US", {
-                style: "percent",
-            });
-            const data: Map<
-                string,
-                {
-                    denominator: number;
-                    achieved: number;
-                    moderatelyAchieved: number;
-                    notAchieved: number;
-                    noData: number;
-                    percentAchieved: string;
-                    percentModeratelyAchieved: string;
-                    percentNotAchieved: string;
-                    percentNoData: string;
-                }
-            > = new Map();
+
+            const data: ScorecardData = new Map();
 
             for (const ou of analyticsCombined.metaData.dimensions["ou"]) {
                 const dataElementsForOrgUnit = dataElementsByOu.get(ou) || [];
-                console.log(
-                    `Data Elements for Org Unit ${ou}:`,
-                    dataElementsForOrgUnit,
-                );
                 const grouped = dataElementsForOrgUnit.map((de) => {
-                    // O(1) lookup instead of O(n) flatMap
                     const reportedDataElements =
                         analyticsByKey.get(`${ou}_${de}`) || [];
 
@@ -621,37 +623,66 @@ export const dataElementsFromGroupQueryOptions = ({
                         };
                     }
 
-                    const target = reportedDataElements.find(
-                        (v) => v.goalStatus === "Px8Lqkxy2si",
+                    const baseline = orderBy(
+                        reportedDataElements.filter(
+                            (v) =>
+                                categoryOptions &&
+                                v.goalStatus === categoryOptions.at(-3),
+                        ),
+                        "period",
+                        "desc",
                     );
-                    const actual = reportedDataElements.filter((v) => {
-                        if (quarters) {
-                            return (
-                                v.goalStatus === "HKtncMjp06U" &&
-                                v.period.includes("Q")
-                            );
-                        }
-                        return v.goalStatus === "HKtncMjp06U";
-                    });
-                    const orderedActuals = orderBy(actual, "period", "desc");
 
-                    if (target && orderedActuals.length > 0) {
-                        const latestActual = Number(orderedActuals[0].value);
-                        const targetValue = Number(target.value);
-                        const performance = (latestActual / targetValue) * 100;
+                    const target = orderBy(
+                        reportedDataElements.filter(
+                            (v) =>
+                                categoryOptions &&
+                                v.goalStatus === categoryOptions.at(-2),
+                        ),
+                        "period",
+                        "desc",
+                    );
+                    const actual = orderBy(
+                        reportedDataElements.filter((v) => {
+                            return (
+                                categoryOptions &&
+                                v.goalStatus === categoryOptions.at(-1)
+                            );
+                        }),
+                        "period",
+                        "desc",
+                    );
+
+                    if (target && actual.length > 0) {
+                        const actualTotal = isSum
+                            ? sum(actual.map((a) => Number(a.value)))
+                            : Number(actual[0]?.value ?? 0);
+                        const targetTotal = isSum
+                            ? sum(target.map((t) => Number(t.value)))
+                            : Number(target[0]?.value ?? 0);
+                        const baselineTotal = isSum
+                            ? sum(baseline.map((t) => Number(t.value)))
+                            : Number(baseline[0]?.value ?? 0);
+                        const performanceRation = actualTotal / targetTotal;
+                        const performance = performanceRation * 100;
                         if (isNaN(performance) || !isFinite(performance)) {
                             return {
                                 dataElement: de,
                                 performance,
                                 status: "nd",
+                                target: targetTotal,
+                                actual: actualTotal,
+                                baseline: baselineTotal,
                             };
                         }
-
                         if (performance >= 100) {
                             return {
                                 dataElement: de,
                                 performance,
                                 status: "a",
+                                target: targetTotal,
+                                actual: actualTotal,
+                                baseline: baselineTotal,
                             };
                         }
 
@@ -660,6 +691,9 @@ export const dataElementsFromGroupQueryOptions = ({
                                 dataElement: de,
                                 performance,
                                 status: "m",
+                                target: targetTotal,
+                                actual: actualTotal,
+                                baseline: baselineTotal,
                             };
                         }
 
@@ -668,6 +702,9 @@ export const dataElementsFromGroupQueryOptions = ({
                                 dataElement: de,
                                 performance,
                                 status: "n",
+                                target: targetTotal,
+                                actual: actualTotal,
+                                baseline: baselineTotal,
                             };
                         }
 
@@ -675,14 +712,24 @@ export const dataElementsFromGroupQueryOptions = ({
                             dataElement: de,
                             performance,
                             status: "nd",
+                            target: targetTotal,
+                            actual: actualTotal,
+                            baseline: baselineTotal,
                         };
                     }
                     return {
                         dataElement: de,
                         performance: 0,
                         status: "nd",
+                        target: 0,
+                        actual: 0,
+                        baseline: 0,
                     };
                 });
+
+                const sumActual = sum(grouped.map((g) => g.actual || 0));
+                const sumTarget = sum(grouped.map((g) => g.target || 0));
+                const baselineTotal = sum(grouped.map((g) => g.baseline || 0));
                 const groupedPerformance = groupBy(grouped, "status");
                 const denominator = dataElementsForOrgUnit.length;
                 const achieved = groupedPerformance["a"]
@@ -697,31 +744,56 @@ export const dataElementsFromGroupQueryOptions = ({
                 const noData = groupedPerformance["nd"]
                     ? groupedPerformance["nd"].length
                     : 0;
+
+                const percentAchieved =
+                    denominator !== 0 ? achieved / denominator : 0;
+                const percentModeratelyAchieved =
+                    denominator !== 0 ? moderatelyAchieved / denominator : 0;
+                const percentNotAchieved =
+                    denominator !== 0 ? notAchieved / denominator : 0;
+                const percentNoData =
+                    denominator !== 0 ? noData / denominator : 0;
+
+                const achievedWeighted = percentAchieved * (1 / 2);
+                const moderatelyAchievedWeighted =
+                    percentModeratelyAchieved * (7 / 20);
+                const notAchievedWeighted = percentNotAchieved * (3 / 20);
+                const noDataWeighted = percentNoData * (0 / 200);
+
+                const totalWeighted =
+                    achievedWeighted +
+                    moderatelyAchievedWeighted +
+                    notAchievedWeighted +
+                    noDataWeighted;
                 data.set(ou, {
                     denominator,
                     achieved,
                     moderatelyAchieved,
                     notAchieved,
                     noData,
-                    percentAchieved: percentFormatter.format(
-                        denominator !== 0 ? achieved / denominator : 0,
-                    ),
-                    percentModeratelyAchieved: percentFormatter.format(
-                        denominator !== 0
-                            ? moderatelyAchieved / denominator
-                            : 0,
-                    ),
-                    percentNotAchieved: percentFormatter.format(
-                        denominator !== 0 ? notAchieved / denominator : 0,
-                    ),
-                    percentNoData: percentFormatter.format(
-                        denominator !== 0 ? noData / denominator : 0,
-                    ),
+                    percentAchieved,
+                    percentModeratelyAchieved,
+                    percentNotAchieved,
+                    percentNoData,
+                    achievedWeighted,
+                    moderatelyAchievedWeighted,
+                    notAchievedWeighted,
+                    noDataWeighted,
+                    totalWeighted,
+                    actual: sumActual,
+                    target: sumTarget,
+                    baseline: baselineTotal,
+                    performance: sumTarget === 0 ? 0 : sumActual / sumTarget,
                 });
             }
             return data;
         },
-        enabled: pe !== undefined,
+        enabled:
+            pe !== undefined &&
+            category !== undefined &&
+            categoryOptions !== undefined &&
+            dataElementGroupSets.length > 0 &&
+            categoryOptions.length > 0,
         retry: false,
     });
 };
@@ -741,12 +813,11 @@ export const ndpIndicatorsQueryOptions = (
             if (doneCount === 0) {
                 const response = (await engine.query({
                     dataElementGroupSets: {
-                        resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,dataElementGroups[id,name,attributeValues[attribute[id,name],value],dataElements[id,name,attributeValues[attribute[id,name],value],dataSetElements[dataSet[organisationUnits[id]]]]],attributeValues[attribute[id,name],value]&paging=false`,
+                        resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,dataElementGroups[id,name,code,attributeValues[attribute[id,name],value],dataElements[id,name,code,attributeValues[attribute[id,name],value],dataSetElements[dataSet[id,organisationUnits[id]]]]],attributeValues[attribute[id,name],value]&paging=false`,
                     },
                 })) as {
                     dataElementGroupSets: DataElementGroupSetResponse;
                 };
-
                 const data = flattenDataElementGroupSetsResponse(
                     response.dataElementGroupSets,
                 );
@@ -757,5 +828,202 @@ export const ndpIndicatorsQueryOptions = (
             }
             return "Not implemented yet";
         },
+    });
+};
+
+export const voteProgramOutcomesQueryOptions = ({
+    engine,
+    ndpVersion,
+    ou,
+    pe,
+    quarters,
+    searchKey,
+    searchValue,
+    programs,
+    finalGrouping,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    ndpVersion: string;
+    ou: string;
+    pe?: string;
+    quarters?: boolean;
+    searchKey?: string;
+    searchValue?: string;
+    programs: Option[];
+    finalGrouping: string;
+}) => {
+    return queryOptions({
+        queryKey: [
+            "vote-program-outcomes",
+            ndpVersion,
+            ou,
+            quarters,
+            pe,
+            searchKey,
+            searchValue,
+        ],
+        queryFn: async () => {
+            const percentFormatter = new Intl.NumberFormat("en-US", {
+                style: "percent",
+            });
+            let dataElements = await db.dataElements
+                .where({ NDP: ndpVersion, organisationUnitId: ou })
+                .toArray();
+
+            if (searchKey && searchValue) {
+                dataElements = uniqBy(
+                    dataElements.filter((de) => de[searchKey] === searchValue),
+                    "id",
+                );
+            } else {
+                dataElements = uniqBy(dataElements, "id");
+            }
+
+            const allDataElementGroups = groupBy(
+                dataElements,
+                "dataElementGroupId",
+            );
+
+            let periodFilter = pe;
+            if (quarters) {
+                const year = Number(pe?.slice(0, 4));
+                const q1 = `${year}Q3`;
+                const q2 = `${year}Q4`;
+                const q3 = `${year + 1}Q1`;
+                const q4 = `${year + 1}Q2`;
+                periodFilter = `${pe};${q1};${q2};${q3};${q4}`;
+            }
+
+            const params = new URLSearchParams({
+                includeMetadataDetails: "true",
+            });
+            params.append("filter", `ou:${ou}`);
+            params.append(
+                "dimension",
+                `Duw5yep8Vae:bqIaasqpTas;Px8Lqkxy2si;HKtncMjp06U`,
+            );
+            params.append("dimension", `pe:${periodFilter}`);
+            params.append(
+                "dimension",
+                `dx:${Object.keys(allDataElementGroups)
+                    .map((de) => `DE_GROUP-${de}`)
+                    .join(";")}`,
+            );
+
+            const { analytics } = (await engine.query({
+                analytics: {
+                    resource: `analytics??${params.toString()}`,
+                },
+            })) as { analytics: Analytics };
+
+            const values = convertAnalyticsToObjects(analytics);
+
+            const allProcessed = dataElements.map((de) => {
+                const matched = values.filter((v) => v.dx === de.id);
+                const target = matched.find(
+                    (v) => v.Duw5yep8Vae === "Px8Lqkxy2si",
+                );
+                const actual = matched.filter((v) => {
+                    if (quarters) {
+                        return (
+                            v.Duw5yep8Vae === "HKtncMjp06U" &&
+                            v.pe.includes("Q")
+                        );
+                    }
+                    return v.Duw5yep8Vae === "HKtncMjp06U";
+                });
+                const orderedActuals = orderBy(actual, "pe", "desc");
+
+                if (target && orderedActuals.length > 0) {
+                    const latestActual = Number(orderedActuals[0].value);
+                    const targetValue = Number(target.value);
+                    const performance = (latestActual / targetValue) * 100;
+                    if (isNaN(performance) || !isFinite(performance)) {
+                        return {
+                            ...de,
+                            performance,
+                            status: "nd",
+                        };
+                    }
+
+                    if (performance >= 100) {
+                        return {
+                            ...de,
+                            performance,
+                            status: "a",
+                        };
+                    }
+
+                    if (performance >= 75 && performance < 100) {
+                        return {
+                            ...de,
+                            performance,
+                            status: "m",
+                        };
+                    }
+
+                    if (performance < 75) {
+                        return {
+                            ...de,
+                            performance,
+                            status: "n",
+                        };
+                    }
+
+                    return {
+                        ...de,
+                        performance,
+                        status: "nd",
+                    };
+                }
+                return {
+                    ...de,
+                    performance: 0,
+                    status: "nd",
+                };
+            });
+            const processed = Object.values(
+                groupBy(allProcessed, finalGrouping),
+            ).map((groups) => {
+                const total = groups.length;
+                const current = groups[0];
+                const groupedPerformance = groupBy(groups, "status");
+                const achieved = groupedPerformance["a"]
+                    ? groupedPerformance["a"].length
+                    : 0;
+                const moderatelyAchieved = groupedPerformance["m"]
+                    ? groupedPerformance["m"].length
+                    : 0;
+                const notAchieved = groupedPerformance["n"]
+                    ? groupedPerformance["n"].length
+                    : 0;
+                const noData = groupedPerformance["nd"]
+                    ? groupedPerformance["nd"].length
+                    : 0;
+
+                return {
+                    ...current,
+                    achieved,
+                    moderatelyAchieved,
+                    notAchieved,
+                    noData,
+                    percentAchieved: percentFormatter.format(achieved / total),
+                    percentModeratelyAchieved: percentFormatter.format(
+                        moderatelyAchieved / total,
+                    ),
+                    percentNotAchieved: percentFormatter.format(
+                        notAchieved / total,
+                    ),
+                    percentNoData: percentFormatter.format(noData / total),
+                    total,
+                    program: programs?.find(
+                        (p) => p.code === current["UBWSASWdyfi"],
+                    )?.name,
+                    groups,
+                };
+            });
+            return processed;
+        },
+        enabled: ou !== undefined && ou !== "" && pe !== undefined && pe !== "",
     });
 };
