@@ -1,13 +1,14 @@
-import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
+import { createRoute, Outlet } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Flex, Spin } from "antd";
+import { Flex } from "antd";
 import Filter from "../../../../components/Filter";
+import Spinner from "../../../../components/Spinner";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
+import { RootRoute } from "../../../__root";
 import { NDPRoute } from "../route";
-import Spinner from "../../../../components/Spinner";
 
 export const SubProgramActionRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -37,7 +38,7 @@ function Component() {
     const { engine } = SubProgramActionRoute.useRouteContext();
     const { v, deg, degs, ou, pe, program, category, categoryOptions } =
         SubProgramActionRoute.useSearch();
-    const { categories } = useLoaderData({ from: "__root__" });
+    const { categories } = RootRoute.useLoaderData();
     const { data } = useSuspenseQuery(
         dataElementGroupSetsWithProgramsQueryOptions(
             engine,

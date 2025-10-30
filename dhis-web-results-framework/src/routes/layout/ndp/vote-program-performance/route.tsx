@@ -22,10 +22,8 @@ function Component() {
     const { configurations } = RootRoute.useLoaderData();
     const navigate = VoteProgramPerformanceRoute.useNavigate();
     const { v, ou, pe } = VoteProgramPerformanceRoute.useSearch();
-    const config = configurations[v ?? ""]["data"];
-
+    const config = configurations[v]["data"];
     const { votes } = RootRoute.useLoaderData();
-
     const periods = config["financialYears"].map((year: string) =>
         createFixedPeriodFromPeriodId({
             calendar: "gregory",

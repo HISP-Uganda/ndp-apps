@@ -6,6 +6,7 @@ import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-
 import { PerformanceSchema } from "../../../../types";
 import { RootRoute } from "../../../__root";
 import { NDPRoute } from "../route";
+import { LIST_CONTAINER_STYLE, LIST_ITEM_STYLE } from "../../../../utils";
 
 export const OverallPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -31,7 +32,17 @@ export const OverallPerformanceRoute = createRoute({
                 v,
             ),
         );
-        return { outcome, output };
+
+        const action = await queryClient.ensureQueryData(
+            dataElementGroupSetsWithProgramsQueryOptions(
+                engine,
+                v === "NDPIII"
+                    ? "sub-intervention4action"
+                    : "intervention4actions",
+                v,
+            ),
+        );
+        return { outcome, output, action };
     },
     validateSearch: PerformanceSchema,
 });
@@ -49,27 +60,37 @@ function Component() {
         }),
     );
     return (
-        <Flex vertical style={{ padding: 10 }}>
-            <Form.Item label="Select Period">
-                <Select
-                    options={periods.map(({ name, id }) => ({
-                        label: name,
-                        value: id,
-                    }))}
-                    style={{ width: 300 }}
-                    value={pe}
-                    onChange={(value) =>
-                        navigate({
-                            search: (prev) => ({
-                                ...prev,
-                                pe: value,
-                            }),
-                        })
-                    }
-                    allowClear
-                    showSearch
-                />
-            </Form.Item>
+        <Flex
+            vertical
+            style={{ padding: 10, flex: 1, height: "100%" }}
+            gap={10}
+        >
+            <Flex style={LIST_ITEM_STYLE}>
+                <Form.Item
+                    label="Select Period"
+                    style={{ padding: 0, margin: 0 }}
+                >
+                    <Select
+                        options={periods.map(({ name, id }) => ({
+                            label: name,
+                            value: id,
+                        }))}
+                        style={{ width: 300 }}
+                        value={pe}
+                        onChange={(value) =>
+                            navigate({
+                                search: (prev) => ({
+                                    ...prev,
+                                    pe: value,
+                                }),
+                            })
+                        }
+                        allowClear
+                        showSearch
+                    />
+                </Form.Item>
+            </Flex>
+
             <Outlet />
         </Flex>
     );

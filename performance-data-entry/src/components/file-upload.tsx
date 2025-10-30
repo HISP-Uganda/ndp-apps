@@ -1,11 +1,11 @@
 import { useConfig, useDataEngine } from "@dhis2/app-runtime";
-import { Button, Upload } from "antd";
-import React from "react";
+import { Button, message, Upload, UploadFile, UploadProps } from "antd";
+import React, { useState } from "react";
 
 import { UploadOutlined } from "@ant-design/icons";
-import { DataElementDataValue, ICategoryOption, IDataSet } from "../types";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { attachmentsQueryOptions } from "../query-options";
+import { DataElementDataValue, ICategoryOption, IDataSet } from "../types";
 
 export default function FileUpload({
     engine,
@@ -30,8 +30,8 @@ export default function FileUpload({
     currentData: DataElementDataValue | null;
     dataSet: IDataSet;
 }) {
+	const queryClient = useQueryClient()
     const { baseUrl } = useConfig();
-
     const coc1 = dataSet.categoryCombo.categoryOptionCombos.find((c) =>
         c.categoryOptions.some((opt) => opt.name === record.name),
     );
@@ -49,7 +49,6 @@ export default function FileUpload({
         currentData?.dataValue[
             `${ou}_${period}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
         ];
-
     const attachments =
         currentData?.dataValue[
             `${ou}_${period}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}_comment`
@@ -58,27 +57,94 @@ export default function FileUpload({
     const { data } = useSuspenseQuery(
         attachmentsQueryOptions(baseUrl, engine, attachments ?? ""),
     );
-    return (
-        <Upload
-            customRequest={async ({ file }) => {
-                const formData = new FormData();
-                formData.append("file", file);
-                const uploadResponse = await fetch(
-                    `${baseUrl}/api/fileResources`,
-                    {
-                        method: "POST",
-                        body: formData,
-                        credentials: "include",
-                    },
-                );
 
-                if (!uploadResponse.ok) {
-                    throw new Error("Upload failed");
+    const [fileList, setFileList] = useState<UploadFile[]>(data);
+    const [uploading, setUploading] = useState(false);
+
+    const handleChange: UploadProps["onChange"] = ({ fileList }) => {
+        setFileList(fileList);
+    };
+
+    const uploadSingleFile = (file: UploadFile) => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
+            formData.append("file", file.originFileObj as File);
+            xhr.open("POST", `${baseUrl}/api/fileResources`);
+            xhr.withCredentials = true;
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percent = Math.round(
+                        (event.loaded / event.total) * 100,
+                    );
+                    setFileList((prev) =>
+                        prev.map((f) =>
+                            f.uid === file.uid
+                                ? { ...f, percent, status: "uploading" }
+                                : f,
+                        ),
+                    );
                 }
+            };
+            xhr.onload = () => {
+                if (
+                    xhr.status === 200 ||
+                    xhr.status === 201 ||
+                    xhr.status === 202
+                ) {
+                    try {
+                        const uploaded = JSON.parse(xhr.responseText);
+                        setFileList((prev) =>
+                            prev.map((f) =>
+                                f.uid === file.uid
+                                    ? {
+                                          ...f,
+                                          status: "done",
+                                          percent: 100,
+                                          url: uploaded.url,
+                                          name: uploaded.name || f.name,
+                                      }
+                                    : f,
+                            ),
+                        );
+                        resolve(uploaded);
+                    } catch (err) {
+                        reject(err);
+                    }
+                } else {
+                    setFileList((prev) =>
+                        prev.map((f) =>
+                            f.uid === file.uid ? { ...f, status: "error" } : f,
+                        ),
+                    );
+                    reject(new Error(`Upload failed for ${file.name}`));
+                }
+            };
 
-                const uploadData = await uploadResponse.json();
-                const fileResourceId = uploadData.response.fileResource.id;
+            xhr.onerror = () => {
+                setFileList((prev) =>
+                    prev.map((f) =>
+                        f.uid === file.uid ? { ...f, status: "error" } : f,
+                    ),
+                );
+                reject(new Error(`Upload error for ${file.name}`));
+            };
 
+            xhr.send(formData);
+        });
+    };
+    const handleUpload = async () => {
+        const newFiles = fileList.filter((f) => !f.url && f.originFileObj);
+        if (newFiles.length === 0) {
+            message.info("No new files to upload.");
+            return;
+        }
+        setUploading(true);
+
+        for (const file of newFiles) {
+            try {
+                const response: any = await uploadSingleFile(file);
+                const fileResourceId = response.response.fileResource.id;
                 const response2: any = await engine.mutate({
                     resource: "events",
                     type: "create",
@@ -96,19 +162,52 @@ export default function FileUpload({
                         ],
                     },
                 });
-                const response3 = await saveComment(
+                await saveComment(
                     dataValue?.comment || "",
                     response2?.response?.importSummaries?.[0].reference,
                 );
-            }}
-            defaultFileList={data}
-        >
-            <Button
-                icon={<UploadOutlined />}
-                disabled={!val || !coc1?.name.includes("Actual")}
+                await queryClient.invalidateQueries();
+            } catch (err) {
+                console.error(err);
+                message.error(`Failed to upload ${file.name}`);
+            }
+        }
+
+        setUploading(false);
+        message.success("All files processed.");
+    };
+    return (
+        <>
+            <Upload
+                beforeUpload={() => false}
+                fileList={fileList}
+                onChange={handleChange}
+                // onRemove={handleRemove}
+                multiple
+                listType="text"
             >
-                Click to Upload
+                <Button
+                    icon={<UploadOutlined />}
+                    disabled={
+                        val === undefined ||
+                        !(
+                            coc1?.name.includes("Actual") ||
+                            coc1?.name.includes("Spent")
+                        )
+                    }
+                >
+                    Click to Upload File
+                </Button>
+            </Upload>
+            <Button
+                type="primary"
+                onClick={handleUpload}
+                disabled={uploading || fileList.every((f) => f.url)}
+                loading={uploading}
+                style={{ marginTop: 16 }}
+            >
+                {uploading ? "Uploading..." : "Upload New Files"}
             </Button>
-        </Upload>
+        </>
     );
 }

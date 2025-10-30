@@ -234,7 +234,7 @@ export const dataValuesQueryOptions = (
             !!search.baseline &&
             !!search.targetYear,
         refetchOnWindowFocus: false,
-        staleTime: 0,
+        // staleTime: 0,
     });
 };
 
@@ -344,8 +344,6 @@ export const attachmentsQueryOptions = (
                 const { attachment } = JSON.parse(
                     attachments ?? '{"explanation": "", "attachment": []}',
                 );
-                console.log("attachments", attachments);
-
                 if (
                     attachment &&
                     Array.isArray(attachment) &&
@@ -369,9 +367,6 @@ export const attachmentsQueryOptions = (
                                     resource: `fileResources/${fileResourceId}`,
                                 },
                             })) as any;
-
-                            console.log("fileResource", fileResource);
-
                             defaultFileList.push({
                                 uid: a,
                                 name: fileResource?.name,

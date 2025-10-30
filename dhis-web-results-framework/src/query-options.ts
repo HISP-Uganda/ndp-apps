@@ -57,7 +57,7 @@ export const initialQueryOptions = (
                     resource: "categories",
                     params: {
                         filter: "id:in:[Duw5yep8Vae,kfnptfEdnYl]",
-                        fields: "id,categoryOptions[id]",
+                        fields: "id,categoryOptions[id,name]",
                     },
                 },
                 central: {
@@ -94,6 +94,7 @@ export const initialQueryOptions = (
                         id: string;
                         categoryOptions: Array<{
                             id: string;
+                            name: string;
                         }>;
                     }>;
                 };
@@ -115,6 +116,8 @@ export const initialQueryOptions = (
                     return current;
                 },
             );
+
+            const allAreLeaves = organisationUnits.every((ou) => ou.isLeaf);
 
             const configurations: Record<string, any> = {};
             for (const version of ndpVersions) {
@@ -151,7 +154,20 @@ export const initialQueryOptions = (
                         c.categoryOptions.map((co) => co.id),
                     ]),
                 ),
-                votes: central.organisationUnits,
+                categoryOptions: new Map(
+                    categories
+                        .flatMap((c) => c.categoryOptions)
+                        .map((co) => [co.id, co.name]),
+                ),
+                votes: central.organisationUnits.filter((ou) => {
+                    if (allAreLeaves) {
+                        return dataViewOrganisationUnits.some(
+                            (dvou) => dvou.id === ou.id,
+                        );
+                    }
+                    return true;
+                }),
+                allAreLeaves,
             };
         },
     });
@@ -402,6 +418,7 @@ export const dataElementsFromGroupQueryOptions = ({
     category,
     categoryOptions,
     isSum,
+    votes,
 }: {
     engine: ReturnType<typeof useDataEngine>;
     dataElementGroupSets: DataElementGroupSet[];
@@ -410,6 +427,7 @@ export const dataElementsFromGroupQueryOptions = ({
     category?: string;
     categoryOptions?: string[];
     isSum?: boolean;
+    votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>;
 }) => {
     return queryOptions({
         queryKey: [
@@ -447,7 +465,10 @@ export const dataElementsFromGroupQueryOptions = ({
             const params = new URLSearchParams({
                 includeMetadataDetails: "true",
             });
-            params.append("dimension", `ou:ONXWQ2EoOcP;LEVEL-3`);
+            params.append(
+                "dimension",
+                `ou:${votes.map((v) => v.id).join(";")}`,
+            );
             params.append(
                 "dimension",
                 `${category}:${categoryOptions?.join(";")}`,
@@ -861,6 +882,8 @@ export const voteProgramOutcomesQueryOptions = ({
             pe,
             searchKey,
             searchValue,
+            finalGrouping,
+            programs.map((p) => p.code).join(","),
         ],
         queryFn: async () => {
             const percentFormatter = new Intl.NumberFormat("en-US", {
@@ -871,11 +894,13 @@ export const voteProgramOutcomesQueryOptions = ({
                 .toArray();
 
             if (searchKey && searchValue) {
+							console.log('Filtering data elements by', searchKey, searchValue);
                 dataElements = uniqBy(
                     dataElements.filter((de) => de[searchKey] === searchValue),
                     "id",
                 );
             } else {
+							console.log('No search key/value provided, using all data elements for org unit', ou);
                 dataElements = uniqBy(dataElements, "id");
             }
 

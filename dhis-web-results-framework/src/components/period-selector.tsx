@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import React, { useCallback, useMemo, useState } from "react";
 import { FixedPeriod, PickerProps } from "../types";
 import { orderBy } from "lodash";
+import { LIST_CONTAINER_STYLE } from "../utils";
 
 const { Text } = Typography;
 
@@ -22,15 +23,7 @@ const getFixedPeriod = (period: string): FixedPeriod => {
     });
 };
 
-const LIST_CONTAINER_STYLE = {
-    backgroundColor: "white",
-    padding: 5,
-    minHeight: 200,
-    height: 200,
-    maxHeight: 200,
-    border: "1px solid #d9d9d9",
-    overflowY: "auto" as const,
-};
+
 
 const PeriodItem = React.memo<{
     period: FixedPeriod;

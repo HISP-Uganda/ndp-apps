@@ -1,6 +1,7 @@
+import { useDataEngine } from "@dhis2/app-runtime";
 import { SelectProps, TableProps } from "antd";
 import dayjs from "dayjs";
-import { fromPairs, groupBy, uniq, uniqBy } from "lodash";
+import { fromPairs, groupBy, uniq } from "lodash";
 import {
     Analytics,
     DataElement,
@@ -12,7 +13,7 @@ import {
     MapPredicate,
     ScorecardData,
 } from "./types";
-import { useDataEngine } from "@dhis2/app-runtime";
+import { CSSProperties } from "react";
 
 export const prepareVisionData = ({
     data,
@@ -694,11 +695,12 @@ export const createColumns = (
     const columns: TableProps<(typeof finalData)[number]>["columns"] = [
         {
             title: "Vote",
-            dataIndex: "vote",
-            key: "vote",
-            width: 60,
+            dataIndex: "code",
+            key: "code",
+            width: 70,
             align: "center",
             render: (_, record) => record.code?.replace("V", ""),
+            sorter: true,
         },
         {
             title: "Institution",
@@ -708,14 +710,16 @@ export const createColumns = (
             filters: votes.map((v) => ({ text: v.name, value: v.name })),
             onFilter: (value, record) =>
                 record.name.indexOf(value as string) === 0,
+            sorter: true,
         },
         {
             title: `No of Indicators`,
-            dataIndex: "No Data",
-            key: "No Data",
+            dataIndex: "denominator",
+            key: "denominator",
             width: 140,
             align: "center",
             render: (_, record) => data?.get(record.id)?.denominator ?? "",
+            sorter: true,
         },
         {
             title: `A`,
@@ -729,6 +733,7 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.green.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `M`,
@@ -742,6 +747,7 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.yellow.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `N`,
@@ -755,6 +761,7 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.red.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `ND`,
@@ -768,6 +775,7 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.gray.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `% A`,
@@ -783,6 +791,7 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.green.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `% M`,
@@ -798,6 +807,7 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.yellow.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `% N`,
@@ -813,12 +823,13 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.red.fg,
                 },
             }),
+            sorter: true,
         },
         {
             title: `% ND`,
             dataIndex: "percentNoData",
             key: "percentNoData",
-            width: 70,
+            width: 75,
             align: "center",
             render: (_, record) => formatter.format(record.percentNoData ?? 0),
             onHeaderCell: () => ({
@@ -827,50 +838,19 @@ export const createColumns = (
                     color: PERFORMANCE_COLORS.gray.fg,
                 },
             }),
+            sorter: true,
         },
-        // {
-        //     title: `WA`,
-        //     dataIndex: "achievedWeighted",
-        //     key: "achievedWeighted",
-        //     align: "center",
-        //     width: 70,
-        //     render: (_, record) =>
-        //         formatter.format(record.achievedWeighted ?? 0),
-        // },
-        // {
-        //     title: `WM`,
-        //     dataIndex: "moderatelyAchievedWeighted",
-        //     key: "moderatelyAchievedWeighted",
-        //     align: "center",
-        //     width: 70,
-        //     render: (_, record) =>
-        //         formatter.format(record.moderatelyAchievedWeighted ?? 0),
-        // },
-        // {
-        //     title: `WN`,
-        //     dataIndex: "notAchievedWeighted",
-        //     key: "notAchievedWeighted",
-        //     render: (_, record) =>
-        //         formatter.format(record.notAchievedWeighted ?? 0),
-        //     align: "center",
-        //     width: 70,
-        // },
-        // {
-        //     title: `WND`,
-        //     dataIndex: "noDataWeighted",
-        //     key: "noDataWeighted",
-        //     align: "center",
-        //     width: 70,
-        //     render: (_, record) => formatter.format(record.noDataWeighted ?? 0),
-        // },
-
         {
-            title: `Weighted`,
-            dataIndex: "noDataWeighted",
-            key: "noDataWeighted",
+            title: `Weighted Score (%)`,
+            dataIndex: "totalWeighted",
+            key: "totalWeighted",
             align: "center",
-            width: 100,
+            width: 105,
             render: (_, record) => formatter.format(record.totalWeighted ?? 0),
+            onCell: (record) => ({
+                style: getCellStyle(record.totalWeighted ?? 0),
+            }),
+            sorter: true,
         },
     ];
     return { columns, finalData };
@@ -1030,3 +1010,43 @@ export const convertAnalyticsToObjects = (analytics: Analytics) => {
 export const formatter = new Intl.NumberFormat("en-US", {
     style: "percent",
 });
+
+export const getCellStyle = (value: number): CSSProperties => {
+    return {
+        backgroundColor:
+            value >= 1
+                ? PERFORMANCE_COLORS.green.bg
+                : value >= 0.75
+                ? PERFORMANCE_COLORS.yellow.bg
+                : value < 0.75
+                ? PERFORMANCE_COLORS.red.bg
+                : PERFORMANCE_COLORS.gray.bg,
+        color:
+            value >= 1
+                ? PERFORMANCE_COLORS.green.fg
+                : value >= 0.75
+                ? PERFORMANCE_COLORS.yellow.fg
+                : value < 0.75
+                ? PERFORMANCE_COLORS.red.fg
+                : PERFORMANCE_COLORS.gray.fg,
+    };
+};
+
+export const LIST_CONTAINER_STYLE: CSSProperties = {
+    backgroundColor: "white",
+    padding: 5,
+    minHeight: 200,
+    height: 200,
+    maxHeight: 200,
+    border: "1px solid #d9d9d9",
+    overflowY: "auto",
+};
+
+export const LIST_ITEM_STYLE: CSSProperties = {
+    width: "50%",
+    maxWidth: "50%",
+    backgroundColor: "#d0eBd0",
+    padding: 10,
+    border: "1px solid #a4d2a3",
+    borderRadius: "3px",
+};

@@ -1,9 +1,9 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
-import { FaInfoCircle } from "react-icons/fa";
-import { Flex, Modal, Table, Typography, type TableProps } from "antd";
+import { Modal, Table, type TableProps } from "antd";
+import { orderBy } from "lodash";
 import React from "react";
-import Spinner from "../../../../components/Spinner";
+import { FaInfoCircle } from "react-icons/fa";
 import { voteProgramOutcomesQueryOptions } from "../../../../query-options";
 import { PERFORMANCE_COLORS } from "../../../../utils";
 import { RootRoute } from "../../../__root";
@@ -18,10 +18,10 @@ export const VoteOutputPerformanceIndexRoute = createRoute({
 function Component() {
     const [modal, contextHolder] = Modal.useModal();
 
-    const { programs, votes } = RootRoute.useLoaderData();
+    const { programs } = RootRoute.useLoaderData();
     const { engine } = VoteOutputPerformanceRoute.useRouteContext();
     const { v, ou = "", pe, quarters } = VoteOutputPerformanceRoute.useSearch();
-    const { data, isLoading, isError, error } = useSuspenseQuery(
+    const { data } = useSuspenseQuery(
         voteProgramOutcomesQueryOptions({
             engine,
             ndpVersion: v,
@@ -34,6 +34,33 @@ function Component() {
             finalGrouping: "dataElementGroupId",
         }),
     );
+
+    const [processedData, setProcessedData] = React.useState(data);
+
+    React.useEffect(() => {
+        setProcessedData(data);
+    }, [data]);
+
+    const handleChange: TableProps<(typeof data)[number]>["onChange"] = (
+        _pagination,
+        _filters,
+        sorter,
+    ) => {
+        if (!Array.isArray(sorter)) {
+            const { field, order } = sorter;
+            if (field && order) {
+                setProcessedData((prev) => {
+                    return orderBy(
+                        prev,
+                        [String(field)],
+                        [order === "ascend" ? "asc" : "desc"],
+                    );
+                });
+            } else {
+                setProcessedData(() => data);
+            }
+        }
+    };
     const columns: TableProps<(typeof data)[number]>["columns"] =
         React.useMemo(() => {
             return [
@@ -41,22 +68,24 @@ function Component() {
                     title: `Code`,
                     dataIndex: "UBWSASWdyfi",
                     key: "UBWSASWdyfi",
-                    width: "61px",
+                    width: 70,
                     align: "center",
+                    sorter: true,
                 },
                 {
                     title: `Programme`,
                     dataIndex: "program",
                     key: "program",
+                    width: "auto",
                     render: (text: string, record) => {
                         return text.replace(/\d+/g, "").trim();
                     },
+                    sorter: true,
                 },
                 {
                     title: `Output Name`,
                     dataIndex: "dataElementGroupName",
                     key: "dataElementGroupName",
-
                     render: (text: string, record) => {
                         return (
                             <div>
@@ -101,6 +130,7 @@ function Component() {
                             </div>
                         );
                     },
+                    sorter: true,
                 },
                 {
                     title: `No of Indicators`,
@@ -109,6 +139,7 @@ function Component() {
                     width: 140,
                     align: "center",
                     render: (_, record) => record.total ?? "",
+                    sorter: true,
                 },
                 {
                     title: `A`,
@@ -122,6 +153,7 @@ function Component() {
                             color: PERFORMANCE_COLORS.green.fg,
                         },
                     }),
+                    sorter: true,
                 },
 
                 {
@@ -136,6 +168,7 @@ function Component() {
                             color: PERFORMANCE_COLORS.yellow.fg,
                         },
                     }),
+                    sorter: true,
                 },
                 {
                     title: `N`,
@@ -149,6 +182,7 @@ function Component() {
                             color: PERFORMANCE_COLORS.red.fg,
                         },
                     }),
+                    sorter: true,
                 },
                 {
                     title: `ND`,
@@ -162,6 +196,7 @@ function Component() {
                             color: PERFORMANCE_COLORS.gray.fg,
                         },
                     }),
+                    sorter: true,
                 },
                 {
                     title: `% A`,
@@ -175,6 +210,7 @@ function Component() {
                             color: PERFORMANCE_COLORS.green.fg,
                         },
                     }),
+                    sorter: true,
                 },
                 {
                     title: `% M`,
@@ -188,6 +224,7 @@ function Component() {
                             color: PERFORMANCE_COLORS.yellow.fg,
                         },
                     }),
+                    sorter: true,
                 },
                 {
                     title: `% N`,
@@ -201,12 +238,13 @@ function Component() {
                             color: PERFORMANCE_COLORS.red.fg,
                         },
                     }),
+                    sorter: true,
                 },
                 {
                     title: `% ND`,
                     dataIndex: "percentNoData",
                     key: "percentNoData",
-                    width: 70,
+                    width: 73,
                     align: "center",
                     onHeaderCell: () => ({
                         style: {
@@ -214,27 +252,20 @@ function Component() {
                             color: PERFORMANCE_COLORS.gray.fg,
                         },
                     }),
+                    sorter: true,
                 },
             ];
         }, []);
-    if (isLoading) {
-        return <Spinner message="Loading Output Performance data..." />;
-    }
-
-    if (isError) {
-        return <div>{`Error: ${error}`}</div>;
-    }
-
     return (
         <Table
             columns={columns}
-            dataSource={data}
-            scroll={{ y: "calc(100vh - 300px)", }}
+            dataSource={processedData}
+            scroll={{ y: "calc(100vh - 350px)" }}
             rowKey="dataElementId"
             bordered={true}
-            sticky={true}
             pagination={false}
             size="small"
+            onChange={handleChange}
         />
     );
 }

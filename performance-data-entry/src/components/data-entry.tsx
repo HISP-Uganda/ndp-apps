@@ -128,7 +128,7 @@ export function generateGroupedColumns({
                                     ou={ou}
                                     pe={period}
                                     de={record.id}
-                                    disabled={index < 2 || disabled}
+                                    disabled={index < 1 || disabled}
                                 />
                             ),
                         });
@@ -254,8 +254,6 @@ export function createGroupedColumn(
         children: children,
     };
 }
-
-// Get sub-column title for remaining categories
 export function getSubColumnTitle(
     coc: ICategoryOptionCombo,
     remainingCategories: ICategory[],

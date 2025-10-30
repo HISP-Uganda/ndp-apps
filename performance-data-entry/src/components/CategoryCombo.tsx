@@ -1,23 +1,26 @@
 import { useDataEngine } from "@dhis2/app-runtime";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-    Button,
-    Flex,
-    Input,
-    message,
-    Modal,
-    Table,
-    TableProps,
-    Typography,
+	useQuery,
+	useQueryClient
+} from "@tanstack/react-query";
+import {
+	Button,
+	Flex,
+	Input,
+	message,
+	Modal,
+	Table,
+	TableProps,
+	Typography,
 } from "antd";
 import React, { useMemo, useState } from "react";
 import { dataValuesQueryOptions, useSaveDataValue } from "../query-options";
 import {
-    DataElementDataValue,
-    ICategoryOption,
-    IDataElement,
-    IDataSet,
-    Search,
+	DataElementDataValue,
+	ICategoryOption,
+	IDataElement,
+	IDataSet,
+	Search,
 } from "../types";
 import { generateGroupedColumns } from "./data-entry";
 import FileUpload from "./file-upload";
@@ -236,7 +239,7 @@ export default function CategoryCombo({
         } catch (error) {
             errorModal();
         } finally {
-            queryClient.invalidateQueries({
+            await queryClient.invalidateQueries({
                 queryKey: [
                     "data-values",
                     search.orgUnit,
@@ -280,16 +283,6 @@ export default function CategoryCombo({
                 attachment: [...comments.attachment, attachment],
             };
         }
-        const coc = currentData.categoryCombo.categoryOptionCombos[0];
-        const newDataValue: DataElementDataValue = {
-            ...currentData,
-            dataValue: {
-                ...currentData.dataValue,
-                [`${ou}_${pe}_${coc.id}_${coc.id}_comment`]:
-                    JSON.stringify(comments),
-            },
-        };
-
         try {
             if (dataValue) {
                 await saveDataValue.mutateAsync({
@@ -306,38 +299,17 @@ export default function CategoryCombo({
                 `Failed to save data. Please try again. ${error.message}`,
                 4,
             );
-            // setCurrentValue(previousValue);
-            console.error("Save error:", error);
         } finally {
-            // setIsLoading(false);
-            // setIsEditing(false);
+            await queryClient.invalidateQueries({
+                queryKey: dataValuesQueryOptions(engine, search, fields)
+                    .queryKey,
+            });
         }
-        queryClient.setQueryData(
-            [
-                "data-values",
-                search.orgUnit,
-                search.dataSet,
-                search.pe,
-                search.baseline,
-                search.targetYear,
-            ],
-            (oldData: any) => {
-                if (!oldData) return oldData;
-                const updatedDataValues = oldData.dataValues.map(
-                    (dv: DataElementDataValue) =>
-                        dv.id === newDataValue.id ? newDataValue : dv,
-                );
-                return {
-                    ...oldData,
-                    dataValues: updatedDataValues,
-                };
-            },
-        );
     };
 
-    const { data, isError, isLoading } = useQuery({
-        ...dataValuesQueryOptions(engine, search, fields),
-    });
+    const { data, isSuccess, isLoading } = useQuery(
+        dataValuesQueryOptions(engine, search, fields),
+    );
 
     const columns = useMemo(
         () =>
@@ -356,64 +328,64 @@ export default function CategoryCombo({
     );
 
     if (isLoading) return <Spinner />;
-    if (isError) return <div>Error loading data values</div>;
-    return (
-        <Flex vertical gap={8}>
-            <Table
-                columns={columns}
-                dataSource={data?.dataValues || []}
-                pagination={false}
-                scroll={{ y: 55 * 11.6 }}
-                bordered
-                size="small"
-                rowKey="id"
-            />
-            <Flex>
-                <Button
-                    onClick={openDataSetCompleteModal}
-                    style={{
-                        backgroundColor:
-                            (data?.completeDataSetRegistrations ?? []).length >
-                            0
-                                ? "#D9534F"
-                                : "#5CB85C",
-                        color: "white",
-                    }}
-                >
-                    {data?.completeDataSetRegistrations ?? [].length > 0
-                        ? "Recall data and edit"
-                        : "Submit data and lock"}
-                </Button>
-            </Flex>
-
-            <Modal
-                title="Explanations and Attachments"
-                closable={{ "aria-label": "Custom Close Button" }}
-                open={isModalOpen}
-                onOk={handleOk}
-                onCancel={handleCancel}
-                width={"80%"}
-            >
+    if (isSuccess)
+        return (
+            <Flex vertical gap={8}>
                 <Table
-                    columns={explanationColumns}
-                    dataSource={dataSet.categoryCombo.categories.flatMap(
-                        (cat) => cat.categoryOptions,
-                    )}
+                    columns={columns}
+                    dataSource={data?.dataValues || []}
                     pagination={false}
+                    scroll={{ y: "calc(100vh - 385px)" }}
                     bordered
                     size="small"
                     rowKey="id"
                 />
-            </Modal>
-            <Modal
-                title={modalValues.title}
-                closable={{ "aria-label": "Custom Close Button" }}
-                open={isDataSetModalOpen}
-                onOk={handleDataSetOk}
-                onCancel={handleDataSetCancel}
-            >
-                <Typography.Text>{modalValues.body}</Typography.Text>
-            </Modal>
-        </Flex>
-    );
+                <Flex>
+                    <Button
+                        onClick={openDataSetCompleteModal}
+                        style={{
+                            backgroundColor:
+                                (data?.completeDataSetRegistrations ?? [])
+                                    .length > 0
+                                    ? "#D9534F"
+                                    : "#5CB85C",
+                            color: "white",
+                        }}
+                    >
+                        {data?.completeDataSetRegistrations ?? [].length > 0
+                            ? "Recall data and edit"
+                            : "Submit data and lock"}
+                    </Button>
+                </Flex>
+
+                <Modal
+                    title="Explanations and Attachments"
+                    closable={{ "aria-label": "Custom Close Button" }}
+                    open={isModalOpen}
+                    onOk={handleOk}
+                    onCancel={handleCancel}
+                    width={"80%"}
+                >
+                    <Table
+                        columns={explanationColumns}
+                        dataSource={dataSet.categoryCombo.categories.flatMap(
+                            (cat) => cat.categoryOptions,
+                        )}
+                        pagination={false}
+                        bordered
+                        size="small"
+                        rowKey="id"
+                    />
+                </Modal>
+                <Modal
+                    title={modalValues.title}
+                    closable={{ "aria-label": "Custom Close Button" }}
+                    open={isDataSetModalOpen}
+                    onOk={handleDataSetOk}
+                    onCancel={handleDataSetCancel}
+                >
+                    <Typography.Text>{modalValues.body}</Typography.Text>
+                </Modal>
+            </Flex>
+        );
 }

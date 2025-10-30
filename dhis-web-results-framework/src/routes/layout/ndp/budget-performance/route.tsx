@@ -59,10 +59,14 @@ function Component() {
     return (
         <Flex
             vertical
-            style={{ padding: 10, height: "100%", flex: 1 }}
+            style={{
+                padding: 10,
+                height: "100%",
+                flex: 1,
+            }}
             gap={10}
         >
-            <Form.Item label="Select Period">
+            <Form.Item label="Select Period" style={{ padding: 0, margin: 0 }}>
                 <Select
                     options={periods.map(({ name, id }) => ({
                         label: name,
@@ -81,7 +85,9 @@ function Component() {
                 />
             </Form.Item>
             <PerformanceLegend legendItems={performanceLegendItems} />
-            <Outlet />
+            <Flex style={{ flex: 1, overflow: "auto", height: "100%" }}>
+                <Outlet />
+            </Flex>
         </Flex>
     );
 }

@@ -20,11 +20,11 @@ import {
 } from "antd";
 
 import { SettingOutlined } from "@ant-design/icons";
+import { isEmpty } from "lodash";
 import { initialQueryOptions } from "../../query-options";
 import { NDPValidator } from "../../types";
-import { RootRoute } from "../__root";
-import { isEmpty } from "lodash";
 import { getDefaultPeriods } from "../../utils";
+import { RootRoute } from "../__root";
 
 export const LayoutRoute = createRoute({
     getParentRoute: () => RootRoute,
@@ -79,7 +79,6 @@ function Component() {
                     title: "High Level Results",
                     selectable: false,
                     checkable: false,
-
                     key: "0-0",
                     children: [
                         {
@@ -274,7 +273,6 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
-
                                         whiteSpace: "nowrap",
                                     }}
                                 >
@@ -314,6 +312,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Program Outputs
@@ -351,6 +350,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Program Actions
@@ -389,6 +389,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Programme Performance
@@ -418,6 +419,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Outcome Performance
@@ -447,6 +449,7 @@ function Component() {
                                     }}
                                     style={{
                                         color: "#2B6998",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     Output Performance
@@ -661,6 +664,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
+                                whiteSpace: "nowrap",
                             }}
                         >
                             Policy Actions
@@ -707,6 +711,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
+                                whiteSpace: "nowrap",
                             }}
                         >
                             Indicator Dictionary
@@ -738,6 +743,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
+                                whiteSpace: "nowrap",
                             }}
                         >
                             Workflow & Guidelines
@@ -769,6 +775,7 @@ function Component() {
                             }}
                             style={{
                                 color: "#2B6998",
+                                whiteSpace: "nowrap",
                             }}
                         >
                             FAQs
@@ -801,6 +808,7 @@ function Component() {
                     }}
                     style={{
                         color: "#2B6998",
+                        whiteSpace: "nowrap",
                     }}
                 >
                     Library
@@ -816,9 +824,9 @@ function Component() {
             }}
         >
             <Splitter.Panel
-                defaultSize="20%"
-                max="20%"
-                min="20%"
+                defaultSize="24%"
+                max="30%"
+                min="24%"
                 style={{ padding: "10px", backgroundColor: "#F3F3F3" }}
             >
                 <Flex vertical gap={20}>
@@ -865,8 +873,6 @@ function Component() {
                             <SettingOutlined style={{ cursor: "pointer" }} />
                         </Link>
                     </Flex>
-
-                    {/* <Flex style={{backgroundColor:"yellow"}}> */}
                     <Tree
                         showLine
                         defaultExpandAll
@@ -875,7 +881,6 @@ function Component() {
                         selectedKeys={[location.pathname]}
                         style={{ padding: 20, fontSize: 16 }}
                     />
-                    {/* </Flex> */}
                 </Flex>
             </Splitter.Panel>
             <Splitter.Panel>

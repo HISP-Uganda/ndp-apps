@@ -19,12 +19,14 @@ import PeriodPicker from "../components/period-picker";
 import { IDataSet, Option, PeriodType, search } from "../types";
 import { getPathToNode } from "../utils";
 import { RootRoute } from "./__root";
+import { orderBy } from "lodash";
 
 export const IndexRoute = createRoute({
     getParentRoute: () => RootRoute,
     path: "/",
     component: IndexRouteComponent,
     validateSearch: search,
+    errorComponent: () => null,
 });
 
 const getPeriodType = (
@@ -340,7 +342,22 @@ function IndexRouteComponent() {
                             style={{ margin: 0, padding: 5 }}
                         >
                             <Select
-                                options={dataSetsForSelectedOrgUnit}
+                                options={orderBy(
+                                    dataSetsForSelectedOrgUnit,
+                                    (option) => {
+                                        const numbers =
+                                            option.name
+                                                .match(/\d+/g)
+                                                ?.map(Number) ?? [];
+
+                                        if (numbers.length > 0) {
+                                            return numbers.join();
+                                        }
+
+                                        return option.name;
+                                    },
+                                    "asc",
+                                )}
                                 fieldNames={{ label: "name", value: "id" }}
                                 value={dataSet}
                                 allowClear

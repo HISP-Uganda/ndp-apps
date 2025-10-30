@@ -1,13 +1,13 @@
-import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
+import { createRoute, Outlet } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Flex, Typography } from "antd";
+import { Flex } from "antd";
 import Filter from "../../../../components/Filter";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
-import { NDPRoute } from "../route";
 import { RootRoute } from "../../../__root";
+import { NDPRoute } from "../route";
 
 export const SubProgramOutcomeRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -28,7 +28,7 @@ export const SubProgramOutcomeRoute = createRoute({
         return data;
     },
     validateSearch: GoalValidator,
-    errorComponent: () => <div>{null}</div>,
+    // errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {

@@ -99,7 +99,6 @@ export const router = createRouter({
     defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
     history: createHashHistory(),
     context: { queryClient: new QueryClient(), engine: undefined! },
-
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
 });

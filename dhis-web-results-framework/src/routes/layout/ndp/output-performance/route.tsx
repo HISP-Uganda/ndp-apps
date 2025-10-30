@@ -7,7 +7,11 @@ import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-
 import { RootRoute } from "../../../__root";
 import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
 import PerformanceLegend from "../../../../components/performance-legend";
-import { performanceLegendItems } from "../../../../utils";
+import {
+    LIST_CONTAINER_STYLE,
+    LIST_ITEM_STYLE,
+    performanceLegendItems,
+} from "../../../../utils";
 
 export const OutputPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -60,24 +64,30 @@ function Component() {
             style={{ padding: 10, height: "100%", flex: 1 }}
             gap={10}
         >
-            <Form.Item label="Select Period">
-                <Select
-                    options={periods.map(({ name, id }) => ({
-                        label: name,
-                        value: id,
-                    }))}
-                    style={{ width: 300 }}
-                    value={pe}
-                    onChange={(value) =>
-                        navigate({
-                            search: (prev) => ({
-                                ...prev,
-                                pe: value,
-                            }),
-                        })
-                    }
-                />
-            </Form.Item>
+            <Flex style={LIST_ITEM_STYLE}>
+                <Form.Item
+                    label="Select Period"
+                    style={{ padding: 0, margin: 0 }}
+                >
+                    <Select
+                        options={periods.map(({ name, id }) => ({
+                            label: name,
+                            value: id,
+                        }))}
+                        style={{ width: 300 }}
+                        value={pe}
+                        onChange={(value) =>
+                            navigate({
+                                search: (prev) => ({
+                                    ...prev,
+                                    pe: value,
+                                }),
+                            })
+                        }
+                    />
+                </Form.Item>
+            </Flex>
+
             <PerformanceLegend legendItems={performanceLegendItems} />
             <Outlet />
         </Flex>

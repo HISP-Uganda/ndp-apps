@@ -2,12 +2,12 @@ import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
 import { createRoute, Outlet } from "@tanstack/react-router";
 import { Flex, Form, Select } from "antd";
 import React, { useEffect } from "react";
+import PerformanceLegend from "../../../../components/performance-legend";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { PerformanceSchema } from "../../../../types";
+import { LIST_ITEM_STYLE, performanceLegendItems } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { NDPRoute } from "../route";
-import PerformanceLegend from "../../../../components/performance-legend";
-import { performanceLegendItems } from "../../../../utils";
 
 export const OutcomePerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -60,24 +60,30 @@ function Component() {
             style={{ padding: 10, flex: 1, height: "100%" }}
             gap={10}
         >
-            <Form.Item label="Select Period">
-                <Select
-                    options={periods.map(({ name, id }) => ({
-                        label: name,
-                        value: id,
-                    }))}
-                    style={{ width: 300 }}
-                    value={pe}
-                    onChange={(value) =>
-                        navigate({
-                            search: (prev) => ({
-                                ...prev,
-                                pe: value,
-                            }),
-                        })
-                    }
-                />
-            </Form.Item>
+            <Flex style={LIST_ITEM_STYLE}>
+                <Form.Item
+                    label="Select Period"
+                    style={{ padding: 0, margin: 0 }}
+                >
+                    <Select
+                        options={periods.map(({ name, id }) => ({
+                            label: name,
+                            value: id,
+                        }))}
+                        style={{ width: 300 }}
+                        value={pe}
+                        onChange={(value) =>
+                            navigate({
+                                search: (prev) => ({
+                                    ...prev,
+                                    pe: value,
+                                }),
+                            })
+                        }
+                    />
+                </Form.Item>
+            </Flex>
+
             <PerformanceLegend legendItems={performanceLegendItems} />
             <Outlet />
         </Flex>
