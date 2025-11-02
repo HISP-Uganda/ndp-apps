@@ -1,213 +1,291 @@
 import { useConfig, useDataEngine } from "@dhis2/app-runtime";
-import { Button, message, Upload, UploadFile, UploadProps } from "antd";
-import React, { useState } from "react";
+import {
+    Button,
+    Flex,
+    List,
+    message,
+    Space,
+    Tag,
+    Typography,
+    Upload,
+    UploadProps,
+} from "antd";
+import React from "react";
 
-import { UploadOutlined } from "@ant-design/icons";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { attachmentsQueryOptions } from "../query-options";
-import { DataElementDataValue, ICategoryOption, IDataSet } from "../types";
+import {
+    CheckCircleOutlined,
+    DeleteOutlined,
+    FileOutlined,
+} from "@ant-design/icons";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../db";
+import { useSaveDataValue } from "../query-options";
+import { FileResource, ICategoryOption, IDataSet } from "../types";
+import { isEmpty } from "lodash";
+
+const { Text } = Typography;
+const { Dragger } = Upload;
+
+const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
 
 export default function FileUpload({
     engine,
     ou,
-    saveComment,
-    dataValue,
     record,
     pe,
     targetYear,
     baselineYear,
-    currentData,
     dataSet,
+    aoc,
+    coc,
+    de,
+    cc,
+    cp,
+    co,
+    disabled,
 }: {
     engine: ReturnType<typeof useDataEngine>;
     ou: string;
-    saveComment: (comment: string, eventId: string) => Promise<void>;
-    dataValue?: { value: string; comment?: string };
     record: ICategoryOption;
     pe: string;
     targetYear: string;
     baselineYear: string;
-    currentData: DataElementDataValue | null;
     dataSet: IDataSet;
+    aoc: string;
+    coc: string;
+    de: string;
+    co: string;
+    cc: string;
+    cp: string;
+    disabled: boolean;
 }) {
-	const queryClient = useQueryClient()
+    const saveDataValue = useSaveDataValue(true);
     const { baseUrl } = useConfig();
     const coc1 = dataSet.categoryCombo.categoryOptionCombos.find((c) =>
-        c.categoryOptions.some((opt) => opt.name === record.name),
-    );
+        c.categoryOptions.some((opt) => opt.id === record.id),
+    )!;
     let period = pe;
     if (
-        coc1?.name.includes("Target") ||
-        coc1?.name.includes("Planned") ||
-        coc1?.name.includes("Approved")
+        coc1.name.includes("Target") ||
+        coc1.name.includes("Planned") ||
+        coc1.name.includes("Approved")
     ) {
         period = targetYear;
-    } else if (coc1?.name.includes("Baseline")) {
+    } else if (coc1.name.includes("Baseline")) {
         period = baselineYear;
     }
-    const val =
-        currentData?.dataValue[
-            `${ou}_${period}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}`
-        ];
-    const attachments =
-        currentData?.dataValue[
-            `${ou}_${period}_${coc1?.id}_${currentData.categoryCombo.categoryOptionCombos[0].id}_comment`
-        ];
-
-    const { data } = useSuspenseQuery(
-        attachmentsQueryOptions(baseUrl, engine, attachments ?? ""),
-    );
-
-    const [fileList, setFileList] = useState<UploadFile[]>(data);
-    const [uploading, setUploading] = useState(false);
-
-    const handleChange: UploadProps["onChange"] = ({ fileList }) => {
-        setFileList(fileList);
-    };
-
-    const uploadSingleFile = (file: UploadFile) => {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            const formData = new FormData();
-            formData.append("file", file.originFileObj as File);
-            xhr.open("POST", `${baseUrl}/api/fileResources`);
-            xhr.withCredentials = true;
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percent = Math.round(
-                        (event.loaded / event.total) * 100,
-                    );
-                    setFileList((prev) =>
-                        prev.map((f) =>
-                            f.uid === file.uid
-                                ? { ...f, percent, status: "uploading" }
-                                : f,
-                        ),
-                    );
-                }
-            };
-            xhr.onload = () => {
-                if (
-                    xhr.status === 200 ||
-                    xhr.status === 201 ||
-                    xhr.status === 202
-                ) {
-                    try {
-                        const uploaded = JSON.parse(xhr.responseText);
-                        setFileList((prev) =>
-                            prev.map((f) =>
-                                f.uid === file.uid
-                                    ? {
-                                          ...f,
-                                          status: "done",
-                                          percent: 100,
-                                          url: uploaded.url,
-                                          name: uploaded.name || f.name,
-                                      }
-                                    : f,
-                            ),
-                        );
-                        resolve(uploaded);
-                    } catch (err) {
-                        reject(err);
-                    }
-                } else {
-                    setFileList((prev) =>
-                        prev.map((f) =>
-                            f.uid === file.uid ? { ...f, status: "error" } : f,
-                        ),
-                    );
-                    reject(new Error(`Upload failed for ${file.name}`));
-                }
-            };
-
-            xhr.onerror = () => {
-                setFileList((prev) =>
-                    prev.map((f) =>
-                        f.uid === file.uid ? { ...f, status: "error" } : f,
-                    ),
-                );
-                reject(new Error(`Upload error for ${file.name}`));
-            };
-
-            xhr.send(formData);
+    const value = useLiveQuery(async () => {
+        return await db.dataValues.get({
+            dataElement: de,
+            period: period,
+            orgUnit: ou,
+            categoryOptionCombo: coc,
+            attributeOptionCombo: aoc,
         });
-    };
-    const handleUpload = async () => {
-        const newFiles = fileList.filter((f) => !f.url && f.originFileObj);
-        if (newFiles.length === 0) {
-            message.info("No new files to upload.");
-            return;
-        }
-        setUploading(true);
+    }, [de, aoc, coc, ou, pe]);
 
-        for (const file of newFiles) {
+    const uploadProps: UploadProps = {
+        name: "file",
+        multiple: true,
+        beforeUpload: async (file) => {
+            const formData = new FormData();
+            formData.append("file", file as File);
+            const res = await fetch(`${baseUrl}/api/fileResources`, {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+            });
+
+            if (!res.ok) throw new Error("Upload failed");
+            const uploaded = await res.json();
+            const fileResourceId = uploaded.response.fileResource.id;
+            const response2: any = await engine.mutate({
+                resource: "events",
+                type: "create",
+                data: {
+                    program: "j1relEmr69u",
+                    programStage: "evywplQ17kH",
+                    orgUnit: ou,
+                    status: "ACTIVE",
+                    eventDate: new Date().toISOString().split("T")[0],
+                    dataValues: [
+                        {
+                            dataElement: "qeGJBGmsr0d",
+                            value: fileResourceId,
+                        },
+                    ],
+                },
+            });
+
+            const event: string =
+                response2?.response?.importSummaries?.[0].reference;
+            const { fileResource } = (await engine.query({
+                fileResource: {
+                    resource: `fileResources/${fileResourceId}`,
+                },
+            })) as unknown as { fileResource: FileResource };
+
+            const prev = await db.dataValues.get([de, aoc, coc, ou, pe]);
+
+            if (prev) {
+                await db.dataValues.put({
+                    ...prev,
+                    attachment: [
+                        ...(prev.attachment || []),
+                        { ...fileResource, event },
+                    ],
+                    attachments: [...(prev.attachments || []), event],
+                });
+                try {
+                    await saveDataValue.mutateAsync({
+                        engine,
+                        dataValue: {
+                            de,
+                            pe,
+                            ou,
+                            co,
+                            cc,
+                            cp,
+                            comment: JSON.stringify({
+                                explanation: prev.explanation || "",
+                                attachment: [
+                                    ...(prev.attachments || []),
+                                    response2?.response?.importSummaries?.[0]
+                                        .reference,
+                                ],
+                            }),
+                        },
+                    });
+                    message.success(`${file.name} uploaded successfully`);
+                } catch (error) {
+                    await db.dataValues.put(prev);
+                    message.error(
+                        `Failed to save data. Please try again. ${error.message}`,
+                    );
+                }
+            }
+
+            return false;
+        },
+        showUploadList: false,
+        disabled: disabled || isEmpty(value?.value),
+    };
+
+    const handleDelete = async (file: FileResource) => {
+        const prev = await db.dataValues.get([de, aoc, coc, ou, pe]);
+        if (prev !== undefined) {
+            await db.dataValues.put({
+                ...prev,
+                attachment: prev.attachment?.filter((a) => a.id !== file.id),
+                attachments: prev.attachments?.filter((a) => a !== file.event),
+            });
+
             try {
-                const response: any = await uploadSingleFile(file);
-                const fileResourceId = response.response.fileResource.id;
-                const response2: any = await engine.mutate({
-                    resource: "events",
-                    type: "create",
-                    data: {
-                        program: "j1relEmr69u",
-                        programStage: "evywplQ17kH",
-                        orgUnit: ou,
-                        status: "ACTIVE",
-                        eventDate: new Date().toISOString().split("T")[0],
-                        dataValues: [
-                            {
-                                dataElement: "qeGJBGmsr0d",
-                                value: fileResourceId,
-                            },
-                        ],
+                await saveDataValue.mutateAsync({
+                    engine,
+                    dataValue: {
+                        de,
+                        pe,
+                        ou,
+                        co,
+                        cc,
+                        cp,
+                        comment: JSON.stringify({
+                            explanation: prev.explanation || "",
+                            attachment: prev.attachments?.filter(
+                                (a) => a !== file.event,
+                            ),
+                        }),
                     },
                 });
-                await saveComment(
-                    dataValue?.comment || "",
-                    response2?.response?.importSummaries?.[0].reference,
+                await engine.mutate({
+                    resource: `tracker`,
+                    type: "create",
+                    data: {
+                        events: [{ event: file.event }],
+                    },
+                    params: {
+                        importStrategy: "DELETE",
+                        async: "false",
+                    },
+                });
+
+                message.success(`${file.name} file deleted successfully`);
+            } catch (error) {
+                await db.dataValues.put(prev);
+                message.error(
+                    `Failed to delete file. Please try again. ${error.message}`,
                 );
-                await queryClient.invalidateQueries();
-            } catch (err) {
-                console.error(err);
-                message.error(`Failed to upload ${file.name}`);
             }
         }
-
-        setUploading(false);
-        message.success("All files processed.");
+        message.info("File removed");
     };
     return (
-        <>
-            <Upload
-                beforeUpload={() => false}
-                fileList={fileList}
-                onChange={handleChange}
-                // onRemove={handleRemove}
-                multiple
-                listType="text"
-            >
-                <Button
-                    icon={<UploadOutlined />}
-                    disabled={
-                        val === undefined ||
-                        !(
-                            coc1?.name.includes("Actual") ||
-                            coc1?.name.includes("Spent")
-                        )
-                    }
-                >
-                    Click to Upload File
-                </Button>
-            </Upload>
-            <Button
-                type="primary"
-                onClick={handleUpload}
-                disabled={uploading || fileList.every((f) => f.url)}
-                loading={uploading}
-                style={{ marginTop: 16 }}
-            >
-                {uploading ? "Uploading..." : "Upload New Files"}
-            </Button>
-        </>
+        <Flex vertical gap={10}>
+            <Dragger {...uploadProps}>
+                <Typography.Text style={{ color: "#05416eff" }}>
+                    Click or drag file to this area to upload
+                </Typography.Text>
+            </Dragger>
+            <List
+                itemLayout="horizontal"
+                size="small"
+                dataSource={value?.attachment ?? []}
+                renderItem={(file: FileResource) => (
+                    <List.Item
+                        actions={[
+                            <Button
+                                key="delete"
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleDelete(file)}
+                            >
+                                Delete
+                            </Button>,
+                        ]}
+                    >
+                        <List.Item.Meta
+                            avatar={
+                                <FileOutlined
+                                    style={{
+                                        color: "#1890ff",
+                                    }}
+                                />
+                            }
+                            title={
+                                <Space>
+                                    <Text strong>{file.name}</Text>
+                                    {file.storageStatus === "STORED" && (
+                                        <Tag
+                                            icon={<CheckCircleOutlined />}
+                                            color="success"
+                                        >
+                                            Completed
+                                        </Tag>
+                                    )}
+                                </Space>
+                            }
+                            description={
+                                <Space split="•">
+                                    <Text type="secondary">
+                                        {formatFileSize(file.contentLength)}
+                                    </Text>
+                                    <Text type="secondary">
+                                        {file.lastUpdated}
+                                    </Text>
+                                </Space>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
+        </Flex>
     );
 }

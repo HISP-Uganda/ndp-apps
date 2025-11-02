@@ -1,5 +1,5 @@
 import { generateFixedPeriods, periodTypes } from "@dhis2/multi-calendar-dates";
-import { TreeDataNode } from "antd";
+import { TreeDataNode, UploadFile } from "antd";
 
 import { z } from "zod";
 export const search = z.object({
@@ -27,7 +27,7 @@ export type DHIS2OrgUnit = {
     id: string;
     name: string;
     leaf: boolean;
-		code?:string;
+    code?: string;
     parent?: { id: string };
     dataSets: IDataSet[];
 };
@@ -86,7 +86,7 @@ export interface Options {
 
 export interface DataSetValues {
     dataSet: string;
-    completeDate: null;
+    completeDate: string | null;
     period: string;
     orgUnit: string;
     dataValues: DataValue[];
@@ -104,8 +104,12 @@ export interface DataValue {
     lastUpdated?: string;
     comment?: any;
     followup?: boolean;
+    attachment?: FileResource[];
+    explanation?: string;
+    attachments?: string[];
 }
 
+export type DataValues = Array<DataValue & IDataElement & { dataSet: string }>;
 export interface IDataSet {
     name: string;
     displayName: string;
@@ -126,6 +130,10 @@ export interface IDataElement {
     formName: string;
     categoryCombo: ICategoryCombo;
     valueType: string;
+    optionSetValue: boolean;
+    optionSet?: {
+        options: Option[];
+    };
 }
 
 export interface ICategoryCombo {
@@ -213,4 +221,41 @@ export interface CompleteDataSetRegistration {
     date: string;
     storedBy: string;
     completed: boolean;
+}
+
+export interface FileResource {
+    name: string;
+    created: string;
+    lastUpdated: string;
+    translations: any[];
+    externalAccess: boolean;
+    createdBy: {
+        id: string;
+        code: any;
+        name: string;
+        displayName: string;
+        username: string;
+    };
+    userGroupAccesses: any[];
+    userAccesses: any[];
+    favorites: any[];
+    lastUpdatedBy: {
+        id: string;
+        code: any;
+        name: string;
+        displayName: string;
+        username: string;
+    };
+
+    contentType: string;
+    contentLength: number;
+    contentMd5: string;
+    domain: string;
+    hasMultipleStorageFiles: boolean;
+    storageStatus: string;
+    displayName: string;
+    favorite: boolean;
+    id: string;
+    attributeValues: any[];
+    event: string;
 }

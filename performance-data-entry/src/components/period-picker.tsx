@@ -1,7 +1,7 @@
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import {
-	createFixedPeriodFromPeriodId,
-	generateFixedPeriods,
+    createFixedPeriodFromPeriodId,
+    generateFixedPeriods,
 } from "@dhis2/multi-calendar-dates";
 
 import { Button, Flex, Select } from "antd";
@@ -91,7 +91,7 @@ export default function PeriodPicker({
         defaultPeriods,
         dataSet,
         onChange,
-				year,
+        year,
     ]);
 
     return (
@@ -115,7 +115,10 @@ export default function PeriodPicker({
             <Flex>
                 <Button
                     icon={<LeftOutlined />}
-                    onClick={() => setYear((prev) => prev - 1)}
+                    onClick={() => {
+                        setYear((prev) => prev - 1);
+                        onChange(undefined);
+                    }}
                     disabled={
                         year <= minYear ||
                         (periodType === "FYJUL" && defaultPeriods.length > 0)
@@ -123,7 +126,10 @@ export default function PeriodPicker({
                 />
                 <Button
                     icon={<RightOutlined />}
-                    onClick={() => setYear((prev) => prev + 1)}
+                    onClick={() => {
+                        setYear((prev) => prev + 1);
+                        onChange(undefined);
+                    }}
                     disabled={
                         year > maxYear ||
                         (periodType === "FYJUL" && defaultPeriods.length > 0)

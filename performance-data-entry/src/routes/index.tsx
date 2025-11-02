@@ -1,4 +1,4 @@
-import { createRoute, useLoaderData } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import type { TableProps, TreeDataNode } from "antd";
 import {
     Button,
@@ -13,20 +13,19 @@ import {
     Tree,
     Typography,
 } from "antd";
+import { orderBy } from "lodash";
 import React, { useEffect, useMemo, useState } from "react";
 import DataEntryTable from "../components/DataEntryTable";
 import PeriodPicker from "../components/period-picker";
 import { IDataSet, Option, PeriodType, search } from "../types";
 import { getPathToNode } from "../utils";
 import { RootRoute } from "./__root";
-import { orderBy } from "lodash";
 
 export const IndexRoute = createRoute({
     getParentRoute: () => RootRoute,
     path: "/",
     component: IndexRouteComponent,
     validateSearch: search,
-    errorComponent: () => null,
 });
 
 const getPeriodType = (
@@ -50,9 +49,7 @@ function IndexRouteComponent() {
         ndp3,
         ndp4,
         dataSets,
-    } = useLoaderData({
-        from: "__root__",
-    });
+    } = RootRoute.useLoaderData();
 
     const { orgUnit, dataSet, pe, expanded, minPeriod, maxPeriod, periodType } =
         IndexRoute.useSearch();

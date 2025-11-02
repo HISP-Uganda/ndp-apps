@@ -1,8 +1,10 @@
-import { Input, InputNumber, message, Spin } from "antd";
-import React, { useState, useEffect } from "react";
-import { DataElementDataValue } from "../types";
-import { useSaveDataValue } from "../query-options";
 import { useDataEngine } from "@dhis2/app-runtime";
+import { Input, InputNumber, message, Select, Spin } from "antd";
+import { useLiveQuery } from "dexie-react-hooks";
+import React, { useEffect, useState } from "react";
+import { db } from "../db";
+import { useSaveDataValue } from "../query-options";
+import { IDataElement } from "../types";
 
 export default function TableCell({
     dataElement,
@@ -16,7 +18,7 @@ export default function TableCell({
     co,
     disabled = true,
 }: {
-    dataElement: DataElementDataValue;
+    dataElement: IDataElement;
     coc: string;
     aoc: string;
     co: string;
@@ -26,34 +28,42 @@ export default function TableCell({
     ou: string;
     pe: string;
     disabled?: boolean;
-		comment?: boolean;
+    comment?: boolean;
 }) {
     const engine = useDataEngine();
     const saveDataValue = useSaveDataValue();
-    const [currentValue, setCurrentValue] = useState<
-        string | number | undefined
-    >(dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`]);
+    const value = useLiveQuery(async () => {
+        return await db.dataValues.get({
+            dataElement: de,
+            period: pe,
+            orgUnit: ou,
+            categoryOptionCombo: coc,
+            attributeOptionCombo: aoc,
+        });
+    }, [de, aoc, coc, ou, pe]);
+    const [currentValue, setCurrentValue] = useState<string | undefined>(
+        value?.value,
+    );
     const [isLoading, setIsLoading] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    useEffect(() => {
-        if (!isEditing && !isLoading) {
-            const newValue = dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`];
-            setCurrentValue(newValue);
-        }
-    }, [ou, pe, aoc, coc]);
-
     const handleUpdate = async (value: string | number | null) => {
-        const stringValue = value?.toString() || "";
-
-        const originalValue =
-            dataElement.dataValue[`${ou}_${pe}_${aoc}_${coc}`];
-        if (stringValue === originalValue) {
-            setIsEditing(false);
-            return;
-        }
-        const previousValue = currentValue;
         setIsLoading(true);
-
+        const originalValue = await db.dataValues.get([de, aoc, coc, ou, pe]);
+        if (originalValue) {
+            await db.dataValues.put({
+                ...originalValue,
+                value: value?.toString() || "",
+            });
+        } else {
+            await db.dataValues.put({
+                dataElement: de,
+                period: pe,
+                orgUnit: ou,
+                categoryOptionCombo: coc,
+                attributeOptionCombo: aoc,
+                value: value?.toString() || "",
+            });
+        }
+        const stringValue = value?.toString() || "";
         try {
             await saveDataValue.mutateAsync({
                 engine,
@@ -73,50 +83,80 @@ export default function TableCell({
                 `Failed to save data. Please try again. ${error.message}`,
                 4,
             );
-            setCurrentValue(previousValue);
-            console.error("Save error:", error);
+            if (originalValue) {
+                await db.dataValues.put(originalValue);
+            } else {
+                await db.dataValues.delete([de, aoc, coc, ou, pe]);
+            }
         } finally {
             setIsLoading(false);
-            setIsEditing(false);
         }
     };
 
-    const inputComponent =
+    useEffect(() => {
+        setCurrentValue(value?.value);
+    }, [value?.value]);
+
+    if (
         dataElement.valueType.toLowerCase().includes("number") ||
         dataElement.valueType.toLowerCase().includes("integer") ||
-        dataElement.valueType.toLowerCase().includes("unit") ? (
-            <InputNumber
+        dataElement.valueType.toLowerCase().includes("unit")
+    ) {
+        return (
+            <Spin spinning={isLoading} size="small">
+                <InputNumber
+                    style={{
+                        width: "100%",
+                    }}
+                    value={currentValue}
+                    onChange={(value) => {
+                        setCurrentValue(value || undefined);
+                    }}
+                    onBlur={(e) => handleUpdate(e.target.value)}
+                    disabled={isLoading || disabled}
+                />
+            </Spin>
+        );
+    }
+
+    if (
+        dataElement.optionSetValue &&
+        dataElement.optionSet &&
+        dataElement.optionSet.options.length > 0
+    ) {
+        return (
+            <Select
                 style={{
                     width: "100%",
                 }}
-                value={currentValue as number}
+                value={currentValue}
                 onChange={(value) => {
-                    setIsEditing(true);
                     setCurrentValue(value || undefined);
+                    handleUpdate(value);
                 }}
-                onBlur={(e) => handleUpdate(e.target.value)}
-                onFocus={() => setIsEditing(true)}
                 disabled={isLoading || disabled}
+                options={dataElement.optionSet.options.map((opt) => ({
+                    label: opt.name,
+                    value: opt.code,
+                }))}
             />
-        ) : (
+        );
+    }
+
+    return (
+        <Spin spinning={isLoading} size="small">
             <Input
                 style={{
                     width: "100%",
                 }}
-                value={currentValue as string}
+                value={currentValue}
                 onChange={(e) => {
-                    setIsEditing(true);
                     setCurrentValue(e.target.value);
                 }}
                 onBlur={(e) => handleUpdate(e.target.value)}
-                onFocus={() => setIsEditing(true)}
+                // onFocus={() => setIsEditing(true)}
                 disabled={isLoading || disabled}
             />
-        );
-
-    return (
-        <Spin spinning={isLoading} size="small">
-            {inputComponent}
         </Spin>
     );
 }

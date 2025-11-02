@@ -1,44 +1,35 @@
-import { PaperClipOutlined } from "@ant-design/icons";
-import { Button, Flex, Input, Space, Typography } from "antd";
+import { Flex, Typography } from "antd";
 import { TableProps } from "antd/es/table";
 import React from "react";
 import {
-    DataElementDataValue,
     ICategory,
     ICategoryCombo,
     ICategoryOptionCombo,
     IDataElement,
     IDataSet,
-    PeriodType,
 } from "../types";
 import TableCell from "./TableCell";
+import CommentCell from "./comment-cell";
 
 export function generateGroupedColumns({
     dataSet,
     dataElements,
     pe,
     ou,
-    onClick,
     baselineYear,
     targetYear,
     disabled,
-    periodType,
 }: {
     dataSet: IDataSet;
     dataElements: IDataElement[];
     pe: string;
     ou: string;
-    onClick: (
-        row: DataElementDataValue,
-        rowData: Record<string, string>,
-    ) => void;
     targetYear: string;
     baselineYear: string;
     disabled: boolean;
-    periodType?: PeriodType;
-}): TableProps<DataElementDataValue>["columns"] {
-    const columns: TableProps<DataElementDataValue>["columns"] = [];
-    columns?.push({
+}): TableProps<IDataElement>["columns"] {
+    const columns: TableProps<IDataElement>["columns"] = [];
+    columns.push({
         title: (
             <Typography.Text style={{ color: "#05416eff" }}>
                 {dataSet.name.includes("- Actions")
@@ -145,48 +136,22 @@ export function generateGroupedColumns({
                                 ),
                                 key: "explanation",
                                 width: 230,
-                                render: (_, row) => {
-                                    const originalValue =
-                                        row.dataValue[
-                                            `${ou}_${pe}_${coc1?.id}_${coc?.id}_comment`
-                                        ];
-                                    return (
-                                        <Space.Compact
-                                            style={{
-                                                width: "100%",
-                                            }}
-                                            onClick={() =>
-                                                onClick(row, {
-                                                    co: coc.id,
-                                                    cc: dataSet.categoryCombo
-                                                        .id,
-                                                    cp: dataSetCOC.id,
-                                                    de: row.id,
-                                                    ou,
-                                                    pe,
-                                                })
-                                            }
-                                        >
-                                            <Input
-                                                value={
-                                                    originalValue !== undefined
-                                                        ? "Explanation available"
-                                                        : ""
-                                                }
-                                            />
-                                            <Button
-                                                type="primary"
-                                                danger={
-                                                    originalValue === undefined
-                                                }
-                                                icon={<PaperClipOutlined />}
-                                                style={{
-                                                    width: "48px",
-                                                }}
-                                            />
-                                        </Space.Compact>
-                                    );
-                                },
+                                render: (_, record) => (
+                                    <CommentCell
+                                        coc={coc.id}
+                                        aoc={coc1?.id ?? ""}
+                                        co={coc.id}
+                                        cc={dataSet.categoryCombo.id}
+                                        cp={dataSetCOC.id}
+                                        ou={ou}
+                                        pe={period}
+                                        de={record.id}
+                                        dataSet={dataSet}
+                                        targetYear={targetYear}
+                                        baselineYear={baselineYear}
+                                        disabled={index < 1 || disabled}
+                                    />
+                                ),
                             });
                         }
                     });
@@ -199,7 +164,7 @@ export function generateGroupedColumns({
 
 export function createGroupedColumn(
     categoryCombo: ICategoryCombo,
-): NonNullable<TableProps<DataElementDataValue>["columns"]>[number] {
+): NonNullable<TableProps<IDataElement>["columns"]>[number] {
     const firstCategory = categoryCombo.categories[0];
     const groupedCOCs = new Map<string, ICategoryOptionCombo[]>();
 
@@ -217,7 +182,7 @@ export function createGroupedColumn(
             groupedCOCs.get(firstCategoryOption.id)!.push(coc);
         }
     });
-    const children: TableProps<DataElementDataValue>["columns"] = [];
+    const children: TableProps<IDataElement>["columns"] = [];
     groupedCOCs.forEach((cocs, categoryOptionId) => {
         const categoryOption = firstCategory.categoryOptions.find(
             (opt) => opt.id === categoryOptionId,
@@ -231,8 +196,8 @@ export function createGroupedColumn(
                 width: 120,
             });
         } else {
-            const subChildren: TableProps<DataElementDataValue>["columns"] =
-                cocs.map((coc) => ({
+            const subChildren: TableProps<IDataElement>["columns"] = cocs.map(
+                (coc) => ({
                     title: getSubColumnTitle(
                         coc,
                         categoryCombo.categories.slice(1),
@@ -240,7 +205,8 @@ export function createGroupedColumn(
                     dataIndex: `${categoryCombo.id}_${coc.id}`,
                     key: `${categoryCombo.id}_${coc.id}`,
                     width: 120,
-                }));
+                }),
+            );
 
             children?.push({
                 title: categoryOption?.name || "Unknown",

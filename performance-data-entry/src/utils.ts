@@ -1,5 +1,5 @@
-import { orderBy } from "lodash";
 import { TreeDataNode } from "antd";
+import { orderBy } from "lodash";
 import {
     DataValue,
     DHIS2OrgUnit,
@@ -9,16 +9,12 @@ import {
 } from "./types";
 
 export function convertToAntdTree(data: DHIS2OrgUnit[]): TreeDataNode[] {
-    // Create a map for quick lookup
     const itemMap = new Map<string, DHIS2OrgUnit>();
     data.forEach((item) => {
         itemMap.set(item.id, item);
     });
 
-    // Create tree nodes map
     const treeNodeMap = new Map<string, TreeDataNode>();
-
-    // First pass: create all tree nodes
     data.forEach((item) => {
         treeNodeMap.set(item.id, {
             key: item.id,
@@ -27,18 +23,14 @@ export function convertToAntdTree(data: DHIS2OrgUnit[]): TreeDataNode[] {
             children: item.leaf ? undefined : [],
         });
     });
-
-    // Second pass: build the tree structure
     const rootNodes: TreeDataNode[] = [];
 
     data.forEach((item) => {
         const currentNode = treeNodeMap.get(item.id)!;
 
         if (!item.parent?.id || item.parent === null) {
-            // Root node
             rootNodes.push(currentNode);
         } else {
-            // Child node - add to parent's children
             const parentNode = treeNodeMap.get(item.parent.id);
             if (parentNode && parentNode.children) {
                 parentNode.children.push(currentNode);
@@ -53,7 +45,6 @@ export function convertToAntdTree(data: DHIS2OrgUnit[]): TreeDataNode[] {
     return rootNodes;
 }
 
-// 1. Search by key (exact match)
 function findNodeByKey(
     treeData: TreeDataNode[],
     searchKey: string,
@@ -71,7 +62,6 @@ function findNodeByKey(
     return null;
 }
 
-// 2. Search by title (text search)
 export function findNodesByTitle(
     treeData: TreeDataNode[],
     searchText: string,
@@ -99,7 +89,6 @@ export function findNodesByTitle(
     return results;
 }
 
-// 3. Get path to a node (useful for expanding tree to show search result)
 export function getPathToNode(
     treeData: TreeDataNode[],
     targetKey: string,
@@ -126,7 +115,6 @@ export function getPathToNode(
     return searchPath(treeData);
 }
 
-// 4. Filter tree (keep only matching nodes and their ancestors/descendants)
 export function filterTree(
     treeData: TreeDataNode[],
     searchText: string,
@@ -165,7 +153,6 @@ export function filterTree(
         .filter((node) => node !== null) as TreeDataNode[];
 }
 
-// 5. Get all leaf nodes
 export function getAllLeafNodes(treeData: TreeDataNode[]): TreeDataNode[] {
     const leafNodes: TreeDataNode[] = [];
 
@@ -183,7 +170,6 @@ export function getAllLeafNodes(treeData: TreeDataNode[]): TreeDataNode[] {
     return leafNodes;
 }
 
-// 6. Get all parent keys for expanding tree to show search results
 export function getParentKeysForNodes(
     treeData: TreeDataNode[],
     nodeKeys: string[],
@@ -193,7 +179,6 @@ export function getParentKeysForNodes(
     for (const key of nodeKeys) {
         const path = getPathToNode(treeData, key);
         if (path) {
-            // Add all parent keys (exclude the node itself)
             path.slice(0, -1).forEach((parentKey) => parentKeys.add(parentKey));
         }
     }
@@ -201,7 +186,6 @@ export function getParentKeysForNodes(
     return Array.from(parentKeys);
 }
 
-// 7. Advanced search with custom predicate
 export function searchTreeWithPredicate<T extends TreeDataNode>(
     treeData: T[],
     predicate: (node: T) => boolean,
@@ -224,7 +208,6 @@ export function searchTreeWithPredicate<T extends TreeDataNode>(
     return results;
 }
 
-// 8. Search with highlighting (for display purposes)
 export function searchAndHighlight(
     treeData: TreeDataNode[],
     searchText: string,

@@ -1,20 +1,18 @@
 import { useDataEngine } from "@dhis2/app-runtime";
-import {
-    queryOptions,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useMutation } from "@tanstack/react-query";
+import { UploadProps } from "antd";
+import { db } from "./db";
 import {
     CompleteDataSetRegistrations,
     DataSetValues,
     DHIS2OrgUnit,
+    FileResource,
     IDataElement,
     IDataSet,
-    Search,
     Option,
+    Search,
 } from "./types";
 import { convertToAntdTree } from "./utils";
-import { UploadProps } from "antd";
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
@@ -126,7 +124,6 @@ export const initialQueryOptions = (
 export const dataValuesQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
     search: Search,
-    fields: IDataElement[],
 ) => {
     return queryOptions({
         queryKey: [
@@ -201,30 +198,69 @@ export const dataValuesQueryOptions = (
                 ],
             };
 
-            const dataValues = fields.map((field) => {
-                const dataValue = allDataValues.dataValues
-                    .filter((dv) => dv.dataElement === field.id)
-                    .reduce((acc, dv) => {
-                        const key = `${dv.orgUnit}_${dv.period}_${dv.attributeOptionCombo}_${dv.categoryOptionCombo}`;
-                        acc[key] = dv.value;
-                        if (dv.comment) {
-                            acc[`${key}_comment`] = dv.comment;
-                        }
-                        return acc;
-                    }, {} as Record<string, string>);
+            const expanded = allDataValues.dataValues.map((dv) => {
+                let explanation = "";
+                let attachments: string[] = [];
+                if (dv.comment) {
+                    try {
+                        const { explanation: e, attachment: a } = JSON.parse(
+                            dv.comment,
+                        ) as {
+                            explanation: string;
+                            attachment: string[];
+                        };
+                        explanation = e;
+                        attachments = a;
+                    } catch (error) {
+                        console.error("Failed to parse comment", error);
+                    }
+                }
+                return { ...dv, explanation, attachments };
+            });
+
+            const attachments = expanded.flatMap((dv) => dv.attachments);
+
+            const allAttachments = new Map<string, FileResource>();
+
+            for (const a of attachments) {
+                try {
+                    const event = (await engine.query({
+                        event: {
+                            resource: `events/${a}`,
+                            params: {
+                                event: a,
+                            },
+                        },
+                    })) as any;
+                    const fileResourceId = event.event.dataValues.find(
+                        (dv: any) => dv.dataElement === "qeGJBGmsr0d",
+                    )?.value;
+                    const { fileResource } = (await engine.query({
+                        fileResource: {
+                            resource: `fileResources/${fileResourceId}`,
+                        },
+                    })) as unknown as { fileResource: FileResource };
+
+                    allAttachments.set(a, { ...fileResource, event: a });
+                } catch (error) {}
+            }
+
+            const finalDataValues = expanded.map((dv) => {
                 return {
-                    ...field,
-                    dataValue,
-                    pe: search.pe!,
-                    ou: search.orgUnit!,
-                    targetYear: search.targetYear!,
-                    baselineYear: search.baseline!,
+                    ...dv,
+                    attachment: dv.attachments.flatMap((att) => {
+                        const found = allAttachments.get(att);
+                        return found ? found : [];
+                    }),
                 };
             });
+
+            await db.dataValues.bulkPut(finalDataValues);
+
             return {
                 completeDataSetRegistrations:
                     completeDataSetRegistrations.completeDataSetRegistrations,
-                dataValues,
+                dataValues: finalDataValues,
             };
         },
         enabled:
@@ -234,7 +270,6 @@ export const dataValuesQueryOptions = (
             !!search.baseline &&
             !!search.targetYear,
         refetchOnWindowFocus: false,
-        // staleTime: 0,
     });
 };
 
