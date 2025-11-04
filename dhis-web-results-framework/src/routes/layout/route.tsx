@@ -6,7 +6,7 @@ import {
     useLoaderData,
     useLocation,
 } from "@tanstack/react-router";
-import React from "react";
+import React, { useState } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
@@ -15,16 +15,18 @@ import {
     Select,
     SelectProps,
     Splitter,
+    SplitterProps,
     Tree,
     TreeDataNode,
 } from "antd";
 
 import { SettingOutlined } from "@ant-design/icons";
-import { isEmpty } from "lodash";
+import { isEmpty, size } from "lodash";
 import { initialQueryOptions } from "../../query-options";
 import { NDPValidator } from "../../types";
 import { getDefaultPeriods } from "../../utils";
 import { RootRoute } from "../__root";
+import { useWindowSize } from "../../hooks/use-window-size";
 
 export const LayoutRoute = createRoute({
     getParentRoute: () => RootRoute,
@@ -817,17 +819,29 @@ function Component() {
             key: "/ndp/libraries",
         },
     ];
+
+    const { width } = useWindowSize();
+
+    const [sizes, setSizes] = useState<number[]>([width * 0.24, width * 0.76]);
     return (
         <Splitter
             style={{
                 height: "calc(100vh - 48px)",
             }}
+            onResize={(sizes) => setSizes(() => sizes)}
         >
             <Splitter.Panel
                 defaultSize="24%"
                 max="30%"
-                min="24%"
-                style={{ padding: "10px", backgroundColor: "#F3F3F3" }}
+                style={{
+                    backgroundColor: "#F3F3F3",
+                    padding: sizes[0] === 0 ? undefined : "10px",
+                }}
+                collapsible={{
+                    showCollapsibleIcon: true,
+                    start: true,
+                    end: true,
+                }}
             >
                 <Flex vertical gap={20}>
                     <Flex gap={12} align="center">
@@ -879,7 +893,7 @@ function Component() {
                         treeData={treeData}
                         multiple={false}
                         selectedKeys={[location.pathname]}
-                        style={{ padding: 20, fontSize: 16 }}
+                        style={{ padding: 20 }}
                     />
                 </Flex>
             </Splitter.Panel>

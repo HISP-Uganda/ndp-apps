@@ -1,13 +1,16 @@
+import { DownloadOutlined } from "@ant-design/icons";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
-import { Modal, Table, type TableProps } from "antd";
+import { Button, Flex, Modal, Table, type TableProps } from "antd";
 import { orderBy } from "lodash";
 import React from "react";
 import { FaInfoCircle } from "react-icons/fa";
+import downloadExcelFromColumns from "../../../../download-antd-table";
 import { voteProgramOutcomesQueryOptions } from "../../../../query-options";
 import { PERFORMANCE_COLORS } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { VoteProgramPerformanceRoute } from "./route";
+
 export const VoteProgramPerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => VoteProgramPerformanceRoute,
@@ -43,11 +46,9 @@ function Component() {
         setProcessedData(data);
     }, [data]);
 
-    const handleChange: TableProps<(typeof processedData)[number]>["onChange"] = (
-        _pagination,
-        _filters,
-        sorter,
-    ) => {
+    const handleChange: TableProps<
+        (typeof processedData)[number]
+    >["onChange"] = (_pagination, _filters, sorter) => {
         if (!Array.isArray(sorter)) {
             const { field, order } = sorter;
             if (field && order) {
@@ -81,7 +82,7 @@ function Component() {
                     render: (text: string, record) => {
                         return (
                             <div>
-                                {text.replace(/\d+/g, "").trim()}
+                                {record.program?.replace(/\d+/g, "").trim()}
                                 &nbsp;
                                 <FaInfoCircle
                                     style={{
@@ -208,7 +209,7 @@ function Component() {
                     title: `% M`,
                     dataIndex: "percentModeratelyAchieved",
                     key: "percentModeratelyAchieved",
-                    width: 70,
+                    width: 72,
                     align: "center",
                     onHeaderCell: () => ({
                         style: {
@@ -236,7 +237,7 @@ function Component() {
                     title: `% ND`,
                     dataIndex: "percentNoData",
                     key: "percentNoData",
-                    width: 73,
+                    width: 83,
                     align: "center",
                     onHeaderCell: () => ({
                         style: {
@@ -249,16 +250,32 @@ function Component() {
             ];
         }, []);
     return (
-        <Table
-            columns={columns}
-            dataSource={processedData}
-            scroll={{ y: "calc(100vh - 300px)" }}
-            rowKey="id"
-            bordered={true}
-            sticky={true}
-            pagination={false}
-            size="small"
-            onChange={handleChange}
-        />
+        <Flex vertical gap="16px">
+            <Flex justify="flex-end">
+                <Button
+                    onClick={() =>
+                        downloadExcelFromColumns(
+                            columns,
+                            data,
+                            "performance-report.xlsx",
+                        )
+                    }
+                    icon={<DownloadOutlined />}
+                >
+                    Download Excel
+                </Button>
+            </Flex>
+            <Table
+                columns={columns}
+                dataSource={processedData}
+                scroll={{ y: "calc(100vh - 300px)" }}
+                rowKey="id"
+                bordered={true}
+                sticky={true}
+                pagination={false}
+                size="small"
+                onChange={handleChange}
+            />
+        </Flex>
     );
 }

@@ -894,14 +894,26 @@ export const voteProgramOutcomesQueryOptions = ({
                 .toArray();
 
             if (searchKey && searchValue) {
-							console.log('Filtering data elements by', searchKey, searchValue);
                 dataElements = uniqBy(
-                    dataElements.filter((de) => de[searchKey] === searchValue),
+                    dataElements.filter(
+                        (de) =>
+                            de[searchKey] === searchValue &&
+                            de["UBWSASWdyfi"] !== undefined,
+                    ),
                     "id",
                 );
             } else {
-							console.log('No search key/value provided, using all data elements for org unit', ou);
-                dataElements = uniqBy(dataElements, "id");
+              
+                dataElements = uniqBy(
+                    dataElements.filter(
+                        (de) =>
+                            de["UBWSASWdyfi"] !== undefined &&
+                            !["action", "output4action"].includes(
+                                String(de["aWsagpqErAq"]),
+                            ),
+                    ),
+                    "id",
+                );
             }
 
             const allDataElementGroups = groupBy(

@@ -118,6 +118,7 @@ export interface IDataSet {
     access: IAccess;
     id: string;
     periodType: PeriodType;
+    organisationUnits: Array<{ id: string; name: string; code: string }>;
 }
 
 export interface IDataSetElement {
@@ -127,6 +128,8 @@ export interface IDataSetElement {
 export interface IDataElement {
     name: string;
     id: string;
+    description: string;
+    aggregationType: string;
     formName: string;
     categoryCombo: ICategoryCombo;
     valueType: string;
@@ -134,6 +137,11 @@ export interface IDataElement {
     optionSet?: {
         options: Option[];
     };
+
+    attributeValues: IAttributeValue[];
+    dataElementGroups: IDataElementGroup[];
+
+    dataSetElements: Array<{ dataSet: IDataSet }>;
 }
 
 export interface ICategoryCombo {
@@ -258,4 +266,19 @@ export interface FileResource {
     id: string;
     attributeValues: any[];
     event: string;
+}
+
+export interface IDataElementGroup {
+    code: string;
+    name: string;
+    groupSets: GroupSet[];
+    id: string;
+    attributeValues: IAttributeValue[];
+}
+
+export interface GroupSet {
+    code: string;
+    name: string;
+    id: string;
+    attributeValues: IAttributeValue[];
 }

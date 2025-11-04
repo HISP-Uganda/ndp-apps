@@ -54,6 +54,20 @@ function Component() {
         }
     }, []);
 
+    const [objectives, setObjectives] = React.useState(
+        data.dataElementGroupSets,
+    );
+
+    useEffect(() => {
+        const selectedObjective = data.dataElementGroupSets.filter((degSet) =>
+            degSet.attributeValues.some(
+                (av) =>
+                    av.attribute.id === "UBWSASWdyfi" && av.value === program,
+            ),
+        );
+        setObjectives(() => selectedObjective);
+    }, [program]);
+
     return (
         <Flex vertical gap={10} style={{ padding: 10, height: "100%" }}>
             <Filter
@@ -87,12 +101,10 @@ function Component() {
                     },
                     {
                         key: "degs",
-                        options: data.dataElementGroupSets.map(
-                            ({ name, id }) => ({
-                                value: id,
-                                label: name,
-                            }),
-                        ),
+                        options: objectives.map(({ name, id }) => ({
+                            value: id,
+                            label: name,
+                        })),
                         label: "Program Intervention",
                     },
                 ]}

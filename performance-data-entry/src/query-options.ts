@@ -416,3 +416,76 @@ export const attachmentsQueryOptions = (
         },
     });
 };
+
+export const indicatorQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    id: string,
+) => {
+    return queryOptions({
+        queryKey: ["indicator-query-options", id],
+        queryFn: async () => {
+            const { indicator } = (await engine.query({
+                indicator: {
+                    resource: `dataElements/${id}`,
+                    params: {
+                        fields: "id,name,code,description,aggregationType,attributeValues[attribute[id,name,code],value],dataSetElements[dataSet[name,periodType,id,organisationUnits[code,name,displayName,id]]],dataElementGroups[id,name,code,attributeValues[attribute[id,name,code],value],groupSets[id,name,code,attributeValues[attribute[id,code,name],value]]]",
+                    },
+                },
+            })) as unknown as { indicator: IDataElement };
+            return {
+                ...indicator,
+                ...indicator.attributeValues.reduce((acc, attr) => {
+                    acc[attr.attribute.name] = attr.value;
+                    acc[attr.attribute.id] = attr.value;
+                    return acc;
+                }, {} as Record<string, string>),
+
+                ...indicator.dataElementGroups
+                    .flatMap(({ attributeValues, groupSets }) => {
+                        return [
+                            ...attributeValues,
+                            ...groupSets.flatMap((gs) => gs.attributeValues),
+                        ];
+                    })
+                    .reduce((acc, attr) => {
+                        acc[attr.attribute.name] = attr.value;
+                        acc[attr.attribute.id] = attr.value;
+                        return acc;
+                    }, {} as Record<string, string>),
+
+                ...indicator.dataElementGroups.reduce((acc, deg) => {
+                    acc["dataElementGroupName"] = deg.name;
+                    acc["dataElementGroupId"] = deg.id;
+                    acc["dataElementGroupCode"] = deg.code;
+                    return acc;
+                }, {} as Record<string, string>),
+                ...indicator.dataElementGroups
+                    .flatMap(({ groupSets }) => groupSets)
+                    .reduce((acc, deg) => {
+                        acc["dataElementGroupSetName"] = deg.name;
+                        acc["dataElementGroupSetId"] = deg.id;
+                        acc["dataElementGroupSetCode"] = deg.code;
+                        return acc;
+                    }, {} as Record<string, string>),
+
+                ...indicator.dataSetElements
+                    .flatMap(({ dataSet }) => dataSet)
+                    .reduce((acc, ds) => {
+                        acc["dataSetName"] = ds.name;
+                        acc["dataSetId"] = ds.id;
+                        acc["dataSetPeriodType"] = ds.periodType;
+                        return acc;
+                    }, {} as Record<string, string>),
+
+                ...indicator.dataSetElements
+                    .flatMap(({ dataSet }) => dataSet.organisationUnits)
+                    .reduce((acc, ou) => {
+                        acc["dataSetOrganisationUnitName"] = ou.name;
+                        acc["dataSetOrganisationUnitCode"] = ou.code;
+                        acc["dataSetOrganisationUnitId"] = ou.id;
+                        return acc;
+                    }, {} as Record<string, string>),
+            };
+        },
+    });
+};

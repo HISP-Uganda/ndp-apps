@@ -1,13 +1,15 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
-import { Modal, Table, type TableProps } from "antd";
+import { Button, Flex, Modal, Table, type TableProps } from "antd";
 import { orderBy } from "lodash";
 import React from "react";
 import { FaInfoCircle } from "react-icons/fa";
+import { DownloadOutlined } from "@ant-design/icons";
 import { voteProgramOutcomesQueryOptions } from "../../../../query-options";
 import { PERFORMANCE_COLORS } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { VoteOutcomePerformanceRoute } from "./route";
+import downloadExcelFromColumns from "../../../../download-antd-table";
 export const VoteOutcomePerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => VoteOutcomePerformanceRoute,
@@ -73,7 +75,7 @@ function Component() {
                     title: `Code`,
                     dataIndex: "UBWSASWdyfi",
                     key: "UBWSASWdyfi",
-                    width: 70,
+                    width: 80,
                     align: "center",
                     sorter: true,
                 },
@@ -220,7 +222,7 @@ function Component() {
                     title: `% M`,
                     dataIndex: "percentModeratelyAchieved",
                     key: "percentModeratelyAchieved",
-                    width: 70,
+                    width: 72,
                     align: "center",
                     onHeaderCell: () => ({
                         style: {
@@ -248,7 +250,7 @@ function Component() {
                     title: `% ND`,
                     dataIndex: "percentNoData",
                     key: "percentNoData",
-                    width: 73,
+                    width: 82,
                     align: "center",
                     onHeaderCell: () => ({
                         style: {
@@ -262,16 +264,32 @@ function Component() {
         }, []);
 
     return (
-        <Table
-            columns={columns}
-            dataSource={processedData}
-            scroll={{ y: "calc(100vh - 300px)" }}
-            rowKey="dataElementId"
-            bordered={true}
-            sticky={true}
-            pagination={false}
-            size="small"
-            onChange={handleChange}
-        />
+        <Flex vertical gap="16px">
+            <Flex justify="flex-end">
+                <Button
+                    onClick={() =>
+                        downloadExcelFromColumns(
+                            columns,
+                            data,
+                            "performance-report.xlsx",
+                        )
+                    }
+                    icon={<DownloadOutlined />}
+                >
+                    Download Excel
+                </Button>
+            </Flex>
+            <Table
+                columns={columns}
+                dataSource={processedData}
+                scroll={{ y: "calc(100vh - 300px)" }}
+                rowKey="dataElementId"
+                bordered={true}
+                sticky={true}
+                pagination={false}
+                size="small"
+                onChange={handleChange}
+            />
+        </Flex>
     );
 }

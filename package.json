@@ -29,6 +29,7 @@
     "devDependencies": {
         "@tanstack/query-db-collection": "^0.2.16",
         "@tanstack/react-db": "^0.1.17",
+        "@types/file-saver": "^2.0.7",
         "@types/node": "^20.0.0"
     },
     "engines": {
@@ -50,6 +51,10 @@
     "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
     "dependencies": {
         "@types/lodash": "^4.17.20",
+        "antd": "^5.28.0",
+        "file-saver": "^2.0.5",
+        "jspdf": "^3.0.3",
+        "jspdf-autotable": "^5.0.2",
         "lodash": "^4.17.21",
         "react-icons": "^5.5.0"
     }

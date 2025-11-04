@@ -1,13 +1,15 @@
 import { createRoute } from "@tanstack/react-router";
 import { useSuspenseQueries } from "@tanstack/react-query";
-import { Flex, Table, type TableProps } from "antd";
+import { Button, Flex, Table, type TableProps } from "antd";
 import { orderBy } from "lodash";
 import React, { useState } from "react";
+import { DownloadOutlined } from "@ant-design/icons";
 import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
 import { formatter, getCellStyle, legendItems } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { OverallPerformanceRoute } from "./route";
 import PerformanceLegend from "../../../../components/performance-legend";
+import downloadExcelFromColumns from "../../../../download-antd-table";
 
 export const OverallPerformanceIndexRoute = createRoute({
     path: "/",
@@ -211,6 +213,20 @@ function Component() {
     return (
         <Flex vertical gap={10}>
             <PerformanceLegend legendItems={legendItems} />
+            <Flex justify="flex-end">
+                <Button
+                    onClick={() =>
+                        downloadExcelFromColumns(
+                            columns,
+                            finalData,
+                            "performance-report.xlsx",
+                        )
+                    }
+                    icon={<DownloadOutlined />}
+                >
+                    Download Excel
+                </Button>
+            </Flex>
             <Table
                 columns={columns}
                 dataSource={finalData}

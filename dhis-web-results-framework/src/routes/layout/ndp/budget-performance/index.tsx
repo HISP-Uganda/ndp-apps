@@ -1,12 +1,15 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
-import { Table, TableProps } from "antd";
+import { Button, Flex, Table, TableProps } from "antd";
 import { orderBy } from "lodash";
 import React, { useState } from "react";
 import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
 import { formatter, getCellStyle } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { BudgetPerformanceRoute } from "./route";
+import downloadExcelFromColumns from "../../../../download-antd-table";
+import { DownloadOutlined } from "@ant-design/icons";
+
 export const BudgetPerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => BudgetPerformanceRoute,
@@ -28,7 +31,7 @@ function Component() {
             quarters,
             category,
             categoryOptions,
-						votes
+            votes,
         }),
     );
 
@@ -76,7 +79,7 @@ function Component() {
             title: "Vote",
             dataIndex: "vote",
             key: "vote",
-            width: 70,
+            width: 80,
             align: "center",
             render: (_, record) => record.code?.replace("V", ""),
             sorter: true,
@@ -101,7 +104,7 @@ function Component() {
             sorter: true,
         },
         {
-            title: `Cumm. Release  (Ugx Bn)`,
+            title: `Cumm. Release (Ugx Bn)`,
             dataIndex: "target",
             key: "target",
             width: 160,
@@ -109,7 +112,7 @@ function Component() {
             sorter: true,
         },
         {
-            title: `Cumm. Expenditure  (Ugx Bn)`,
+            title: `Cumm. Expenditure (Ugx Bn)`,
             dataIndex: "actual",
             key: "actual",
             width: 160,
@@ -152,16 +155,32 @@ function Component() {
     ];
 
     return (
-        <Table
-            columns={columns}
-            dataSource={finalData}
-            scroll={{ y: "calc(100vh - 300px)" }}
-            rowKey="id"
-            bordered={true}
-            sticky={true}
-            pagination={false}
-            size="small"
-            onChange={handleChange}
-        />
+        <Flex vertical gap="16px">
+            <Flex justify="flex-end">
+                <Button
+                    onClick={() =>
+                        downloadExcelFromColumns(
+                            columns,
+                            finalData,
+                            "budget-performance-report.xlsx",
+                        )
+                    }
+                    icon={<DownloadOutlined />}
+                >
+                    Download Excel
+                </Button>
+            </Flex>
+            <Table
+                columns={columns}
+                dataSource={finalData}
+                scroll={{ y: "calc(100vh - 300px)" }}
+                rowKey="id"
+                bordered={true}
+                sticky={true}
+                pagination={false}
+                size="small"
+                onChange={handleChange}
+            />
+        </Flex>
     );
 }

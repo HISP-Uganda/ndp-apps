@@ -2,12 +2,12 @@ import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Flex, Typography } from "antd";
+import { Flex } from "antd";
 import Filter from "../../../../components/Filter";
 import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
-import { NDPRoute } from "../route";
 import { RootRoute } from "../../../__root";
+import { NDPRoute } from "../route";
 
 export const OutcomeLevelRoute = createRoute({
     getParentRoute: () => NDPRoute,
@@ -46,6 +46,20 @@ function Component() {
         (pg) => program !== undefined && pg.code.includes(program),
     );
 
+    const [objectives, setObjectives] = React.useState(
+        data.dataElementGroupSets,
+    );
+
+    useEffect(() => {
+        const selectedObjective = data.dataElementGroupSets.filter((degSet) =>
+            degSet.attributeValues.some(
+                (av) =>
+                    av.attribute.id === "UBWSASWdyfi" && av.value === program,
+            ),
+        );
+        setObjectives(() => selectedObjective);
+    }, [program]);
+
     useEffect(() => {
         if (categoryOptions === undefined) {
             navigate({
@@ -56,6 +70,7 @@ function Component() {
             });
         }
     }, []);
+
     return (
         <Flex vertical gap={10} style={{ padding: 10, height: "100%" }}>
             <Filter
@@ -89,12 +104,10 @@ function Component() {
                     },
                     {
                         key: "degs",
-                        options: data.dataElementGroupSets.map(
-                            ({ name, id }) => ({
-                                value: id,
-                                label: name,
-                            }),
-                        ),
+                        options: objectives.map(({ name, id }) => ({
+                            value: id,
+                            label: name,
+                        })),
                         label: "Program Objective",
                     },
                 ]}

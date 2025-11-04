@@ -1,11 +1,13 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Flex, Modal, Table, Typography } from "antd";
+import { Button, Flex, Modal, Table, TableProps, Typography } from "antd";
 import React, { useMemo, useState } from "react";
 import { dataValuesQueryOptions } from "../query-options";
 import { IDataElement, IDataSet, Search } from "../types";
 import { generateGroupedColumns } from "./data-entry";
 import Spinner from "./Spinner";
+import { FaInfoCircle } from "react-icons/fa";
+import IndicatorDetails from "./indicator-details";
 
 export default function CategoryCombo({
     dataSet,
@@ -26,6 +28,7 @@ export default function CategoryCombo({
     search: Search;
     engine: ReturnType<typeof useDataEngine>;
 }) {
+    const [modal, contextHolder] = Modal.useModal();
     const queryClient = useQueryClient();
     const [isDataSetModalOpen, setIsDataSetModalOpen] = useState(false);
 
@@ -138,12 +141,53 @@ export default function CategoryCombo({
         [dataSet, fields, pe, ou, targetYear, baselineYear],
     );
 
+    const nameColumn: TableProps<IDataElement>["columns"] = [
+        {
+            title: (
+                <Typography.Text style={{ color: "#05416eff" }}>
+                    {dataSet.name.includes("- Actions")
+                        ? "PIAP Actions"
+                        : "Indicators"}
+                </Typography.Text>
+            ),
+
+            render: (_, record) => {
+                return (
+                    <div>
+                        {record.name}
+                        &nbsp;
+                        <FaInfoCircle
+                            style={{
+                                color: "#428BCA",
+                                fontSize: "22.4px",
+                                cursor: "pointer",
+                            }}
+                            onClick={() => {
+                                modal.info({
+                                    title: "Indicator Dictionary",
+                                    width: 600,
+                                    centered: true,
+                                    content: (
+                                        <IndicatorDetails indicator={record} />
+                                    ),
+                                });
+                            }}
+                        />
+                        {contextHolder}
+                    </div>
+                );
+            },
+            key: "dataElement",
+            fixed: "left",
+        },
+    ];
+
     if (isLoading) return <Spinner />;
     if (isSuccess)
         return (
             <Flex vertical gap={8}>
                 <Table
-                    columns={columns}
+                    columns={[...nameColumn, ...(columns ?? [])]}
                     dataSource={fields}
                     pagination={false}
                     scroll={{ y: "calc(100vh - 385px)" }}

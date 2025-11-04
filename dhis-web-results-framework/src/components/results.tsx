@@ -1,15 +1,16 @@
 import { DownloadOutlined } from "@ant-design/icons";
-import { useLoaderData, useLocation, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 
 import { Button, Flex, Modal, Table, TableProps, Tabs, TabsProps } from "antd";
-import ExcelJS from "exceljs";
 import { orderBy, uniqBy } from "lodash";
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { FaInfoCircle } from "react-icons/fa";
+import downloadExcelFromColumns from "../download-antd-table";
+import { RootRoute } from "../routes/__root";
 import { ResultsProps } from "../types";
 import { legendItems, makeDataElementData } from "../utils";
 import PerformanceLegend from "./performance-legend";
-import { RootRoute } from "../routes/__root";
+import downloadPdfFromColumns from "../download-pdf-from-columns";
 
 const budgetColumns = {
     lAyLQi6IqVF: "BR",
@@ -305,7 +306,7 @@ export function Results(props: ResultsProps) {
                                           ),
                                       dataIndex: `${pe}${option}`,
                                       align: "center" as const,
-                                      minWidth: 40,
+                                      minWidth: 50,
                                   };
                               })
                               .concat(
@@ -471,11 +472,28 @@ export function Results(props: ResultsProps) {
                         gap={10}
                         style={{ height: "calc(100vh - 278px)" }}
                     >
-                        <Flex justify="end">
+                        <Flex justify="flex-end" gap={10}>
                             <Button
+                                onClick={() =>
+                                    downloadPdfFromColumns(
+                                        columns.get("target"),
+                                        finalData,
+                                        "performance-report.pdf",
+                                    )
+                                }
                                 icon={<DownloadOutlined />}
-                                // onClick={() => exportToExcel("target")}
-                                type="primary"
+                            >
+                                Download PDF
+                            </Button>
+                            <Button
+                                onClick={() =>
+                                    downloadExcelFromColumns(
+                                        columns.get("target"),
+                                        finalData,
+                                        "performance-report.xlsx",
+                                    )
+                                }
+                                icon={<DownloadOutlined />}
                             >
                                 Download Excel
                             </Button>
@@ -504,7 +522,7 @@ export function Results(props: ResultsProps) {
                     >
                         <PerformanceLegend legendItems={legendItems} />
                         <Flex gap={10} justify="space-between">
-                            <Flex style={{ width: "50%", }}>
+                            <Flex style={{ width: "50%" }} gap={10}>
                                 {categoryOptions?.map((option) => (
                                     <div
                                         key={option}
@@ -514,6 +532,7 @@ export function Results(props: ResultsProps) {
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
+                                            border: "1px solid #121212ff",
                                         }}
                                     >
                                         {`${budgetColumns[option]} : ${
@@ -522,13 +541,33 @@ export function Results(props: ResultsProps) {
                                     </div>
                                 ))}
                             </Flex>
-                            <Button
-                                icon={<DownloadOutlined />}
-                                // onClick={() => exportToExcel("performance")}
-                                type="primary"
-                            >
-                                Download Excel
-                            </Button>
+
+                            <Flex justify="flex-end">
+                                <Button
+                                    onClick={() =>
+                                        downloadPdfFromColumns(
+                                            columns.get("performance"),
+                                            finalData,
+                                            "performance-report.pdf",
+                                        )
+                                    }
+                                    icon={<DownloadOutlined />}
+                                >
+                                    Download PDF
+                                </Button>
+                                <Button
+                                    onClick={() =>
+                                        downloadExcelFromColumns(
+                                            columns.get("performance"),
+                                            finalData,
+                                            "performance-report.xlsx",
+                                        )
+                                    }
+                                    icon={<DownloadOutlined />}
+                                >
+                                    Download Excel
+                                </Button>
+                            </Flex>
                         </Flex>
                         <Table
                             {...tableProps}

@@ -50,6 +50,20 @@ function Component() {
         (pg) => program !== undefined && pg.code.includes(program),
     );
 
+    const [objectives, setObjectives] = React.useState(
+        data.dataElementGroupSets,
+    );
+
+    useEffect(() => {
+        const selectedObjective = data.dataElementGroupSets.filter((degSet) =>
+            degSet.attributeValues.some(
+                (av) =>
+                    av.attribute.id === "UBWSASWdyfi" && av.value === program,
+            ),
+        );
+        setObjectives(() => selectedObjective);
+    }, [program]);
+
     useEffect(() => {
         if (categoryOptions === undefined) {
             navigate({
@@ -93,12 +107,10 @@ function Component() {
                     },
                     {
                         key: "degs",
-                        options: data.dataElementGroupSets.map(
-                            ({ name, id }) => ({
-                                value: id,
-                                label: name,
-                            }),
-                        ),
+                        options: objectives.map(({ name, id }) => ({
+                            value: id,
+                            label: name,
+                        })),
                         label: "Program Objective",
                     },
                 ]}

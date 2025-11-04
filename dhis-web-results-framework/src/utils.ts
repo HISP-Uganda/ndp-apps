@@ -697,7 +697,7 @@ export const createColumns = (
             title: "Vote",
             dataIndex: "code",
             key: "code",
-            width: 70,
+            width: 80,
             align: "center",
             render: (_, record) => record.code?.replace("V", ""),
             sorter: true,
@@ -781,7 +781,7 @@ export const createColumns = (
             title: `% A`,
             dataIndex: "percentAchieved",
             key: "percentAchieved",
-            width: 70,
+            width: 80,
             align: "center",
             render: (_, record) =>
                 formatter.format(record.percentAchieved ?? 0),
@@ -797,7 +797,7 @@ export const createColumns = (
             title: `% M`,
             dataIndex: "percentModeratelyAchieved",
             key: "percentModeratelyAchieved",
-            width: 70,
+            width: 80,
             align: "center",
             render: (_, record) =>
                 formatter.format(record.percentModeratelyAchieved ?? 0),
@@ -813,7 +813,7 @@ export const createColumns = (
             title: `% N`,
             dataIndex: "percentNotAchieved",
             key: "percentNotAchieved",
-            width: 70,
+            width: 80,
             align: "center",
             render: (_, record) =>
                 formatter.format(record.percentNotAchieved ?? 0),
@@ -829,7 +829,7 @@ export const createColumns = (
             title: `% ND`,
             dataIndex: "percentNoData",
             key: "percentNoData",
-            width: 75,
+            width: 85,
             align: "center",
             render: (_, record) => formatter.format(record.percentNoData ?? 0),
             onHeaderCell: () => ({
@@ -845,7 +845,7 @@ export const createColumns = (
             dataIndex: "totalWeighted",
             key: "totalWeighted",
             align: "center",
-            width: 105,
+            width: 120,
             render: (_, record) => formatter.format(record.totalWeighted ?? 0),
             onCell: (record) => ({
                 style: getCellStyle(record.totalWeighted ?? 0),

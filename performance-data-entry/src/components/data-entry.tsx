@@ -1,4 +1,4 @@
-import { Flex, Typography } from "antd";
+import { Flex, Modal, Typography } from "antd";
 import { TableProps } from "antd/es/table";
 import React from "react";
 import {
@@ -10,6 +10,8 @@ import {
 } from "../types";
 import TableCell from "./TableCell";
 import CommentCell from "./comment-cell";
+import { FaInfoCircle } from "react-icons/fa";
+import modal from "antd/es/modal";
 
 export function generateGroupedColumns({
     dataSet,
@@ -29,19 +31,6 @@ export function generateGroupedColumns({
     disabled: boolean;
 }): TableProps<IDataElement>["columns"] {
     const columns: TableProps<IDataElement>["columns"] = [];
-    columns.push({
-        title: (
-            <Typography.Text style={{ color: "#05416eff" }}>
-                {dataSet.name.includes("- Actions")
-                    ? "PIAP Actions"
-                    : "Indicators"}
-            </Typography.Text>
-        ),
-        dataIndex: "name",
-        key: "dataElement",
-        fixed: "left",
-    });
-
     const categoryCombos = new Map<string, ICategoryCombo>();
     dataElements.forEach((de) => {
         if (de.categoryCombo && !categoryCombos.has(de.categoryCombo.id)) {
