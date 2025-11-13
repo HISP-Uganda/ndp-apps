@@ -13,7 +13,7 @@ export const NDPRoute = createRoute({
     }),
     loader: async ({ context, deps: { v } }) => {
         const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
+        const data = await queryClient.ensureQueryData(
             ndpIndicatorsQueryOptions(engine, v),
         );
         return data;

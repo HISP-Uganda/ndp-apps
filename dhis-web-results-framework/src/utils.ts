@@ -11,6 +11,7 @@ import {
     FlattenedDataElement,
     GoalSearch,
     MapPredicate,
+    OrganisationUnitDataSets,
     ScorecardData,
 } from "./types";
 import { CSSProperties } from "react";
@@ -858,7 +859,7 @@ export const createColumns = (
 
 export const flattenDataElementGroupSetsResponse = ({
     dataElementGroupSets,
-}: DataElementGroupSetResponse): FlattenedDataElement[] => {
+}: DataElementGroupSetResponse) => {
     return dataElementGroupSets.flatMap(
         ({ attributeValues, id, name, code, dataElementGroups }) => {
             const degs = {
@@ -906,7 +907,14 @@ export const flattenDataElementGroupSetsResponse = ({
                             code,
                             dataSetElements,
                         }) => {
-                            const de = {
+                            const organisationUnits = dataSetElements.flatMap(
+                                ({ dataSet: { organisationUnits } }) =>
+                                    organisationUnits.map((ou) => ou.id),
+                            );
+                            const dataSets = dataSetElements.flatMap(
+                                ({ dataSet }) => dataSet.id,
+                            );
+                            return {
                                 id,
                                 name,
                                 code,
@@ -928,23 +936,17 @@ export const flattenDataElementGroupSetsResponse = ({
                                 ),
                                 ...degs,
                                 ...deg,
+                                organisationUnits,
+                                dataSets,
                             };
 
-                            const dataSetOrganizationUnits =
-                                dataSetElements.flatMap(
-                                    ({ dataSet: { organisationUnits } }) =>
-                                        organisationUnits.map((ou) => ou.id),
-                                );
-                            const dataSets = dataSetElements.flatMap(
-                                ({ dataSet }) => dataSet.id,
-                            );
-                            return uniq(dataSetOrganizationUnits).map(
-                                (organisationUnitId) => ({
-                                    ...de,
-                                    organisationUnitId,
-                                    dataSets,
-                                }),
-                            );
+                            // return uniq(dataSetOrganizationUnits).map(
+                            //     (organisationUnitId) => ({
+                            //         ...de,
+                            //         organisationUnitId,
+                            //         dataSets,
+                            //     }),
+                            // );
                         },
                     );
                 },
@@ -1049,4 +1051,36 @@ export const LIST_ITEM_STYLE: CSSProperties = {
     padding: 10,
     border: "1px solid #a4d2a3",
     borderRadius: "3px",
+};
+
+export const flattenOrganisationUnitDataSets = (
+    dataSets: OrganisationUnitDataSets,
+) => {
+    return dataSets.dataSets.flatMap(({ dataSetElements }) => {
+        return dataSetElements.map(
+            ({ dataElement: { id, name, dataElementGroups } }) => {
+                return {
+                    id,
+                    name,
+                    ...fromPairs(
+                        dataElementGroups.groupSets?.map(
+                            ({ id, name, attributeValues }) => {
+                                const entries: [string, string][] = [
+                                    ["dataElementGroupSetName", name],
+                                    ["dataElementGroupSetId", id],
+                                ];
+                                attributeValues.forEach(
+                                    ({ value, attribute: { id, name } }) => {
+                                        entries.push([id, value]);
+                                        entries.push([name, value]);
+                                    },
+                                );
+                                return entries;
+                            },
+                        ),
+                    ),
+                };
+            },
+        );
+    });
 };

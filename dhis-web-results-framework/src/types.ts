@@ -289,3 +289,63 @@ export type ScorecardData = Map<
         performance: number;
     }
 >;
+
+export const OrganisationUnitDataSetsSchema = z.object({
+    dataSets: z.array(
+        z.object({
+            dataSetElements: z.array(
+                z.object({
+                    dataElement: z.object({
+                        name: z.string(),
+                        id: z.string(),
+                        code: z.string(),
+                        dataElementGroups: z.object({
+                            name: z.string(),
+                            code: z.string(),
+                            groupSets: z.array(
+                                z.object({
+                                    name: z.string(),
+                                    id: z.string(),
+                                    code: z.string(),
+                                    attributeValues: z.array(
+                                        z.object({
+                                            attribute: z.object({
+                                                code: z.string(),
+                                                name: z.string(),
+                                                id: z.string(),
+                                            }),
+                                            value: z.string(),
+                                        }),
+                                    ),
+                                }),
+                            ),
+                            id: z.string(),
+                            attributeValues: z.array(
+                                z.object({
+                                    attribute: z.object({
+                                        code: z.string(),
+                                        name: z.string(),
+                                        id: z.string(),
+                                    }),
+                                    value: z.string(),
+                                }),
+                            ),
+                        }),
+                    }),
+                }),
+            ),
+            organisationUnits: z.array(
+                z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    code: z.string(),
+                }),
+            ),
+            name: z.string(),
+        }),
+    ),
+});
+
+export type OrganisationUnitDataSets = z.infer<
+    typeof OrganisationUnitDataSetsSchema
+>;

@@ -1,32 +1,31 @@
 import {
-    createRoute,
-    Link,
-    Navigate,
-    Outlet,
-    useLoaderData,
-    useLocation,
+	createRoute,
+	Link,
+	Navigate,
+	Outlet,
+	useLoaderData,
+	useLocation,
 } from "@tanstack/react-router";
 import React, { useState } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
-    ConfigProvider,
-    Flex,
-    Select,
-    SelectProps,
-    Splitter,
-    SplitterProps,
-    Tree,
-    TreeDataNode,
+	ConfigProvider,
+	Flex,
+	Select,
+	SelectProps,
+	Splitter,
+	Tree,
+	TreeDataNode
 } from "antd";
 
 import { SettingOutlined } from "@ant-design/icons";
-import { isEmpty, size } from "lodash";
+import { isEmpty } from "lodash";
+import { useWindowSize } from "../../hooks/use-window-size";
 import { initialQueryOptions } from "../../query-options";
 import { NDPValidator } from "../../types";
 import { getDefaultPeriods } from "../../utils";
 import { RootRoute } from "../__root";
-import { useWindowSize } from "../../hooks/use-window-size";
 
 export const LayoutRoute = createRoute({
     getParentRoute: () => RootRoute,
@@ -211,7 +210,7 @@ function Component() {
                                 <Link
                                     to="/ndp/outcome-levels"
                                     search={(prev) => ({
-                                        ...prev,
+                                        // ...prev,
                                         ou,
                                         v,
                                         program: undefined,
@@ -458,6 +457,37 @@ function Component() {
                                 </Link>
                             ),
                             key: "/ndp/vote-output-performance",
+                        },
+
+                        {
+                            title: (
+                                <Link
+                                    to="/ndp/vote-flash-report"
+                                    search={(prev) => ({
+                                        ou: votes[0].id,
+                                        v,
+                                        pe: currentFinancialYear,
+                                        quarters: v === "NDPIV",
+                                    })}
+                                    activeProps={{
+                                        style: {
+                                            color: "white",
+                                        },
+                                    }}
+                                    activeOptions={{
+                                        exact: true,
+                                        includeHash: false,
+                                        includeSearch: false,
+                                    }}
+                                    style={{
+                                        color: "#2B6998",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Flash Report
+                                </Link>
+                            ),
+                            key: "/ndp/vote-flash-report",
                         },
                     ],
                 },

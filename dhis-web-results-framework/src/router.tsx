@@ -54,6 +54,8 @@ import { VoteOutputPerformanceRoute } from "./routes/layout/ndp/vote-output-perf
 import { VoteOutputPerformanceIndexRoute } from "./routes/layout/ndp/vote-output-performance";
 import { BudgetPerformanceRoute } from "./routes/layout/ndp/budget-performance/route";
 import { BudgetPerformanceIndexRoute } from "./routes/layout/ndp/budget-performance";
+import { VoteFlashReportRoute } from "./routes/layout/ndp/vote-flash-report/route";
+import { VoteFlashReportIndexRoute } from "./routes/layout/ndp/vote-flash-report";
 
 const routeTree = RootRoute.addChildren([
     IndexRoute,
@@ -89,6 +91,7 @@ const routeTree = RootRoute.addChildren([
             VoteOutputPerformanceRoute.addChildren([
                 VoteOutputPerformanceIndexRoute,
             ]),
+            VoteFlashReportRoute.addChildren([VoteFlashReportIndexRoute]),
         ]),
     ]),
     SettingsRoute.addChildren([SettingsIndexRoute]),

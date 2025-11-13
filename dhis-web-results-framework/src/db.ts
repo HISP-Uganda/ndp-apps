@@ -1,11 +1,14 @@
 import Dexie, { Table } from "dexie";
-import { FlattenedDataElement, OrgUnit } from "./types";
+import { OrgUnit } from "./types";
+import { flattenDataElementGroupSetsResponse } from "./utils";
 export class CQIDexie extends Dexie {
     organisationUnits!: Table<OrgUnit>;
     dataViewOrgUnits!: Table<OrgUnit>;
     analytics!: Table<Record<string, string | string[] | number | null>>;
     indicators!: Table<Record<string, string>>;
-    dataElements!: Table<FlattenedDataElement>;
+    dataElements!: Table<
+        ReturnType<typeof flattenDataElementGroupSetsResponse>[number]
+    >;
 
     constructor() {
         super("ndp-rf");
@@ -13,7 +16,7 @@ export class CQIDexie extends Dexie {
             organisationUnits: "id,value,key,title,pId",
             dataViewOrgUnits: "id,value,key,title,pId",
             dataElements:
-                "[id+organisationUnitId+NDP+dataElementGroupSetId+dataElementGroupId],id,organisationUnitId,NDP,dataElementGroupSetId,dataElementGroupId",
+                "[id+organisationUnits+NDP+dataElementGroupSetId+dataElementGroupId+dataSets],id,*organisationUnits,NDP,dataElementGroupSetId,dataElementGroupId,*dataSets",
         });
     }
 }

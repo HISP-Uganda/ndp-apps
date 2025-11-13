@@ -71,7 +71,7 @@ function Component() {
                     title: `Code`,
                     dataIndex: "UBWSASWdyfi",
                     key: "UBWSASWdyfi",
-                    width: 70,
+                    width: 80,
                     align: "center",
                     sorter: true,
                 },
@@ -93,29 +93,38 @@ function Component() {
                                     onClick={() => {
                                         modal.info({
                                             title: "Indicator Dictionary",
-                                            width: 600,
+                                            width: "70%",
                                             centered: true,
                                             content: (
-                                                <Table
-                                                    columns={[
-                                                        {
-                                                            title: "Name",
-                                                            dataIndex: "name",
-                                                            key: "name",
-                                                        },
-                                                    ]}
-                                                    dataSource={record.groups}
-                                                    style={{
-                                                        margin: 0,
-                                                        padding: 0,
-                                                    }}
-                                                    pagination={false}
-                                                    rowKey="code"
-                                                    scroll={{ y: 700 }}
-                                                    showHeader={false}
-                                                    bordered
-                                                />
+                                                <pre>
+                                                    {JSON.stringify(
+                                                        record.groups,
+                                                        null,
+                                                        2,
+                                                    )}
+                                                </pre>
                                             ),
+                                            // content: (
+                                            //     <Table
+                                            //         columns={[
+                                            //             {
+                                            //                 title: "Name",
+                                            //                 dataIndex: "name",
+                                            //                 key: "name",
+                                            //             },
+                                            //         ]}
+                                            //         dataSource={record.groups}
+                                            //         style={{
+                                            //             margin: 0,
+                                            //             padding: 0,
+                                            //         }}
+                                            //         pagination={false}
+                                            //         rowKey="code"
+                                            //         scroll={{ y: 700 }}
+                                            //         showHeader={false}
+                                            //         bordered
+                                            //     />
+                                            // ),
                                         });
                                     }}
                                 />

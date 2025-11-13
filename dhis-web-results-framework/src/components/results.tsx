@@ -542,7 +542,7 @@ export function Results(props: ResultsProps) {
                                 ))}
                             </Flex>
 
-                            <Flex justify="flex-end">
+                            <Flex justify="flex-end" gap={10}>
                                 <Button
                                     onClick={() =>
                                         downloadPdfFromColumns(

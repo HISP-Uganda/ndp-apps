@@ -21,12 +21,7 @@ function Component() {
                     height="calc(100vh - 68px)"
                     width="calc(100vw - 15%)"
                     key={item}
-                    placeholder={
-                        <Image
-                            preview={false}
-                            src="https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png?x-oss-process=image/blur,r_50,s_50/quality,q_1/resize,m_mfit,h_200,w_200"
-                        />
-                    }
+                    placeholder={null}
                 />
             ))}
         </Carousel>
