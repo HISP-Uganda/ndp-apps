@@ -5,64 +5,106 @@ import { orderBy } from "lodash";
 import React, { useState } from "react";
 import { DownloadOutlined } from "@ant-design/icons";
 import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
-import { formatter, getCellStyle, legendItems } from "../../../../utils";
+import {
+    formatter,
+    getCellStyle,
+    legendItems,
+    processByPerformance,
+} from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { OverallPerformanceRoute } from "./route";
 import PerformanceLegend from "../../../../components/performance-legend";
 import downloadExcelFromColumns from "../../../../download-antd-table";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 
 export const OverallPerformanceIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => OverallPerformanceRoute,
-    component: Component,
+    component: OverallPerformance,
     // errorComponent: () => <div>{null}</div>,
 });
 
-function Component() {
-    const { votes, categories } = RootRoute.useLoaderData();
+export function OverallPerformance() {
+    const { votes, categories, ou, programs } = RootRoute.useLoaderData();
     const { engine } = OverallPerformanceRoute.useRouteContext();
-    const { pe, quarters } = OverallPerformanceIndexRoute.useSearch();
-    const { outcome, output, action } = OverallPerformanceRoute.useLoaderData();
+    const { pe = "", v } = OverallPerformanceIndexRoute.useSearch();
     const targetCategoryOptions = categories.get("Duw5yep8Vae");
     const budgetCategoryOptions = categories.get("kfnptfEdnYl");
-    const [{ data: outcomeData }, { data: outputData }, { data: actionData }] =
-        useSuspenseQueries({
-            queries: [
-                dataElementsFromGroupQueryOptions({
-                    engine,
-                    dataElementGroupSets: outcome.dataElementGroupSets,
-                    pe,
-                    quarters,
-                    category: "Duw5yep8Vae",
-                    categoryOptions: targetCategoryOptions,
-                    votes,
-                }),
-                dataElementsFromGroupQueryOptions({
-                    engine,
-                    dataElementGroupSets: output.dataElementGroupSets,
-                    pe,
-                    quarters,
-                    category: "Duw5yep8Vae",
-                    categoryOptions: targetCategoryOptions,
-                    votes,
-                }),
-                dataElementsFromGroupQueryOptions({
-                    engine,
-                    dataElementGroupSets: action.dataElementGroupSets,
-                    pe,
-                    quarters,
-                    category: "kfnptfEdnYl",
-                    categoryOptions: budgetCategoryOptions,
-                    votes,
-                }),
-            ],
-        });
+    const { data: outcome } = useAnalyticsQuery({
+        engine,
+        search: {
+            pe: [pe],
+            ou: ou,
+            category: "Duw5yep8Vae",
+            categoryOptions: targetCategoryOptions,
+        },
+        ndpVersion: v,
+        attributeValue: "intermediateOutcome",
+        specificLevel: 3,
+        ouIsFilter: false,
+    });
+
+    const { data: output } = useAnalyticsQuery({
+        engine,
+        search: {
+            pe: [pe],
+            ou: ou,
+            category: "Duw5yep8Vae",
+            categoryOptions: targetCategoryOptions,
+        },
+        ndpVersion: v,
+        attributeValue: "output",
+        specificLevel: 3,
+        ouIsFilter: false,
+    });
+
+    const { data: budget } = useAnalyticsQuery({
+        engine,
+        search: {
+            pe: [pe],
+            ou: ou,
+            category: "kfnptfEdnYl",
+            categoryOptions: budgetCategoryOptions,
+        },
+        ndpVersion: v,
+        attributeValue: "action",
+        specificLevel: 3,
+        ouIsFilter: false,
+    });
+
+    const outcomeData = processByPerformance({
+        dataElements: outcome,
+        groupingBy: "orgUnit",
+        programs,
+        pe,
+        votes,
+    });
+    const outputData = processByPerformance({
+        dataElements: output,
+        groupingBy: "orgUnit",
+        programs,
+        pe,
+        votes,
+    });
+    const budgetData = processByPerformance({
+        dataElements: budget,
+        groupingBy: "orgUnit",
+        programs,
+        pe,
+        votes,
+    });
 
     const [finalData, setFinalData] = useState(
         votes.map((vote) => {
-            const outputPerformance = outputData.get(vote.id).totalWeighted;
-            const outcomePerformance = outcomeData.get(vote.id).totalWeighted;
-            const absorptionRate = actionData.get(vote.id).performance;
+            const outputPerformance =
+                outputData.find(({ orgUnit }) => orgUnit === vote.id)
+                    ?.totalWeighted ?? 0;
+            const outcomePerformance =
+                outcomeData.find(({ orgUnit }) => orgUnit === vote.id)
+                    ?.totalWeighted ?? 0;
+            const absorptionRate =
+                budgetData.find(({ orgUnit }) => orgUnit === vote.id)
+                    ?.performance ?? 0;
             const overallScore =
                 0.4 * outcomePerformance +
                 0.4 * outputPerformance +
@@ -80,11 +122,15 @@ function Component() {
     React.useEffect(() => {
         setFinalData(() =>
             votes.map((vote) => {
-                const outputPerformance = outputData.get(vote.id).totalWeighted;
-                const outcomePerformance = outcomeData.get(
-                    vote.id,
-                ).totalWeighted;
-                const absorptionRate = actionData.get(vote.id).performance;
+                const outputPerformance =
+                    outputData.find(({ orgUnit }) => orgUnit === vote.id)
+                        ?.totalWeighted ?? 0;
+                const outcomePerformance =
+                    outcomeData.find(({ orgUnit }) => orgUnit === vote.id)
+                        ?.totalWeighted ?? 0;
+                const absorptionRate =
+                    budgetData.find(({ orgUnit }) => orgUnit === vote.id)
+                        ?.performance ?? 0;
                 const overallScore =
                     0.4 * outcomePerformance +
                     0.4 * outputPerformance +
@@ -98,7 +144,7 @@ function Component() {
                 };
             }),
         );
-    }, [outputData, outcomeData, actionData, votes]);
+    }, [outputData, outcomeData, budgetData, votes]);
 
     const columns: TableProps<(typeof finalData)[number]>["columns"] = [
         {
@@ -167,49 +213,49 @@ function Component() {
         },
     ];
 
-    const handleChange: TableProps<(typeof finalData)[number]>["onChange"] = (
-        _pagination,
-        _filters,
-        sorter,
-    ) => {
-        if (!Array.isArray(sorter)) {
-            const { field, order } = sorter;
-            if (field && order) {
-                setFinalData((prev) => {
-                    return orderBy(
-                        prev,
-                        [String(field)],
-                        [order === "ascend" ? "asc" : "desc"],
-                    );
-                });
-            } else {
-                setFinalData(() =>
-                    votes.map((vote) => {
-                        const outputPerformance = outputData?.get(
-                            vote.id,
-                        ).totalWeighted;
-                        const outcomePerformance = outcomeData?.get(
-                            vote.id,
-                        ).totalWeighted;
-                        const absorptionRate = actionData?.get(
-                            vote.id,
-                        ).performance;
-                        const overallScore =
-                            0.4 * outcomePerformance +
-                            0.4 * outputPerformance +
-                            0.2 * absorptionRate;
-                        return {
-                            ...vote,
-                            outputPerformance,
-                            outcomePerformance,
-                            absorptionRate,
-                            overallScore,
-                        };
-                    }),
-                );
-            }
-        }
-    };
+    // const handleChange: TableProps<(typeof finalData)[number]>["onChange"] = (
+    //     _pagination,
+    //     _filters,
+    //     sorter,
+    // ) => {
+    //     if (!Array.isArray(sorter)) {
+    //         const { field, order } = sorter;
+    //         if (field && order) {
+    //             setFinalData((prev) => {
+    //                 return orderBy(
+    //                     prev,
+    //                     [String(field)],
+    //                     [order === "ascend" ? "asc" : "desc"],
+    //                 );
+    //             });
+    //         } else {
+    //             setFinalData(() =>
+    //                 votes.map((vote) => {
+    //                     const outputPerformance = outputData?.get(
+    //                         vote.id,
+    //                     ).totalWeighted;
+    //                     const outcomePerformance = outcomeData?.get(
+    //                         vote.id,
+    //                     ).totalWeighted;
+    //                     const absorptionRate = actionData?.get(
+    //                         vote.id,
+    //                     ).performance;
+    //                     const overallScore =
+    //                         0.4 * outcomePerformance +
+    //                         0.4 * outputPerformance +
+    //                         0.2 * absorptionRate;
+    //                     return {
+    //                         ...vote,
+    //                         outputPerformance,
+    //                         outcomePerformance,
+    //                         absorptionRate,
+    //                         overallScore,
+    //                     };
+    //                 }),
+    //             );
+    //         }
+    //     }
+    // };
     return (
         <Flex vertical gap={10}>
             <PerformanceLegend legendItems={legendItems} />
@@ -231,12 +277,12 @@ function Component() {
                 columns={columns}
                 dataSource={finalData}
                 scroll={{ y: "calc(100vh - 242px)" }}
-                rowKey="id"
+                rowKey="orgUnit"
                 bordered={true}
                 tableLayout="auto"
                 pagination={false}
                 size="small"
-                onChange={handleChange}
+                // onChange={handleChange}
             />
         </Flex>
     );

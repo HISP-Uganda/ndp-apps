@@ -1,32 +1,344 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions } from "@tanstack/react-query";
-import { chunk, groupBy, isEmpty, orderBy, sum, uniqBy } from "lodash";
+import { Dexie } from "dexie";
+import {
+    chunk,
+    fromPairs,
+    groupBy,
+    isArray,
+    isEmpty,
+    orderBy,
+    uniqBy,
+} from "lodash";
 import { db } from "./db";
 import {
     Analytics,
+    AnalyticsData,
     DataElement,
-    DataElementGroupSet,
-    DataElementGroupSetResponse,
     DHIS2OrgUnit,
-    FlattenedDataElement,
     GoalSearch,
     Option,
     OptionSet,
-    OrganisationUnitDataSets,
     OrgUnit,
-    ScorecardData,
 } from "./types";
 import {
+    calculatePerformanceRatio,
     convertAnalyticsToObjects,
-    flattenDataElementGroupSetsResponse,
-    flattenDataElements,
-    flattenOrganisationUnitDataSets,
+    findBackground,
+    formatPercentage,
+    processDataElements,
 } from "./utils";
+
+export const queryDataElements = async ({
+    ndpVersion,
+    attributeValue,
+    program,
+    objective,
+    keyResultArea,
+    goal,
+    ou,
+    requiresProgram,
+    queryByOu,
+    isVision,
+}: {
+    ndpVersion: string;
+    attributeValue?: string;
+    program?: string;
+    objective?: string;
+    keyResultArea?: string;
+    goal?: string;
+    ou: string;
+    requiresProgram?: boolean;
+    queryByOu?: boolean;
+    isVision?: boolean;
+}) => {
+    let where: Record<string, string | string[]> = {
+        fsIKncW1Eps: ndpVersion,
+    };
+
+    if (attributeValue) {
+        where.BmUMiIbD5XY = attributeValue;
+    }
+
+    if (queryByOu && ou) {
+        where.orgUnit = ou;
+    }
+    const requiredAttributes: string[] = [];
+
+    if (requiresProgram && program && program !== "All") {
+        requiredAttributes.push(program);
+    } else if (requiresProgram) {
+        return [];
+    }
+
+    if (objective && objective !== "All") {
+        requiredAttributes.push(objective);
+    }
+
+    if (keyResultArea && keyResultArea !== "All") {
+        requiredAttributes.push(keyResultArea);
+    }
+
+    if (goal && goal !== "All") {
+        requiredAttributes.push(goal);
+    }
+
+    if (isVision) {
+        requiredAttributes.push("true");
+    }
+
+    const dataElements = await db.dataElements
+        .where(where)
+        .filter((de) => {
+            if (requiredAttributes.length) {
+                if (!Array.isArray(de.attributes)) return false;
+                const hasAllAttributes = requiredAttributes.every((attr) =>
+                    de.attributes.includes(attr),
+                );
+                if (!hasAllAttributes) return false;
+            }
+            if (ou && Array.isArray(de.organisationUnits)) {
+                return de.organisationUnits.some(
+                    (ouItem) => ouItem.indexOf(ou) !== -1,
+                );
+            }
+            return true;
+        })
+        .toArray();
+
+    return dataElements;
+};
+
+export const queryAnalytics = async ({
+    pe,
+    quarters,
+    ou,
+    engine,
+    category,
+    categoryOptions,
+    ouIsFilter,
+    requiresProgram,
+    ndpVersion,
+    attributeValue,
+    program,
+    objective,
+    queryByOu,
+    specificLevel,
+    isVision,
+    goal,
+    keyResultArea,
+}: {
+    pe: string | string[];
+    quarters?: boolean;
+    ou: string;
+    category: string;
+    categoryOptions: string[];
+    engine: ReturnType<typeof useDataEngine>;
+    ouIsFilter: boolean;
+    periodIsFilter?: boolean;
+    requiresProgram?: boolean;
+    ndpVersion: string;
+    attributeValue?: string;
+    program?: string;
+    objective?: string;
+    queryByOu?: boolean;
+    specificLevel?: number;
+    isVision?: boolean;
+    goal?: string;
+    keyResultArea?: string;
+}): Promise<{
+    data: AnalyticsData[];
+    items: Analytics["metaData"]["items"];
+    dimensions: Analytics["metaData"]["dimensions"];
+}> => {
+    const analyticsChunkSize = 200;
+    let data: ReturnType<typeof processDataElements> = [];
+    let items: Analytics["metaData"]["items"] = {};
+    let dimensions: Analytics["metaData"]["dimensions"] = {};
+
+    const target = categoryOptions.at(-2) ?? "";
+    const actual = categoryOptions.at(-1) ?? "";
+    const baseline = categoryOptions.at(0) ?? "";
+    const approved = categoryOptions.at(1) ?? "";
+    const dataElements = await queryDataElements({
+        ndpVersion,
+        attributeValue,
+        program,
+        objective,
+        ou,
+        requiresProgram,
+        queryByOu,
+        isVision,
+				goal,
+				keyResultArea,
+    });
+    const dataElementsMap = new Map(dataElements.map((de) => [de.id, de]));
+
+    if (!isEmpty(pe) && dataElements.length > 0) {
+        const periodFilter = new Set(pe);
+        if (quarters) {
+            for (const p of pe) {
+                const year = Number(p?.slice(0, 4));
+                const q1 = `${year}Q3`;
+                const q2 = `${year}Q4`;
+                const q3 = `${year + 1}Q1`;
+                const q4 = `${year + 1}Q2`;
+                periodFilter.add(q1).add(q2).add(q3).add(q4);
+            }
+        }
+
+        const dataElementIds = Array.from(dataElementsMap.keys());
+
+        const params = new URLSearchParams({
+            includeMetadataDetails: "true",
+        });
+
+        let orgUnitParam = `ou:${ou}`;
+        if (specificLevel !== undefined) {
+            orgUnitParam = `${orgUnitParam};LEVEL-${specificLevel}`;
+        }
+
+        params.append("dimension", orgUnitParam);
+        params.append("dimension", orgUnitParam);
+        params.append("dimension", `${category}:${categoryOptions?.join(";")}`);
+        params.append("dimension", `pe:${Array.from(periodFilter).join(";")}`);
+
+        const queries: Record<string, any> = {};
+
+        chunk(dataElementIds, analyticsChunkSize).forEach((deIds, index) => {
+            const currentParams = new URLSearchParams(params);
+            currentParams.append("dimension", `dx:${deIds.join(";")}`);
+
+            queries[`analytics${index}`] = {
+                resource: `analytics??${currentParams.toString()}`,
+            };
+        });
+
+        const currentData = (await engine.query(queries)) as Record<
+            string,
+            Analytics
+        >;
+
+        for (const [, analytics] of Object.entries(currentData)) {
+            items = { ...items, ...analytics.metaData.items };
+            dimensions = { ...dimensions, ...analytics.metaData.dimensions };
+            const actualData = convertAnalyticsToObjects(analytics);
+            const processedDataElements = analytics.metaData.dimensions[
+                "dx"
+            ].flatMap((dx) => {
+                const de = dataElementsMap.get(dx)!;
+                const dxFiltered = actualData.filter((item) => item.dx === dx);
+                return Object.entries(groupBy(dxFiltered, "ou")).map(
+                    ([orgUnit, orgUnitFiltered]) => {
+                        const current: Map<string, any> = new Map();
+                        for (const pe of analytics.metaData.dimensions["pe"]) {
+                            const periodData = orgUnitFiltered.filter(
+                                (row) => row.pe === pe,
+                            );
+                            const baselineValue = Number(
+                                periodData.find((row) => {
+                                    return row[category] === baseline;
+                                })?.value,
+                            );
+                            let targetValue = Number(
+                                periodData.find(
+                                    (row) => row[category] === target,
+                                )?.value,
+                            );
+                            let approvedValue = Number(
+                                periodData.find(
+                                    (row) => row[category] === approved,
+                                )?.value,
+                            );
+
+                            const actualValue = Number(
+                                periodData.find(
+                                    (row) => row[category] === actual,
+                                )?.value,
+                            );
+                            let year = pe.slice(0, 4);
+                            if (pe.indexOf("Q") > -1) {
+                                const quarter = pe.slice(-1);
+                                if (quarter === "1" || quarter === "2") {
+                                    year = String(Number(year) - 1);
+                                }
+                                targetValue = Number(
+                                    orgUnitFiltered.find(
+                                        (row) =>
+                                            row[category] === target &&
+                                            row["pe"] === `${year}July`,
+                                    )?.value,
+                                );
+                            }
+
+                            const ratio = calculatePerformanceRatio(
+                                actualValue,
+                                targetValue,
+                            );
+                            const { performance, style } = findBackground(
+                                ratio,
+                                de["descending indicator type"],
+                            );
+                            if (isNaN(ratio)) {
+                                current.set(`${pe}performance`, "-");
+                            } else {
+                                current.set(
+                                    `${pe}performance`,
+                                    formatPercentage(ratio / 100),
+                                );
+                            }
+
+                            current.set("ou", orgUnit);
+                            current.set(`${pe}style`, style);
+                            current.set(`${pe}performance-group`, performance);
+                            current.set(
+                                `${pe}target`,
+                                isNaN(targetValue) ? "-" : targetValue,
+                            );
+                            current.set(
+                                `${pe}approved`,
+                                isNaN(approvedValue) ? "-" : approvedValue,
+                            );
+                            current.set(
+                                `${pe}actual`,
+                                isNaN(actualValue) ? "-" : actualValue,
+                            );
+                            current.set(
+                                `${pe}baseline`,
+                                isNaN(baselineValue) ? "-" : baselineValue,
+                            );
+                            current.set(
+                                `${pe}${target}`,
+                                isNaN(targetValue) ? "-" : targetValue,
+                            );
+                            current.set(
+                                `${pe}${actual}`,
+                                isNaN(actualValue) ? "-" : actualValue,
+                            );
+                            current.set(
+                                `${pe}${baseline}`,
+                                isNaN(baselineValue) ? "-" : baselineValue,
+                            );
+                            current.set(
+                                `${pe}${approved}`,
+                                isNaN(approvedValue) ? "-" : approvedValue,
+                            );
+                        }
+                        return {
+                            ...de,
+                            ...Object.fromEntries(current),
+                        };
+                    },
+                );
+            });
+            data = data.concat(processedDataElements);
+        }
+    }
+    return { data: orderBy(data, "code"), items, dimensions };
+};
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
-    optionSet: string,
-    programOptionSet: string,
 ) => {
     return queryOptions({
         queryKey: ["initial-query-options"],
@@ -38,22 +350,12 @@ export const initialQueryOptions = (
                         fields: "organisationUnits[id,name,leaf],dataViewOrganisationUnits[id,name,leaf]",
                     },
                 },
-
                 options: {
                     resource: "optionSets",
                     params: {
-                        filter: `id:in:[Az2bwwUIPWn]`,
-                        fields: "id,options[id,name,code]",
+                        filter: `id:in:[Az2bwwUIPWn,fALlyU4UYhZ,uV4fZlNvUsw,nZffnMQwoWr,D5J653eYk73,YY3JtOQIccj,xQG5xfRYb50,rcESKgz4zKM,jiBHfTa5VzB,zVYsHjAeHlG,fsIKncW1Eps]`,
+                        fields: "id,name,options[*]",
                     },
-                },
-                ndpVersions: {
-                    resource: `optionSets/${optionSet}/options`,
-                },
-                programs: {
-                    resource: `optionSets/${programOptionSet}/options`,
-                },
-                programGoals: {
-                    resource: `optionSets/D5J653eYk73/options`,
                 },
                 categories: {
                     resource: "categories",
@@ -64,16 +366,17 @@ export const initialQueryOptions = (
                 },
                 central: {
                     resource: "organisationUnits/ONXWQ2EoOcP",
-                    params: { level: 1, fields: "id,name,code", paging: false },
+                    params: {
+                        level: 1,
+                        fields: "id,name,code,path",
+                        paging: false,
+                    },
                 },
             });
 
             const {
                 orgUnits: { dataViewOrganisationUnits },
-                options: { options },
-                ndpVersions: { options: ndpVersions },
-                programs: { options: programs },
-                programGoals: { options: programGoals },
+                options,
                 categories: { categories },
                 central,
             } = response as unknown as {
@@ -81,16 +384,7 @@ export const initialQueryOptions = (
                     organisationUnits: DHIS2OrgUnit[];
                     dataViewOrganisationUnits: DHIS2OrgUnit[];
                 };
-                options: OptionSet;
-                ndpVersions: {
-                    options: Option[];
-                };
-                programs: {
-                    options: Option[];
-                };
-                programGoals: {
-                    options: Option[];
-                };
+                options: { optionSets: OptionSet[] };
                 categories: {
                     categories: Array<{
                         id: string;
@@ -118,10 +412,25 @@ export const initialQueryOptions = (
                     return current;
                 },
             );
-
             const allAreLeaves = organisationUnits.every((ou) => ou.isLeaf);
-
             const configurations: Record<string, any> = {};
+            const {
+                D5J653eYk73: programGoals,
+                fALlyU4UYhZ: programObjectives,
+                uV4fZlNvUsw: ndpVersions,
+                nZffnMQwoWr: programs,
+                rcESKgz4zKM: programOutcomes,
+                jiBHfTa5VzB: programOutputs,
+                xQG5xfRYb50: strategicObjectives,
+                zVYsHjAeHlG: keyResultAreas,
+            } = fromPairs(
+                options.optionSets.map((oset) => [oset.id, oset.options]),
+            );
+            const all: Map<string, string> = new Map(
+                options.optionSets
+                    .flatMap((oset) => oset.options)
+                    .map((o) => [o.code, o.name]),
+            );
             for (const version of ndpVersions) {
                 try {
                     const response = await engine.query({
@@ -144,12 +453,16 @@ export const initialQueryOptions = (
             }
             await db.dataViewOrgUnits.bulkPut(organisationUnits);
             return {
-                options,
                 programs,
                 ndpVersions,
                 ou: dataViewOrganisationUnits[0].id,
                 configurations,
                 programGoals,
+                programObjectives,
+                programOutcomes,
+                programOutputs,
+                strategicObjectives,
+                keyResultAreas,
                 categories: new Map(
                     categories.map((c) => [
                         c.id,
@@ -170,6 +483,7 @@ export const initialQueryOptions = (
                     return true;
                 }),
                 allAreLeaves,
+                allOptionsMap: all,
             };
         },
     });
@@ -193,26 +507,16 @@ export const optionSetQueryOptions = (
 };
 
 export const dataElementGroupSetsQueryOptions = (
-    engine: ReturnType<typeof useDataEngine>,
     attributeValue: string,
     ndpVersion: string,
 ) => {
     return queryOptions({
         queryKey: ["data-element-groupSets", attributeValue, ndpVersion],
         queryFn: async () => {
-            const response = await engine.query({
-                dataElementGroupSets: {
-                    resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:${attributeValue}&fields=id,name,displayName,dataElementGroups[id,name,attributeValues],attributeValues&paging=false`,
-                },
-            });
-            const {
-                dataElementGroupSets: { dataElementGroupSets },
-            } = response as unknown as {
-                dataElementGroupSets: {
-                    dataElementGroupSets: DataElementGroupSet[];
-                };
-            };
-            return dataElementGroupSets;
+            const dataElements = await db.dataElements
+                .where({ fsIKncW1Eps: ndpVersion, BmUMiIbD5XY: attributeValue })
+                .toArray();
+            return dataElements;
         },
     });
 };
@@ -221,38 +525,63 @@ export const dataElementGroupSetsWithProgramsQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
     attributeValue: string,
     ndpVersion: string,
+    program: string | undefined,
+    orgUnit: string | undefined,
+    objective?: string,
 ) => {
     return queryOptions({
-        queryKey: ["option-sets-programs", ndpVersion, attributeValue],
+        queryKey: [
+            "option-sets-programs",
+            program,
+            orgUnit,
+            ndpVersion,
+            attributeValue,
+            objective,
+        ],
         queryFn: async () => {
-            const response = await engine.query({
-                optionSets: {
-                    resource: `optionSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:true&fields=options[id,name,code]`,
-                },
-                dataElementGroupSets: {
-                    resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:${attributeValue}&fields=id,name,displayName,code,dataElementGroups[id,name,code,attributeValues],attributeValues&paging=false`,
-                },
-            });
-            const {
-                optionSets: {
-                    optionSets: [{ options }],
-                },
-                dataElementGroupSets: { dataElementGroupSets },
-            } = response as unknown as {
-                optionSets: {
-                    optionSets: Array<{
-                        options: Array<{
-                            id: string;
-                            name: string;
-                            code: string;
-                        }>;
-                    }>;
-                };
-                dataElementGroupSets: {
-                    dataElementGroupSets: DataElementGroupSet[];
-                };
-            };
-            return { options, dataElementGroupSets };
+            // const response = await engine.query({
+            //     optionSets: {
+            //         resource: `optionSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:true&fields=options[id,name,code]`,
+            //     },
+            // });
+            const dataElements = await db.dataElements
+                .where({ fsIKncW1Eps: ndpVersion, BmUMiIbD5XY: attributeValue })
+                .filter((de) => {
+                    if (objective) {
+                        return (
+                            de.attributes !== undefined &&
+                            isArray(de.attributes) &&
+                            de.attributes.some((attr) => attr === program) &&
+                            de.attributes.some((attr) => attr === objective) &&
+                            isArray(de.organisationUnits) &&
+                            de.organisationUnits.some((ou) =>
+                                ou.includes(orgUnit || ""),
+                            )
+                        );
+                    }
+                    return (
+                        de.attributes !== undefined &&
+                        isArray(de.attributes) &&
+                        de.attributes.some((attr) => attr === program) &&
+                        isArray(de.organisationUnits) &&
+                        de.organisationUnits.some((ou) =>
+                            ou.includes(orgUnit || ""),
+                        )
+                    );
+                })
+                .toArray();
+            // const {
+            //     optionSets: {
+            //         optionSets: [{ options }],
+            //     },
+            // } = response as unknown as {
+            //     optionSets: {
+            //         optionSets: Array<{
+            //             options: Option[];
+            //         }>;
+            //     };
+            // };
+            return dataElements;
         },
     });
 };
@@ -305,80 +634,74 @@ export const orgUnitQueryOptions = (
     });
 };
 
-export const analyticsQueryOptions = (
-    engine: ReturnType<typeof useDataEngine>,
-    { deg, pe, ou, degs, category, categoryOptions }: GoalSearch,
-) => {
+export const analyticsQueryOptions = ({
+    engine,
+    search: {
+        pe,
+        ou,
+        category,
+        categoryOptions,
+        requiresProgram,
+        objective,
+        program,
+        quarters,
+        goal,
+        keyResultArea,
+    },
+    attributeValue,
+    ndpVersion,
+    queryByOu,
+    specificLevel,
+    ouIsFilter = true,
+    isVision,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    search: GoalSearch;
+    ndpVersion: string;
+    attributeValue?: string;
+    queryByOu?: boolean;
+    specificLevel?: number;
+    ouIsFilter?: boolean;
+    isVision?: boolean;
+}) => {
     return queryOptions({
         queryKey: [
             "analytics",
             ...(pe ?? []),
-            degs,
-            deg,
             ou,
             category,
             ...(categoryOptions ?? []),
+            requiresProgram,
+            objective,
+            program,
+            ndpVersion,
+            attributeValue,
+            goal,
+            keyResultArea,
+            isVision,
         ],
         queryFn: async () => {
-            if (
-                deg === undefined ||
-                pe === undefined ||
-                ou === undefined ||
-                category === undefined ||
-                categoryOptions === undefined ||
-                isEmpty(deg) ||
-                isEmpty(pe) ||
-                isEmpty(ou) ||
-                isEmpty(category) ||
-                isEmpty(categoryOptions)
-            ) {
-                throw new Error(
-                    "Organisation unit and/or period and/or dimension are missing",
-                );
-            }
-
-            const params = new URLSearchParams({
-                displayProperty: "NAME",
-                includeMetadataDetails: "true",
+            const data = await queryAnalytics({
+                pe: pe ?? [],
+                category,
+                categoryOptions: categoryOptions ?? [],
+                ou,
+                ouIsFilter,
+                engine,
+                quarters,
+                objective,
+                program,
+                requiresProgram,
+                ndpVersion,
+                attributeValue,
+                queryByOu,
+                specificLevel,
+                isVision,
+                goal,
+                keyResultArea,
             });
-            [
-                `${category}:${categoryOptions.join(";")}`,
-                `pe:${pe.join(";")}`,
-                `dx:${deg}`,
-            ].forEach((dimension) => params.append("dimension", dimension));
-            [`ou:${ou}`].forEach((filter) => params.append("filter", filter));
-            const response = await engine.query({
-                analytics: {
-                    resource: `analytics?${params.toString()}`,
-                },
-            });
-            const { analytics } = response as unknown as {
-                analytics: Analytics;
-            };
-
-            const response2 = await engine.query({
-                dataElements: {
-                    resource: `dataElements.json`,
-                    params: {
-                        filter: `id:in:[${analytics.metaData.dimensions[
-                            "dx"
-                        ]?.join(",")}]`,
-                        paging: "false",
-                        fields: "id,name,code,aggregationType,dataSetElements[dataSet[name,periodType,id,organisationUnits[code,displayName,id]]],attributeValues[attribute[id,name],value],dataElementGroups[id,name,code,attributeValues[attribute[id,name],value],groupSets[id,name,attributeValues[attribute[id,name],value]]]",
-                    },
-                },
-            });
-            const {
-                dataElements: { dataElements },
-            } = response2 as unknown as {
-                dataElements: {
-                    dataElements: DataElement[];
-                };
-            };
-            const dataElementsMap = flattenDataElements(dataElements);
-            return { analytics, dataElements: dataElementsMap };
+            return data;
         },
-        enabled: !isEmpty(deg) && !isEmpty(pe) && !isEmpty(ou),
         refetchOnWindowFocus: false,
         retry: false,
     });
@@ -419,7 +742,7 @@ export const dataStoreQueryOptions = (
 
 export const dataElementsFromGroupQueryOptions = ({
     engine,
-    dataElementGroupSets,
+    dataElements,
     pe,
     quarters,
     category,
@@ -428,401 +751,240 @@ export const dataElementsFromGroupQueryOptions = ({
     votes,
 }: {
     engine: ReturnType<typeof useDataEngine>;
-    dataElementGroupSets: DataElementGroupSet[];
-    pe?: string;
+    dataElements: Map<string, ReturnType<typeof processDataElements>[number]>;
+    pe: string[];
     quarters?: boolean;
-    category?: string;
-    categoryOptions?: string[];
+    category: string;
+    categoryOptions: string[];
     isSum?: boolean;
     votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>;
 }) => {
     return queryOptions({
         queryKey: [
             "dataElementsFromGroup",
-            dataElementGroupSets.length,
+            dataElements.size,
             pe,
             category,
             ...(categoryOptions ?? []),
         ],
         queryFn: async () => {
-            if (pe === undefined) {
-                throw new Error("Period is undefined");
-            }
-            if (!dataElementGroupSets.length) {
-                return new Map();
-            }
-            let periodFilter = pe;
-            if (quarters) {
-                const year = Number(pe?.slice(0, 4));
-                const q1 = `${year}Q3`;
-                const q2 = `${year}Q4`;
-                const q3 = `${year + 1}Q1`;
-                const q4 = `${year + 1}Q2`;
-                periodFilter = `${pe};${q1};${q2};${q3};${q4}`;
-            }
-            const dataElementGroups = dataElementGroupSets.flatMap(
-                ({ dataElementGroups }) =>
-                    dataElementGroups.map((deg) => `DE_GROUP-${deg.id}`),
-            );
+            // const data = await queryAnalytics({
+            //     pe,
+            //     category,
+            //     categoryOptions,
+            //     dataElements,
+            //     quarters,
+            //     ous: votes.map((v) => v.id),
+            //     engine,
+            //     ouIsFilter: false,
+            // });
 
-            if (!dataElementGroups.length) {
-                return new Map();
-            }
+            // const analyticsByKey = new Map<
+            //     string,
+            //     Array<{
+            //         dx: string;
+            //         value: string;
+            //         attribution: string;
+            //         ou: string;
+            //         pe: string;
+            //     }>
+            // >();
 
-            const params = new URLSearchParams({
-                includeMetadataDetails: "true",
-            });
-            params.append(
-                "dimension",
-                `ou:${votes.map((v) => v.id).join(";")}`,
-            );
-            params.append(
-                "dimension",
-                `${category}:${categoryOptions?.join(";")}`,
-            );
-            params.append("dimension", `pe:${periodFilter}`);
+            // currentData.forEach((row) => {
+            //     const key = `${row.ou}_${row.dx}`;
+            //     if (!analyticsByKey.has(key)) {
+            //         analyticsByKey.set(key, []);
+            //     }
+            //     analyticsByKey.get(key)!.push(row);
+            // });
 
-            const analyticsChunkSize = 100;
+            // const data: ScorecardData = new Map();
 
-            let analyticsCombined: Analytics = {
-                metaData: {
-                    dimensions: {
-                        dx: [],
-                        ou: [],
-                        pe: [],
-                        Duw5yep8Vae: [],
-                    },
-                    items: {},
-                },
-                headers: [],
-                rows: [],
-                width: 4,
-                height: 0,
-                headerWidth: 4,
-            };
+            // const dataElementsByOu = new Map<string, string[]>();
 
-            for (const degIds of chunk(dataElementGroups, analyticsChunkSize)) {
-                const currentParams = new URLSearchParams(params);
-                currentParams.append("dimension", `dx:${degIds.join(";")}`);
-                const { analytics } = (await engine.query({
-                    analytics: {
-                        resource: `analytics??${currentParams.toString()}`,
-                    },
-                })) as { analytics: Analytics };
+            // for (const ou of ous) {
+            //     const dataElementsForOrgUnit = dataElementsByOu.get(ou) || [];
+            //     const grouped = dataElementsForOrgUnit.map((de) => {
+            //         const reportedDataElements =
+            //             analyticsByKey.get(`${ou}_${de}`) || [];
 
-                analyticsCombined = {
-                    ...analyticsCombined,
-                    metaData: {
-                        ...analyticsCombined.metaData,
-                        dimensions: {
-                            ...analyticsCombined.metaData.dimensions,
-                            ...analytics.metaData.dimensions,
-                            ou: [
-                                ...new Set(
-                                    (
-                                        analyticsCombined.metaData.dimensions?.[
-                                            "ou"
-                                        ] ?? []
-                                    ).concat(
-                                        analytics.metaData.dimensions["ou"],
-                                    ),
-                                ),
-                            ],
-                            dx: [
-                                ...new Set(
-                                    (
-                                        analyticsCombined.metaData.dimensions[
-                                            "dx"
-                                        ] ?? []
-                                    ).concat(
-                                        analytics.metaData.dimensions["dx"],
-                                    ),
-                                ),
-                            ],
-                            pe: [
-                                ...new Set(
-                                    (
-                                        analyticsCombined.metaData.dimensions[
-                                            "pe"
-                                        ] ?? []
-                                    ).concat(
-                                        analytics.metaData.dimensions["pe"],
-                                    ),
-                                ),
-                            ],
-                            [category!]: [
-                                ...new Set(
-                                    (
-                                        analyticsCombined.metaData.dimensions[
-                                            category!
-                                        ] ?? []
-                                    ).concat(
-                                        analytics.metaData.dimensions[
-                                            category!
-                                        ],
-                                    ),
-                                ),
-                            ],
-                        },
-                        items: {
-                            ...analyticsCombined.metaData.items,
-                            ...analytics.metaData.items,
-                        },
-                    },
-                    headers: uniqBy(
-                        [...analyticsCombined.headers, ...analytics.headers],
-                        "name",
-                    ),
-                    rows: analyticsCombined.rows.concat(analytics.rows),
-                };
-            }
+            //         if (reportedDataElements.length === 0) {
+            //             return {
+            //                 dataElement: de,
+            //                 performance: 0,
+            //                 status: "nd",
+            //             };
+            //         }
 
-            if (analyticsCombined.rows.length === 0) {
-                return new Map();
-            }
-            const dataElementsByOu = new Map<string, string[]>();
+            //         const baseline = orderBy(
+            //             reportedDataElements.filter(
+            //                 (v) =>
+            //                     categoryOptions &&
+            //                     v.attribution === categoryOptions.at(-3),
+            //             ),
+            //             "period",
+            //             "desc",
+            //         );
 
-            const dataElementQuery = await db.dataElements
-                .where("dataElementGroupId")
-                .anyOf(
-                    dataElementGroups.map((id) => id.replace("DE_GROUP-", "")),
-                )
-                .toArray();
+            //         const target = orderBy(
+            //             reportedDataElements.filter(
+            //                 (v) =>
+            //                     categoryOptions &&
+            //                     v.attribution === categoryOptions.at(-2),
+            //             ),
+            //             "period",
+            //             "desc",
+            //         );
+            //         const actual = orderBy(
+            //             reportedDataElements.filter((v) => {
+            //                 return (
+            //                     categoryOptions &&
+            //                     v.attribution === categoryOptions.at(-1)
+            //                 );
+            //             }),
+            //             "period",
+            //             "desc",
+            //         );
 
-            dataElementQuery.forEach(({ id, organisationUnits }) => {
-                organisationUnits.forEach((ou) => {
-                    if (!dataElementsByOu.has(ou)) {
-                        dataElementsByOu.set(ou, []);
-                    }
-                    dataElementsByOu.get(ou)!.push(id);
-                });
-            });
+            //         if (target && actual.length > 0) {
+            //             const actualTotal = isSum
+            //                 ? sum(actual.map((a) => Number(a.value)))
+            //                 : Number(actual[0]?.value ?? 0);
+            //             const targetTotal = isSum
+            //                 ? sum(target.map((t) => Number(t.value)))
+            //                 : Number(target[0]?.value ?? 0);
+            //             const baselineTotal = isSum
+            //                 ? sum(baseline.map((t) => Number(t.value)))
+            //                 : Number(baseline[0]?.value ?? 0);
+            //             const performanceRation = actualTotal / targetTotal;
+            //             const performance = performanceRation * 100;
+            //             if (isNaN(performance) || !isFinite(performance)) {
+            //                 return {
+            //                     dataElement: de,
+            //                     performance,
+            //                     status: "nd",
+            //                     target: targetTotal,
+            //                     actual: actualTotal,
+            //                     baseline: baselineTotal,
+            //                 };
+            //             }
+            //             if (performance >= 100) {
+            //                 return {
+            //                     dataElement: de,
+            //                     performance,
+            //                     status: "a",
+            //                     target: targetTotal,
+            //                     actual: actualTotal,
+            //                     baseline: baselineTotal,
+            //                 };
+            //             }
 
-            const dxIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "dx",
-            );
-            const ouIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "ou",
-            );
-            const peIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "pe",
-            );
-            const Duw5yep8VaeIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === category,
-            );
-            const valueIndex = analyticsCombined.headers.findIndex(
-                (header) => header.name === "value",
-            );
+            //             if (performance >= 75 && performance < 100) {
+            //                 return {
+            //                     dataElement: de,
+            //                     performance,
+            //                     status: "m",
+            //                     target: targetTotal,
+            //                     actual: actualTotal,
+            //                     baseline: baselineTotal,
+            //                 };
+            //             }
 
-            const analyticsByKey = new Map<
-                string,
-                Array<{
-                    dataElement: string;
-                    value: string;
-                    goalStatus: string;
-                    period: string;
-                }>
-            >();
+            //             if (performance < 75) {
+            //                 return {
+            //                     dataElement: de,
+            //                     performance,
+            //                     status: "n",
+            //                     target: targetTotal,
+            //                     actual: actualTotal,
+            //                     baseline: baselineTotal,
+            //                 };
+            //             }
 
-            analyticsCombined.rows.forEach((row) => {
-                const key = `${row[ouIndex]}_${row[dxIndex]}`;
-                if (!analyticsByKey.has(key)) {
-                    analyticsByKey.set(key, []);
-                }
-                analyticsByKey.get(key)!.push({
-                    dataElement: row[dxIndex],
-                    value: row[valueIndex],
-                    goalStatus: row[Duw5yep8VaeIndex],
-                    period: row[peIndex],
-                });
-            });
+            //             return {
+            //                 dataElement: de,
+            //                 performance,
+            //                 status: "nd",
+            //                 target: targetTotal,
+            //                 actual: actualTotal,
+            //                 baseline: baselineTotal,
+            //             };
+            //         }
+            //         return {
+            //             dataElement: de,
+            //             performance: 0,
+            //             status: "nd",
+            //             target: 0,
+            //             actual: 0,
+            //             baseline: 0,
+            //         };
+            //     });
 
-            const data: ScorecardData = new Map();
+            //     const sumActual = sum(grouped.map((g) => g.actual || 0));
+            //     const sumTarget = sum(grouped.map((g) => g.target || 0));
+            //     const baselineTotal = sum(grouped.map((g) => g.baseline || 0));
+            //     const groupedPerformance = groupBy(grouped, "status");
+            //     const denominator = dataElementsForOrgUnit.length;
+            //     const achieved = groupedPerformance["a"]
+            //         ? groupedPerformance["a"].length
+            //         : 0;
+            //     const moderatelyAchieved = groupedPerformance["m"]
+            //         ? groupedPerformance["m"].length
+            //         : 0;
+            //     const notAchieved = groupedPerformance["n"]
+            //         ? groupedPerformance["n"].length
+            //         : 0;
+            //     const noData = groupedPerformance["nd"]
+            //         ? groupedPerformance["nd"].length
+            //         : 0;
 
-            for (const ou of analyticsCombined.metaData.dimensions["ou"]) {
-                const dataElementsForOrgUnit = dataElementsByOu.get(ou) || [];
-                const grouped = dataElementsForOrgUnit.map((de) => {
-                    const reportedDataElements =
-                        analyticsByKey.get(`${ou}_${de}`) || [];
+            //     const percentAchieved =
+            //         denominator !== 0 ? achieved / denominator : 0;
+            //     const percentModeratelyAchieved =
+            //         denominator !== 0 ? moderatelyAchieved / denominator : 0;
+            //     const percentNotAchieved =
+            //         denominator !== 0 ? notAchieved / denominator : 0;
+            //     const percentNoData =
+            //         denominator !== 0 ? noData / denominator : 0;
 
-                    if (reportedDataElements.length === 0) {
-                        return {
-                            dataElement: de,
-                            performance: 0,
-                            status: "nd",
-                        };
-                    }
+            //     const achievedWeighted = percentAchieved * (1 / 2);
+            //     const moderatelyAchievedWeighted =
+            //         percentModeratelyAchieved * (7 / 20);
+            //     const notAchievedWeighted = percentNotAchieved * (3 / 20);
+            //     const noDataWeighted = percentNoData * (0 / 200);
 
-                    const baseline = orderBy(
-                        reportedDataElements.filter(
-                            (v) =>
-                                categoryOptions &&
-                                v.goalStatus === categoryOptions.at(-3),
-                        ),
-                        "period",
-                        "desc",
-                    );
-
-                    const target = orderBy(
-                        reportedDataElements.filter(
-                            (v) =>
-                                categoryOptions &&
-                                v.goalStatus === categoryOptions.at(-2),
-                        ),
-                        "period",
-                        "desc",
-                    );
-                    const actual = orderBy(
-                        reportedDataElements.filter((v) => {
-                            return (
-                                categoryOptions &&
-                                v.goalStatus === categoryOptions.at(-1)
-                            );
-                        }),
-                        "period",
-                        "desc",
-                    );
-
-                    if (target && actual.length > 0) {
-                        const actualTotal = isSum
-                            ? sum(actual.map((a) => Number(a.value)))
-                            : Number(actual[0]?.value ?? 0);
-                        const targetTotal = isSum
-                            ? sum(target.map((t) => Number(t.value)))
-                            : Number(target[0]?.value ?? 0);
-                        const baselineTotal = isSum
-                            ? sum(baseline.map((t) => Number(t.value)))
-                            : Number(baseline[0]?.value ?? 0);
-                        const performanceRation = actualTotal / targetTotal;
-                        const performance = performanceRation * 100;
-                        if (isNaN(performance) || !isFinite(performance)) {
-                            return {
-                                dataElement: de,
-                                performance,
-                                status: "nd",
-                                target: targetTotal,
-                                actual: actualTotal,
-                                baseline: baselineTotal,
-                            };
-                        }
-                        if (performance >= 100) {
-                            return {
-                                dataElement: de,
-                                performance,
-                                status: "a",
-                                target: targetTotal,
-                                actual: actualTotal,
-                                baseline: baselineTotal,
-                            };
-                        }
-
-                        if (performance >= 75 && performance < 100) {
-                            return {
-                                dataElement: de,
-                                performance,
-                                status: "m",
-                                target: targetTotal,
-                                actual: actualTotal,
-                                baseline: baselineTotal,
-                            };
-                        }
-
-                        if (performance < 75) {
-                            return {
-                                dataElement: de,
-                                performance,
-                                status: "n",
-                                target: targetTotal,
-                                actual: actualTotal,
-                                baseline: baselineTotal,
-                            };
-                        }
-
-                        return {
-                            dataElement: de,
-                            performance,
-                            status: "nd",
-                            target: targetTotal,
-                            actual: actualTotal,
-                            baseline: baselineTotal,
-                        };
-                    }
-                    return {
-                        dataElement: de,
-                        performance: 0,
-                        status: "nd",
-                        target: 0,
-                        actual: 0,
-                        baseline: 0,
-                    };
-                });
-
-                const sumActual = sum(grouped.map((g) => g.actual || 0));
-                const sumTarget = sum(grouped.map((g) => g.target || 0));
-                const baselineTotal = sum(grouped.map((g) => g.baseline || 0));
-                const groupedPerformance = groupBy(grouped, "status");
-                const denominator = dataElementsForOrgUnit.length;
-                const achieved = groupedPerformance["a"]
-                    ? groupedPerformance["a"].length
-                    : 0;
-                const moderatelyAchieved = groupedPerformance["m"]
-                    ? groupedPerformance["m"].length
-                    : 0;
-                const notAchieved = groupedPerformance["n"]
-                    ? groupedPerformance["n"].length
-                    : 0;
-                const noData = groupedPerformance["nd"]
-                    ? groupedPerformance["nd"].length
-                    : 0;
-
-                const percentAchieved =
-                    denominator !== 0 ? achieved / denominator : 0;
-                const percentModeratelyAchieved =
-                    denominator !== 0 ? moderatelyAchieved / denominator : 0;
-                const percentNotAchieved =
-                    denominator !== 0 ? notAchieved / denominator : 0;
-                const percentNoData =
-                    denominator !== 0 ? noData / denominator : 0;
-
-                const achievedWeighted = percentAchieved * (1 / 2);
-                const moderatelyAchievedWeighted =
-                    percentModeratelyAchieved * (7 / 20);
-                const notAchievedWeighted = percentNotAchieved * (3 / 20);
-                const noDataWeighted = percentNoData * (0 / 200);
-
-                const totalWeighted =
-                    achievedWeighted +
-                    moderatelyAchievedWeighted +
-                    notAchievedWeighted +
-                    noDataWeighted;
-                data.set(ou, {
-                    denominator,
-                    achieved,
-                    moderatelyAchieved,
-                    notAchieved,
-                    noData,
-                    percentAchieved,
-                    percentModeratelyAchieved,
-                    percentNotAchieved,
-                    percentNoData,
-                    achievedWeighted,
-                    moderatelyAchievedWeighted,
-                    notAchievedWeighted,
-                    noDataWeighted,
-                    totalWeighted,
-                    actual: sumActual,
-                    target: sumTarget,
-                    baseline: baselineTotal,
-                    performance: sumTarget === 0 ? 0 : sumActual / sumTarget,
-                });
-            }
-            return data;
+            //     const totalWeighted =
+            //         achievedWeighted +
+            //         moderatelyAchievedWeighted +
+            //         notAchievedWeighted +
+            //         noDataWeighted;
+            //     data.set(ou, {
+            //         denominator,
+            //         achieved,
+            //         moderatelyAchieved,
+            //         notAchieved,
+            //         noData,
+            //         percentAchieved,
+            //         percentModeratelyAchieved,
+            //         percentNotAchieved,
+            //         percentNoData,
+            //         achievedWeighted,
+            //         moderatelyAchievedWeighted,
+            //         notAchievedWeighted,
+            //         noDataWeighted,
+            //         totalWeighted,
+            //         actual: sumActual,
+            //         target: sumTarget,
+            //         baseline: baselineTotal,
+            //         performance: sumTarget === 0 ? 0 : sumActual / sumTarget,
+            //     });
+            // }
+            return [];
         },
         enabled:
             pe !== undefined &&
             category !== undefined &&
             categoryOptions !== undefined &&
-            dataElementGroupSets.length > 0 &&
             categoryOptions.length > 0,
         retry: false,
     });
@@ -834,26 +996,40 @@ export const ndpIndicatorsQueryOptions = (
 ) => {
     return queryOptions({
         queryKey: ["ndp-indicators", ndpVersion],
-
         queryFn: async () => {
-            const doneCount = await db.dataElements
-                .where("NDP")
-                .equals(ndpVersion)
-                .count();
-            if (doneCount === 0) {
-                const response = (await engine.query({
-                    dataElementGroupSets: {
-                        resource: `dataElementGroupSets?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,dataElementGroups[id,name,code,attributeValues[attribute[id,name],value],dataElements[id,name,code,attributeValues[attribute[id,name],value],dataSetElements[dataSet[id,organisationUnits[id]]]]],attributeValues[attribute[id,name],value]&paging=false`,
+            try {
+                const doneCount = await db.dataElements
+                    .where({ fsIKncW1Eps: ndpVersion })
+                    .count();
+                if (doneCount === 0) {
+                    const {
+                        dataElements: { dataElements },
+                    } = (await engine.query({
+                        dataElements: {
+                            resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[path]]]&paging=false`,
+                        },
+                    })) as {
+                        dataElements: { dataElements: DataElement[] };
+                    };
+
+                    const processed = processDataElements(dataElements);
+                    await db.dataElements.bulkPut(processed);
+                }
+            } catch (error) {
+                await Dexie.delete("ndp-rf");
+                const {
+                    dataElements: { dataElements },
+                } = (await engine.query({
+                    dataElements: {
+                        resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[id]]]&paging=false`,
                     },
                 })) as {
-                    dataElementGroupSets: DataElementGroupSetResponse;
+                    dataElements: { dataElements: DataElement[] };
                 };
-                const data = flattenDataElementGroupSetsResponse(
-                    response.dataElementGroupSets,
-                );
-                await db.dataElements.bulkPut(data);
+                const processed = processDataElements(dataElements);
+                await db.dataElements.bulkPut(processed);
             }
-            return "Not implemented yet";
+            return "Done";
         },
     });
 };
@@ -1127,13 +1303,6 @@ export const voteFlashQueryOptions = ({
                 return de["aWsagpqErAq"] === "intervention4actions";
             });
 
-            // console.log("Vote Flash Data Elements", {
-            //     objectiveDataElements,
-            //     outcomeDataElements,
-            //     outputDataElements,
-            //     actionDataElements,
-            // });
-
             const allDataElementGroups = groupBy(
                 dataElements,
                 "dataElementGroupId",
@@ -1181,46 +1350,46 @@ export const voteFlashQueryOptions = ({
                 `kfnptfEdnYl:YE32G6hzVDl;UHhWlfyy5bm;lAyLQi6IqVF;NfADZSy1VzB`,
             );
 
-            objectiveParams.append(
-                "dimension",
-                `dx:${[
-                    ...new Set(
-                        objectiveDataElements.map(
-                            (de) => `DE_GROUP-${de.dataElementGroupId}`,
-                        ),
-                    ),
-                ].join(";")}`,
-            );
-            outcomeParams.append(
-                "dimension",
-                `dx:${[
-                    ...new Set(
-                        outcomeDataElements.map(
-                            (de) => `DE_GROUP-${de.dataElementGroupId}`,
-                        ),
-                    ),
-                ].join(";")}`,
-            );
-            outputParams.append(
-                "dimension",
-                `dx:${[
-                    ...new Set(
-                        outputDataElements.map(
-                            (de) => `DE_GROUP-${de.dataElementGroupId}`,
-                        ),
-                    ),
-                ].join(";")}`,
-            );
-            actionParams.append(
-                "dimension",
-                `dx:${[
-                    ...new Set(
-                        actionDataElements.map(
-                            (de) => `DE_GROUP-${de.dataElementGroupId}`,
-                        ),
-                    ),
-                ].join(";")}`,
-            );
+            // objectiveParams.append(
+            //     "dimension",
+            //     `dx:${[
+            //         ...new Set(
+            //             objectiveDataElements.map(
+            //                 (de) => `DE_GROUP-${de.dataElementGroupId}`,
+            //             ),
+            //         ),
+            //     ].join(";")}`,
+            // );
+            // outcomeParams.append(
+            //     "dimension",
+            //     `dx:${[
+            //         ...new Set(
+            //             outcomeDataElements.map(
+            //                 (de) => `DE_GROUP-${de.dataElementGroupId}`,
+            //             ),
+            //         ),
+            //     ].join(";")}`,
+            // );
+            // outputParams.append(
+            //     "dimension",
+            //     `dx:${[
+            //         ...new Set(
+            //             outputDataElements.map(
+            //                 (de) => `DE_GROUP-${de.dataElementGroupId}`,
+            //             ),
+            //         ),
+            //     ].join(";")}`,
+            // );
+            // actionParams.append(
+            //     "dimension",
+            //     `dx:${[
+            //         ...new Set(
+            //             actionDataElements.map(
+            //                 (de) => `DE_GROUP-${de.dataElementGroupId}`,
+            //             ),
+            //         ),
+            //     ].join(";")}`,
+            // );
 
             const {
                 objectiveAnalytics,

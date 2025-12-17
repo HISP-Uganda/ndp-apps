@@ -681,8 +681,6 @@ export function generateVoteFlashReport(
     if (filename) {
         generator.save(filename);
     }
-    console.log(doc);
-
     return doc;
 }
 

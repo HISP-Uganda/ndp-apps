@@ -1,19 +1,10 @@
-import { createRoute, useLoaderData } from "@tanstack/react-router";
-import { Table, TableColumnsType } from "antd";
+import { createRoute } from "@tanstack/react-router";
 import React from "react";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
-import { makeDataElementData, textPxWidth } from "../../../../utils";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { VisionRoute } from "./route";
-
-const visionColumns: Record<number, string> = {
-    0: "bqIaasqpTas",
-    1: "HKtncMjp06U",
-    2: "Px8Lqkxy2si",
-};
-
+import { Table, TableProps } from "antd";
+import { AnalyticsData } from "../../../../types";
+import { RootRoute } from "../../../__root";
 export const VisionIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => VisionRoute,
@@ -21,55 +12,52 @@ export const VisionIndexRoute = createRoute({
     errorComponent: () => <div>{null}</div>,
 });
 
+const visionColumns: Record<number, string> = {
+    0: "bqIaasqpTas",
+    1: "HKtncMjp06U",
+    2: "Px8Lqkxy2si",
+};
+
 function Component() {
     const { engine } = VisionIndexRoute.useRouteContext();
     const search = VisionRoute.useSearch();
-    const dataElementGroupSets = VisionRoute.useLoaderData();
-    const { configurations } = useLoaderData({ from: "__root__" });
-
-    const dataElementGroups = useDataElementGroups(
+    const { configurations } = RootRoute.useLoaderData();
+    const { data, dimensions, items } = useAnalyticsQuery({
+        engine,
         search,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, search);
-
-    const periods = data.data.analytics.metaData.dimensions["pe"] ?? [];
+        ndpVersion: search.v,
+        isVision: true,
+    });
 
     const [baseline = "", target = "", value = ""] =
-        data.data.analytics.metaData.dimensions["Duw5yep8Vae"] ?? [];
-    const nameColumn: TableColumnsType<{
-        [key: string]: string | number | undefined;
-    }> = [
+        dimensions["Duw5yep8Vae"] ?? [];
+
+    const periods = dimensions["pe"] ?? [];
+
+    const nameColumn: TableProps<AnalyticsData>["columns"] = [
         {
             title: "Indicator",
-            dataIndex: "dx",
-            ellipsis: true,
+            dataIndex: "name",
         },
     ];
-    const periodColumns: TableColumnsType<{
-        [key: string]: string | number | undefined;
-    }> = periods.map((pe, index) => ({
-        title:
-            configurations[search.v]?.data?.baseline === pe
-                ? `${data.data.analytics.metaData.items[pe]?.name} ${data.data.analytics.metaData.items[baseline].name}`
-                : index === 1
-                ? `${data.data.analytics.metaData.items[pe]?.name} Target`
-                : "Vision Target 2040",
-        dataIndex: `${pe}${visionColumns[index]}`,
-        minWidth:
-            textPxWidth(data.data.analytics.metaData.items[pe]?.name) + 40,
-        align: "center",
-    }));
+
+    const periodColumns: TableProps<AnalyticsData>["columns"] = periods.map(
+        (pe, index) => ({
+            title:
+                configurations[search.v]?.data?.baseline === pe
+                    ? `${items[pe]?.name} ${items[baseline].name}`
+                    : index === 1
+                    ? `${items[pe]?.name} Target`
+                    : "Vision Target 2040",
+            dataIndex: `${pe}${visionColumns[index]}`,
+            align: "center",
+        }),
+    );
+
     return (
         <Table
             columns={[...nameColumn, ...periodColumns]}
-            dataSource={makeDataElementData({
-                ...data.data,
-                targetId: target,
-                actualId: value,
-                baselineId: baseline,
-                category: search.category,
-            })}
+            dataSource={data}
             pagination={false}
             scroll={{ y: "calc(100vh - 148px)", x: "max-content" }}
             rowKey="id"

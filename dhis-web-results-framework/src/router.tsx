@@ -8,7 +8,6 @@ import React from "react";
 import Spinner from "./components/Spinner";
 import { RootRoute } from "./routes/__root";
 import { IndexRoute } from "./routes/index";
-import { LayoutIndexRoute } from "./routes/layout";
 import { NDPIndexRoute } from "./routes/layout/ndp";
 import { FAQIndexRoute } from "./routes/layout/ndp/faqs";
 import { FAQRoute } from "./routes/layout/ndp/faqs/route";
@@ -60,7 +59,6 @@ import { VoteFlashReportIndexRoute } from "./routes/layout/ndp/vote-flash-report
 const routeTree = RootRoute.addChildren([
     IndexRoute,
     LayoutRoute.addChildren([
-        LayoutIndexRoute,
         NDPRoute.addChildren([
             NDPIndexRoute,
             FAQRoute.addChildren([FAQIndexRoute]),

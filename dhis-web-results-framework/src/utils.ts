@@ -1,20 +1,29 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { SelectProps, TableProps } from "antd";
 import dayjs from "dayjs";
-import { fromPairs, groupBy, uniq } from "lodash";
+import { fromPairs, groupBy, isArray } from "lodash";
+import { CSSProperties } from "react";
+import { db } from "./db";
 import {
     Analytics,
+    AnalyticsData,
+    budgetColumns,
     DataElement,
     DataElementGroupSet,
     DataElementGroupSetResponse,
     DHIS2OrgUnit,
-    FlattenedDataElement,
+    Dx,
     GoalSearch,
     MapPredicate,
+    Option,
     OrganisationUnitDataSets,
-    ScorecardData,
+    OrgUnit,
+		PERFORMANCE_LABELS,
 } from "./types";
-import { CSSProperties } from "react";
+
+export const percentFormatter = new Intl.NumberFormat("en-US", {
+    style: "percent",
+});
 
 export const prepareVisionData = ({
     data,
@@ -265,78 +274,77 @@ export const fixedPeriods = [
     "FYAPR",
 ];
 
-export const makeDataElementData = (data: {
-    analytics: Analytics;
-    dataElements: Map<string, { [k: string]: string }>;
-    targetId: string;
-    actualId: string;
-    baselineId: string;
-    category: string;
-}) => {
-    const {
-        rows,
-        metaData: { items, dimensions },
-    } = data.analytics;
+// export const makeDataElementData = (data: {
+//     data: AnalyticsData[];
+//     targetId: string;
+//     actualId: string;
+//     baselineId: string;
+//     category: string;
+// }) => {
+//     const {
+//         rows,
+//         metaData: { items, dimensions },
+//     } = data.analytics;
 
-    const allData: Map<string, string> = new Map(
-        rows.map((row) => {
-            return [
-                row.slice(0, row.length - 1).join(""),
-                String(row[row.length - 1]),
-            ];
-        }),
-    );
-    return dimensions.dx.map((a) => {
-        const current: Map<string, any> = new Map();
-        const dataElementDetails = data.dataElements.get(a);
-        dimensions["pe"]?.forEach((pe) => {
-            const baseline = Number(allData.get(`${a}${data.baselineId}${pe}`));
+//     const allData: Map<string, string> = new Map(
+//         rows.map((row) => {
+//             return [
+//                 row.slice(0, row.length - 1).join(""),
+//                 String(row[row.length - 1]),
+//             ];
+//         }),
+//     );
+//     return dimensions.dx.map((a) => {
+//         const current: Map<string, any> = new Map();
+//         const dataElementDetails = data.dataElements.get(a);
+//         dimensions["pe"]?.forEach((pe) => {
+//             const baseline = Number(allData.get(`${a}${data.baselineId}${pe}`));
 
-            const categoryValues = dimensions[data.category]?.map((cat) =>
-                Number(allData.get(`${a}${cat}${pe}`)),
-            );
+//             const categoryValues = dimensions[data.category]?.map((cat) =>
+//                 Number(allData.get(`${a}${cat}${pe}`)),
+//             );
 
-            let target = categoryValues.at(-2) ?? NaN;
-            let actual = categoryValues.at(-1) ?? NaN;
-            let year = pe.slice(0, 4);
-            if (pe.indexOf("Q") > -1) {
-                const quarter = pe.slice(-1);
-                if (quarter === "1" || quarter === "2") {
-                    year = String(Number(year) - 1);
-                }
-                target = Number(allData.get(`${a}${data.targetId}${year}July`));
-            }
-            const ratio = calculatePerformanceRatio(actual, target);
-            const { performance, style } = findBackground(
-                ratio,
-                dataElementDetails?.["descending indicator type"],
-            );
-            if (isNaN(ratio)) {
-                current.set(`${pe}performance`, "-");
-            } else {
-                current.set(`${pe}performance`, formatPercentage(ratio / 100));
-            }
-            current.set(`${pe}style`, style);
-            current.set(`${pe}performance-group`, performance);
-            current.set(`${pe}target`, isNaN(target) ? "-" : target);
-            current.set(`${pe}actual`, isNaN(actual) ? "-" : actual);
-            current.set(`${pe}baseline`, isNaN(baseline) ? "-" : baseline);
-            current.set(`${pe}${data.targetId}`, isNaN(target) ? "-" : target);
-            current.set(`${pe}${data.actualId}`, isNaN(actual) ? "-" : actual);
-            current.set(
-                `${pe}${data.baselineId}`,
-                isNaN(baseline) ? "-" : baseline,
-            );
-        });
-        return {
-            id: a,
-            dx: items[a].name,
-            code: items[a].code,
-            ...Object.fromEntries(current),
-            ...dataElementDetails,
-        };
-    });
-};
+//             let target = categoryValues.at(-2) ?? NaN;
+//             let actual = categoryValues.at(-1) ?? NaN;
+//             let year = pe.slice(0, 4);
+//             if (pe.indexOf("Q") > -1) {
+//                 const quarter = pe.slice(-1);
+//                 if (quarter === "1" || quarter === "2") {
+//                     year = String(Number(year) - 1);
+//                 }
+//                 target = Number(allData.get(`${a}${data.targetId}${year}July`));
+//             }
+//             const ratio = calculatePerformanceRatio(actual, target);
+//             const { performance, style } = findBackground(
+//                 ratio,
+//                 dataElementDetails?.["descending indicator type"],
+//             );
+//             if (isNaN(ratio)) {
+//                 current.set(`${pe}performance`, "-");
+//             } else {
+//                 current.set(`${pe}performance`, formatPercentage(ratio / 100));
+//             }
+//             current.set(`${pe}style`, style);
+//             current.set(`${pe}performance-group`, performance);
+//             current.set(`${pe}target`, isNaN(target) ? "-" : target);
+//             current.set(`${pe}actual`, isNaN(actual) ? "-" : actual);
+//             current.set(`${pe}baseline`, isNaN(baseline) ? "-" : baseline);
+//             current.set(`${pe}${data.targetId}`, isNaN(target) ? "-" : target);
+//             current.set(`${pe}${data.actualId}`, isNaN(actual) ? "-" : actual);
+//             current.set(
+//                 `${pe}${data.baselineId}`,
+//                 isNaN(baseline) ? "-" : baseline,
+//             );
+//         });
+//         return {
+//             id: a,
+//             dx: items[a].name,
+//             code: items[a].code,
+//             ...Object.fromEntries(current),
+//             ...dataElementDetails,
+//         };
+//     });
+// };
 
 export const extractDataElementGroups = (
     dataElementGroupSets: DataElementGroupSet[],
@@ -401,60 +409,60 @@ export const extractDataElementGroupsByProgram = (
     };
 };
 
-export const resolveDataElementGroups = (
-    searchParams: GoalSearch,
-    dataElementGroupSets: DataElementGroupSet[],
-): { groupSets: string[]; dataElementGroups: string[] } => {
-    const { deg, degs, program, requiresProgram } = searchParams;
-    if (requiresProgram && program === undefined) {
-        return {
-            groupSets: [],
-            dataElementGroups: [],
-        };
-    }
+// export const resolveDataElementGroups = (
+//     searchParams: GoalSearch,
+//     dataElementGroupSets: DataElementGroupSet[],
+// ): { groupSets: string[]; dataElementGroups: string[] } => {
+//     const {  objective, program, requiresProgram } = searchParams;
+//     if (requiresProgram && program === undefined) {
+//         return {
+//             groupSets: [],
+//             dataElementGroups: [],
+//         };
+//     }
 
-    if (deg !== undefined && deg !== "All") {
-        return {
-            groupSets: [degs ?? ""],
-            dataElementGroups: [deg],
-        };
-    }
+//     if (deg !== undefined && deg !== "All") {
+//         return {
+//             groupSets: [objective ?? ""],
+//             dataElementGroups: [deg],
+//         };
+//     }
 
-    if (program !== undefined) {
-        const values = extractDataElementGroupsByProgram(
-            dataElementGroupSets,
-            program,
-            degs,
-        );
-        return values;
-    }
-    const dataElementGroups = extractDataElementGroups(
-        dataElementGroupSets,
-        degs,
-    );
+//     if (program !== undefined) {
+//         const values = extractDataElementGroupsByProgram(
+//             dataElementGroupSets,
+//             program,
+//             objective,
+//         );
+//         return values;
+//     }
+//     const dataElementGroups = extractDataElementGroups(
+//         dataElementGroupSets,
+//         objective,
+//     );
 
-    return {
-        groupSets: dataElementGroupSets.map((d) => d.id),
-        dataElementGroups,
-    };
-};
-export const buildQueryParams = (
-    { dataElementGroups }: { groupSets: string[]; dataElementGroups: string[] },
-    searchParams: GoalSearch,
-) => {
-    const { pe, ou, program, category, categoryOptions, degs } = searchParams;
+//     return {
+//         groupSets: dataElementGroupSets.map((d) => d.id),
+//         dataElementGroups,
+//     };
+// };
+// export const buildQueryParams = (
+//     { dataElementGroups }: { groupSets: string[]; dataElementGroups: string[] },
+//     searchParams: GoalSearch,
+// ) => {
+//     const { pe, ou, program, category, categoryOptions, degs } = searchParams;
 
-    return {
-        deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
-        pe,
-        ou,
-        category,
-        categoryOptions,
-        degs,
-        ...(ou && { ou }),
-        ...(program && { program }),
-    };
-};
+//     return {
+//         deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
+//         pe,
+//         ou,
+//         category,
+//         categoryOptions,
+//         degs,
+//         ...(ou && { ou }),
+//         ...(program && { program }),
+//     };
+// };
 
 export const validateDataElementGroupSets = (
     dataElementGroupSets: any,
@@ -682,180 +690,180 @@ export const getDefaultPeriods = (financialYears: string[]) => {
     }
 };
 
-export const createColumns = (
-    votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>,
-    data?: ScorecardData,
-) => {
-    const finalData = votes.map((vote) => {
-        const dataForVote = data?.get(vote.id);
-        return {
-            ...vote,
-            ...dataForVote,
-        };
-    });
-    const columns: TableProps<(typeof finalData)[number]>["columns"] = [
-        {
-            title: "Vote",
-            dataIndex: "code",
-            key: "code",
-            width: 80,
-            align: "center",
-            render: (_, record) => record.code?.replace("V", ""),
-            sorter: true,
-        },
-        {
-            title: "Institution",
-            dataIndex: "name",
-            key: "name",
-            filterSearch: true,
-            filters: votes.map((v) => ({ text: v.name, value: v.name })),
-            onFilter: (value, record) =>
-                record.name.indexOf(value as string) === 0,
-            sorter: true,
-        },
-        {
-            title: `No of Indicators`,
-            dataIndex: "denominator",
-            key: "denominator",
-            width: 140,
-            align: "center",
-            render: (_, record) => data?.get(record.id)?.denominator ?? "",
-            sorter: true,
-        },
-        {
-            title: `A`,
-            dataIndex: "achieved",
-            key: "achieved",
-            width: 70,
-            align: "center",
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.green.bg,
-                    color: PERFORMANCE_COLORS.green.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `M`,
-            dataIndex: "moderatelyAchieved",
-            key: "moderatelyAchieved",
-            width: 70,
-            align: "center",
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.yellow.bg,
-                    color: PERFORMANCE_COLORS.yellow.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `N`,
-            dataIndex: "notAchieved",
-            key: "notAchieved",
-            width: 70,
-            align: "center",
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.red.bg,
-                    color: PERFORMANCE_COLORS.red.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `ND`,
-            dataIndex: "noData",
-            key: "noData",
-            width: 70,
-            align: "center",
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.gray.bg,
-                    color: PERFORMANCE_COLORS.gray.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `% A`,
-            dataIndex: "percentAchieved",
-            key: "percentAchieved",
-            width: 80,
-            align: "center",
-            render: (_, record) =>
-                formatter.format(record.percentAchieved ?? 0),
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.green.bg,
-                    color: PERFORMANCE_COLORS.green.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `% M`,
-            dataIndex: "percentModeratelyAchieved",
-            key: "percentModeratelyAchieved",
-            width: 80,
-            align: "center",
-            render: (_, record) =>
-                formatter.format(record.percentModeratelyAchieved ?? 0),
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.yellow.bg,
-                    color: PERFORMANCE_COLORS.yellow.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `% N`,
-            dataIndex: "percentNotAchieved",
-            key: "percentNotAchieved",
-            width: 80,
-            align: "center",
-            render: (_, record) =>
-                formatter.format(record.percentNotAchieved ?? 0),
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.red.bg,
-                    color: PERFORMANCE_COLORS.red.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `% ND`,
-            dataIndex: "percentNoData",
-            key: "percentNoData",
-            width: 85,
-            align: "center",
-            render: (_, record) => formatter.format(record.percentNoData ?? 0),
-            onHeaderCell: () => ({
-                style: {
-                    backgroundColor: PERFORMANCE_COLORS.gray.bg,
-                    color: PERFORMANCE_COLORS.gray.fg,
-                },
-            }),
-            sorter: true,
-        },
-        {
-            title: `Weighted Score (%)`,
-            dataIndex: "totalWeighted",
-            key: "totalWeighted",
-            align: "center",
-            width: 120,
-            render: (_, record) => formatter.format(record.totalWeighted ?? 0),
-            onCell: (record) => ({
-                style: getCellStyle(record.totalWeighted ?? 0),
-            }),
-            sorter: true,
-        },
-    ];
-    return { columns, finalData };
-};
+// export const createColumns = (
+//     votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>,
+//     data?: ScorecardData,
+// ) => {
+//     const finalData = votes.map((vote) => {
+//         const dataForVote = data?.get(vote.id);
+//         return {
+//             ...vote,
+//             ...dataForVote,
+//         };
+//     });
+//     const columns: TableProps<(typeof finalData)[number]>["columns"] = [
+//         {
+//             title: "Vote",
+//             dataIndex: "code",
+//             key: "code",
+//             width: 80,
+//             align: "center",
+//             render: (_, record) => record.code?.replace("V", ""),
+//             sorter: true,
+//         },
+//         {
+//             title: "Institution",
+//             dataIndex: "name",
+//             key: "name",
+//             filterSearch: true,
+//             filters: votes.map((v) => ({ text: v.name, value: v.name })),
+//             onFilter: (value, record) =>
+//                 record.name.indexOf(value as string) === 0,
+//             sorter: true,
+//         },
+//         {
+//             title: `No of Indicators`,
+//             dataIndex: "denominator",
+//             key: "denominator",
+//             width: 140,
+//             align: "center",
+//             render: (_, record) => data?.get(record.id)?.denominator ?? "",
+//             sorter: true,
+//         },
+//         {
+//             title: `A`,
+//             dataIndex: "achieved",
+//             key: "achieved",
+//             width: 70,
+//             align: "center",
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.green.bg,
+//                     color: PERFORMANCE_COLORS.green.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `M`,
+//             dataIndex: "moderatelyAchieved",
+//             key: "moderatelyAchieved",
+//             width: 70,
+//             align: "center",
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
+//                     color: PERFORMANCE_COLORS.yellow.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `N`,
+//             dataIndex: "notAchieved",
+//             key: "notAchieved",
+//             width: 70,
+//             align: "center",
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.red.bg,
+//                     color: PERFORMANCE_COLORS.red.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `ND`,
+//             dataIndex: "noData",
+//             key: "noData",
+//             width: 70,
+//             align: "center",
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
+//                     color: PERFORMANCE_COLORS.gray.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `% A`,
+//             dataIndex: "percentAchieved",
+//             key: "percentAchieved",
+//             width: 80,
+//             align: "center",
+//             render: (_, record) =>
+//                 formatter.format(record.percentAchieved ?? 0),
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.green.bg,
+//                     color: PERFORMANCE_COLORS.green.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `% M`,
+//             dataIndex: "percentModeratelyAchieved",
+//             key: "percentModeratelyAchieved",
+//             width: 80,
+//             align: "center",
+//             render: (_, record) =>
+//                 formatter.format(record.percentModeratelyAchieved ?? 0),
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
+//                     color: PERFORMANCE_COLORS.yellow.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `% N`,
+//             dataIndex: "percentNotAchieved",
+//             key: "percentNotAchieved",
+//             width: 80,
+//             align: "center",
+//             render: (_, record) =>
+//                 formatter.format(record.percentNotAchieved ?? 0),
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.red.bg,
+//                     color: PERFORMANCE_COLORS.red.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `% ND`,
+//             dataIndex: "percentNoData",
+//             key: "percentNoData",
+//             width: 85,
+//             align: "center",
+//             render: (_, record) => formatter.format(record.percentNoData ?? 0),
+//             onHeaderCell: () => ({
+//                 style: {
+//                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
+//                     color: PERFORMANCE_COLORS.gray.fg,
+//                 },
+//             }),
+//             sorter: true,
+//         },
+//         {
+//             title: `Weighted Score (%)`,
+//             dataIndex: "totalWeighted",
+//             key: "totalWeighted",
+//             align: "center",
+//             width: 120,
+//             render: (_, record) => formatter.format(record.totalWeighted ?? 0),
+//             onCell: (record) => ({
+//                 style: getCellStyle(record.totalWeighted ?? 0),
+//             }),
+//             sorter: true,
+//         },
+//     ];
+//     return { columns, finalData };
+// };
 
 export const flattenDataElementGroupSetsResponse = ({
     dataElementGroupSets,
@@ -1083,4 +1091,371 @@ export const flattenOrganisationUnitDataSets = (
             },
         );
     });
+};
+
+export const processDataElements = (dataElements: DataElement[]) => {
+    return dataElements.flatMap(
+        ({ attributeValues, id, name, code, dataSetElements }) => {
+            const organisationUnits = new Set(
+                dataSetElements.flatMap(({ dataSet: { organisationUnits } }) =>
+                    organisationUnits.map((ou) => ou.path),
+                ),
+            );
+            const dataSets = new Set(
+                dataSetElements.flatMap(({ dataSet }) => dataSet.id),
+            );
+
+            const data = Array.from(organisationUnits).map((ou) => {
+                const currentOu = ou.split("/").at(-1);
+                return {
+                    id,
+                    name,
+                    code,
+                    ...fromPairs(
+                        attributeValues.map(({ value, attribute: { id } }) => [
+                            id,
+                            value,
+                        ]),
+                    ),
+                    ...fromPairs(
+                        attributeValues.map(
+                            ({ value, attribute: { name } }) => [name, value],
+                        ),
+                    ),
+                    ...fromPairs(
+                        attributeValues.map(
+                            ({ value, attribute: { code } }) => [code, value],
+                        ),
+                    ),
+                    attributes: attributeValues.map(({ value }) => value),
+                    organisationUnits: Array.from(organisationUnits),
+                    dataSets: Array.from(dataSets),
+                    orgUnit: currentOu,
+                };
+            });
+            return data;
+        },
+    );
+};
+
+export const queryProgramObjectives = async ({
+    ndpVersion,
+    attributeValue,
+    program,
+    orgUnit,
+    programObjectives,
+}: {
+    ndpVersion: string;
+    attributeValue: string;
+    program?: string;
+    orgUnit?: string;
+    programObjectives: Option[];
+}) => {
+    const dataElements = await db.dataElements
+        .where({ fsIKncW1Eps: ndpVersion, BmUMiIbD5XY: attributeValue })
+        .filter((de) => {
+            return (
+                de.attributes !== undefined &&
+                isArray(de.attributes) &&
+                de.attributes.some((attr) => attr === program) &&
+                isArray(de.organisationUnits) &&
+                de.organisationUnits.some((ou) => ou.includes(orgUnit || ""))
+            );
+        })
+        .toArray();
+
+    const uniqueObjectives = dataElements.map((de) => de["GuoVDNEBAXA"]).flat();
+
+    return programObjectives.filter((degSet) =>
+        uniqueObjectives.includes(degSet.code),
+    );
+};
+
+export const processByPerformance = ({
+    dataElements,
+    groupingBy,
+    pe,
+    programs,
+    votes,
+}: {
+    dataElements: ReturnType<typeof processDataElements>;
+    groupingBy: string;
+    pe: string;
+    programs: Option[];
+    votes: Omit<DHIS2OrgUnit, "dataSets" | "leaf" | "parent">[];
+}) => {
+    return Object.values(groupBy(dataElements, groupingBy)).map((groups) => {
+        const total = groups.length;
+        const current = groups[0];
+        const groupedPerformance = groupBy(groups, `${pe}performance-group`);
+        const achieved = groupedPerformance["a"]
+            ? groupedPerformance["a"].length
+            : 0;
+        const moderatelyAchieved = groupedPerformance["m"]
+            ? groupedPerformance["m"].length
+            : 0;
+        const notAchieved = groupedPerformance["n"]
+            ? groupedPerformance["n"].length
+            : 0;
+        const noData = groupedPerformance["x"]
+            ? groupedPerformance["x"].length
+            : 0;
+
+        const percentAchieved = total !== 0 ? achieved / total : 0;
+        const percentModeratelyAchieved =
+            total !== 0 ? moderatelyAchieved / total : 0;
+        const percentNotAchieved = total !== 0 ? notAchieved / total : 0;
+        const percentNoData = total !== 0 ? noData / total : 0;
+
+        const achievedWeighted = percentAchieved * (1 / 2);
+        const moderatelyAchievedWeighted = percentModeratelyAchieved * (7 / 20);
+        const notAchievedWeighted = percentNotAchieved * (3 / 20);
+        const noDataWeighted = percentNoData * (0 / 200);
+
+        const totalWeighted =
+            achievedWeighted +
+            moderatelyAchievedWeighted +
+            notAchievedWeighted +
+            noDataWeighted;
+
+        const sumBaseline = groups.reduce((acc, curr) => {
+            const baselineValue = Number(curr[`${pe}baseline`]);
+            if (!isNaN(baselineValue)) {
+                return acc + baselineValue;
+            }
+            return acc;
+        }, 0);
+        const sumTarget = groups.reduce((acc, curr) => {
+            const targetValue = Number(curr[`${pe}target`]);
+            if (!isNaN(targetValue)) {
+                return acc + targetValue;
+            }
+            return acc;
+        }, 0);
+
+        const sumActual = groups.reduce((acc, curr) => {
+            const actualValue = Number(curr[`${pe}actual`]);
+            if (!isNaN(actualValue)) {
+                return acc + actualValue;
+            }
+            return acc;
+        }, 0);
+        const sumApproved = groups.reduce((acc, curr) => {
+            const approvedValue = Number(curr[`${pe}approved`]);
+            if (!isNaN(approvedValue)) {
+                return acc + approvedValue;
+            }
+            return acc;
+        }, 0);
+
+        let spend = "-";
+        let allocation = "-";
+        let actualSpend = 0;
+        let approvedAllocation = 0;
+
+        if (sumApproved !== 0) {
+            approvedAllocation = sumTarget / sumApproved;
+            allocation = formatter.format(approvedAllocation);
+        }
+
+        if (sumTarget !== 0) {
+            actualSpend = sumActual / sumTarget;
+            spend = formatter.format(actualSpend);
+        }
+
+        const vote = votes.find((v) => v.id === current["orgUnit"]) ?? {
+            name: "",
+            code: "",
+        };
+
+        return {
+            ...current,
+            achieved,
+            moderatelyAchieved,
+            notAchieved,
+            noData,
+            percentAchieved: percentFormatter.format(achieved / total),
+            percentModeratelyAchieved: percentFormatter.format(
+                moderatelyAchieved / total,
+            ),
+            percentNotAchieved: percentFormatter.format(notAchieved / total),
+            percentNoData: percentFormatter.format(noData / total),
+            total,
+            program: programs?.find((p) => p.code === current["UBWSASWdyfi"])
+                ?.name,
+            groups,
+            target: sumTarget,
+            actual: sumActual,
+            approved: sumApproved,
+            baseline: sumBaseline,
+            allocation,
+            spend,
+            actualSpend,
+            approvedAllocation,
+            achievedWeighted,
+            moderatelyAchievedWeighted,
+            notAchievedWeighted,
+            noDataWeighted,
+            totalWeighted,
+            performance: sumTarget === 0 ? 0 : sumActual / sumTarget,
+            ...vote,
+        };
+    });
+};
+
+export const createPerformanceColumns = ({
+    nameColumn,
+    baseline,
+    pe,
+    nonBaseline = false,
+    quarters = false,
+    categoryOptions = [],
+		items
+}: {
+    nameColumn: TableProps<AnalyticsData>["columns"];
+    baseline: string;
+    pe: string[];
+    nonBaseline?: boolean;
+    quarters?: boolean;
+    categoryOptions?: string[];
+    items: Record<string, Dx>;
+    dimensions: Record<string, string[]>;
+}) => {
+    return [
+        ...(nameColumn ?? []),
+        ...pe.flatMap((pe) => {
+            if (nonBaseline && baseline === pe) {
+                return [];
+            }
+            return {
+                title: items[pe].name,
+                align: "center" as const,
+                children: nonBaseline
+                    ? categoryOptions
+                          ?.flatMap((option, index) => {
+                              if (index > 1) return [];
+                              return {
+                                  title:
+                                      budgetColumns[option] ||
+                                      items[option]?.name?.replace(
+                                          "Budget ",
+                                          "",
+                                      ),
+                                  dataIndex: `${pe}${option}`,
+                                  align: "center" as const,
+                                  minWidth: 50,
+                              };
+                          })
+                          .concat(
+                              [3, 4, 1, 2].map((quarter, index) => {
+                                  const year = Number(pe.slice(0, 4));
+                                  const currentYear =
+                                      quarter === 1 || quarter === 2
+                                          ? year + 1
+                                          : year;
+                                  return {
+                                      title: `Q${index + 1}`,
+                                      key: `${pe}${currentYear}Q${quarter}`,
+                                      align: "center",
+                                      dataIndex: `${pe}${currentYear}Q${quarter}`,
+                                      minWidth: 100,
+                                      children: [
+                                          ...categoryOptions
+                                              .slice(2)
+                                              .map((option) => ({
+                                                  title:
+                                                      budgetColumns[option] ||
+                                                      items[option]?.name,
+                                                  dataIndex: `${currentYear}Q${quarter}${option}`,
+                                                  key: `${currentYear}Q${quarter}${option}`,
+                                                  align: "center" as const,
+                                                  minWidth: 40,
+                                              })),
+                                          {
+                                              title: `%`,
+                                              dataIndex: `${currentYear}Q${quarter}performance`,
+                                              key: `${currentYear}Q${quarter}performance`,
+                                              align: "center",
+                                              minWidth: 40,
+                                              onCell: (
+                                                  row: Record<string, any>,
+                                              ) => {
+                                                  return {
+                                                      style: row[
+                                                          `${currentYear}Q${quarter}style`
+                                                      ],
+                                                  };
+                                              },
+                                          },
+                                      ],
+                                  };
+                              }),
+                          )
+                    : (baseline === pe
+                          ? [baseline]
+                          : ["target", "actual", "performance"]
+                      ).flatMap((currentValue, index) => {
+                          const year = Number(pe.slice(0, 4));
+                          if (index === 1 && quarters) {
+                              return [3, 4, 1, 2].map((quarter, index) => {
+                                  const currentYear =
+                                      quarter === 1 || quarter === 2
+                                          ? year + 1
+                                          : year;
+                                  return {
+                                      title: `Q${index + 1}`,
+                                      key: `${pe}${currentYear}Q${quarter}`,
+                                      align: "center",
+                                      children: [
+                                          {
+                                              title: `A`,
+                                              key: `${currentYear}Q${quarter}actual`,
+                                              dataIndex: `${currentYear}Q${quarter}actual`,
+                                              align: "center",
+                                              minWidth: 40,
+                                          },
+                                          {
+                                              title: `%`,
+                                              dataIndex: `${currentYear}Q${quarter}performance`,
+                                              key: `${currentYear}Q${quarter}performance`,
+                                              align: "center",
+                                              onCell: (
+                                                  row: Record<string, any>,
+                                              ) => {
+                                                  return {
+                                                      style: row[
+                                                          `${currentYear}Q${quarter}style`
+                                                      ],
+                                                  };
+                                              },
+                                              minWidth: 40,
+                                          },
+                                      ],
+                                  };
+                              });
+                          } else {
+                              const title =
+                                  items[currentValue]?.name ??
+                                  PERFORMANCE_LABELS[index];
+                              return {
+                                  title: budgetColumns[currentValue] || title,
+                                  key: `${pe}${currentValue}`,
+                                  minWidth: baseline === pe ? 78 : undefined,
+                                  align: "center",
+                                  onCell: (row: Record<string, any>) => {
+                                      if (index === 2) {
+                                          return {
+                                              style: row[`${pe}style`],
+                                          };
+                                      }
+                                      return {};
+                                  },
+                                  dataIndex: `${pe}${currentValue}`,
+                                  children: [],
+                              };
+                          }
+                      }),
+            };
+        }),
+    ];
 };

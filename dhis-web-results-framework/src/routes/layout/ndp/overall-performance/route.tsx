@@ -11,39 +11,7 @@ import { LIST_CONTAINER_STYLE, LIST_ITEM_STYLE } from "../../../../utils";
 export const OverallPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "overall-performance",
-    component: Component,
-    loaderDeps: ({ search }) => ({
-        v: search.v,
-    }),
-
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const outcome = await queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                "objective",
-                v,
-            ),
-        );
-        const output = await queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                v === "NDPIII" ? "sub-intervention" : "intervention",
-                v,
-            ),
-        );
-
-        const action = await queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                v === "NDPIII"
-                    ? "sub-intervention4action"
-                    : "intervention4actions",
-                v,
-            ),
-        );
-        return { outcome, output, action };
-    },
+    component: Component,  
     validateSearch: PerformanceSchema,
 });
 

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { ConfigProvider } from "antd";
 import React, { FC } from "react";
+
 import "./app.css";
 
 import { router } from "./router";

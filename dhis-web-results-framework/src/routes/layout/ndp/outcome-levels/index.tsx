@@ -1,13 +1,11 @@
 import { createRoute } from "@tanstack/react-router";
 import React, { useCallback, useMemo } from "react";
 import { Results } from "../../../../components/results";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
 import { OutcomeLevelRoute } from "./route";
+import { RootRoute } from "../../../__root";
 
 export const OutcomeLevelIndexRoute = createRoute({
     path: "/",
@@ -17,17 +15,17 @@ export const OutcomeLevelIndexRoute = createRoute({
 });
 function Component() {
     const { engine } = OutcomeLevelIndexRoute.useRouteContext();
+    const { allOptionsMap } = RootRoute.useLoaderData();
     const search = OutcomeLevelIndexRoute.useSearch();
     const navigate = OutcomeLevelIndexRoute.useNavigate();
-    const { dataElementGroupSets } = OutcomeLevelRoute.useLoaderData();
-
-    const dataElementGroups = useDataElementGroups(
-        search,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, {
-        ...search,
-        pe: derivePeriods(search.pe),
+    const { data, items, dimensions } = useAnalyticsQuery({
+        engine,
+        search: {
+            ...search,
+            pe: derivePeriods(search.pe),
+        },
+        ndpVersion: search.v,
+        attributeValue: "outcome",
     });
     const onChange = useCallback(
         (key: string) => {
@@ -42,32 +40,20 @@ function Component() {
     );
     const resultsProps = useMemo<ResultsProps>(
         () => ({
-            data: { ...data.data, ...dataElementGroups },
-            dataElementGroupSets,
+            data,
+            items,
+            dimensions,
             onChange,
             ...search,
             prefixColumns: [
-                // {
-                //     title: "Programme Objectives",
-                //     dataIndex: "dataElementGroupSet",
-                //     render: (_, record) => {
-                //         let current = "";
-                //         for (const group of dataElementGroupSets) {
-                //             if (Object(record).hasOwnProperty(group.id)) {
-                //                 current = group.name;
-                //                 break;
-                //             }
-                //         }
-                //         return current;
-                //     },
-                // },
                 {
                     title: "Outcomes",
-                    dataIndex: "dataElementGroup",
+                    dataIndex: "YlPvYLC4VfO",
+                    render: (text) => allOptionsMap?.get(text) || text,
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
+        [data, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

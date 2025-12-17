@@ -2,60 +2,50 @@ import { useDataEngine } from "@dhis2/app-runtime";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { analyticsQueryOptions } from "../query-options";
-import { DataElementGroupSet, GoalSearch } from "../types";
-import { buildQueryParams, resolveDataElementGroups } from "../utils";
-
-export const useDataElementGroups = (
-    searchParams: GoalSearch,
-    dataElementGroupSets: DataElementGroupSet[],
-): { groupSets: string[]; dataElementGroups: string[] } => {
-    return useMemo(() => {
-        return resolveDataElementGroups(searchParams, dataElementGroupSets);
-    }, [...Object.values(searchParams), dataElementGroupSets]);
-};
-
-export const useAnalyticsQuery = (
-    engine: ReturnType<typeof useDataEngine>,
-    dataElementGroups: { groupSets: string[]; dataElementGroups: string[] },
-    searchParams: GoalSearch,
-) => {
-    const queryParams = useMemo(() => {
-        return buildQueryParams(dataElementGroups, searchParams);
-    }, [dataElementGroups, ...Object.values(searchParams)]);
+import { GoalSearch } from "../types";
+export const useAnalyticsQuery = ({
+    engine,
+    search,
+    attributeValue,
+    ndpVersion,
+    queryByOu,
+    specificLevel,
+    ouIsFilter = true,
+    isVision,
+    goal,
+    keyResultArea,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    search: GoalSearch;
+    attributeValue?: string;
+    ndpVersion: string;
+    queryByOu?: boolean;
+    specificLevel?: number;
+    ouIsFilter?: boolean;
+    isVision?: boolean;
+    goal?: string;
+    keyResultArea?: string;
+}) => {
     const queryOptions = useMemo(
-        () => analyticsQueryOptions(engine, queryParams),
-        [engine, Object.values(queryParams).join(","), analyticsQueryOptions],
+        () =>
+            analyticsQueryOptions({
+                engine,
+                search,
+                attributeValue,
+                ndpVersion,
+                queryByOu,
+                specificLevel,
+                ouIsFilter,
+                isVision,
+            }),
+        [
+            engine,
+            Object.values(search).sort().join(","),
+            ndpVersion,
+            attributeValue,
+        ],
     );
-    return useSuspenseQuery(queryOptions);
-};
-export const useRouteAnalytics = (
-    routeContext: { engine: ReturnType<typeof useDataEngine> },
-    searchParams: GoalSearch,
-    dataElementGroupSets: DataElementGroupSet[],
-) => {
-    const { engine } = routeContext;
-    const dataElementGroups = useDataElementGroups(
-        searchParams,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, searchParams);
+    const { data } = useSuspenseQuery(queryOptions);
 
-    const resultsProps = useMemo(
-        () => ({
-            data: data.data,
-            dataElementGroupSets,
-            tab: searchParams.tab,
-            deg: searchParams.deg,
-            ou: searchParams.ou,
-            pe: searchParams.pe,
-            degs: searchParams.degs,
-        }),
-        [data.data, dataElementGroupSets, ...Object.values(searchParams)],
-    );
-
-    return {
-        data,
-        resultsProps,
-        dataElementGroups,
-    };
+    return data;
 };

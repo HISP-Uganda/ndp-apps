@@ -1,13 +1,11 @@
 import { createRoute } from "@tanstack/react-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Results } from "../../../../components/results";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
 import { SubProgramOutputRoute } from "./route";
+import { RootRoute } from "../../../__root";
 
 export const SubProgramOutputIndexRoute = createRoute({
     path: "/",
@@ -17,62 +15,47 @@ export const SubProgramOutputIndexRoute = createRoute({
 });
 
 function Component() {
+    const { allOptionsMap } = RootRoute.useLoaderData();
     const { engine } = SubProgramOutputIndexRoute.useRouteContext();
     const search = SubProgramOutputIndexRoute.useSearch();
     const navigate = SubProgramOutputIndexRoute.useNavigate();
-    const { dataElementGroupSets } = SubProgramOutputRoute.useLoaderData();
-    const dataElementGroups = useDataElementGroups(
-        search,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, {
-        ...search,
-        pe: derivePeriods(search.pe),
+    const { data, items, dimensions } = useAnalyticsQuery({
+        engine,
+        search: {
+            ...search,
+            pe: derivePeriods(search.pe),
+        },
+        ndpVersion: search.v,
+        attributeValue: "output",
     });
-
-    const onChange = (key: string) => {
-        navigate({
-            search: (prev) => ({
-                ...prev,
-                tab: key,
-            }),
-        });
-    };
-
+    const onChange = useCallback(
+        (key: string) => {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    tab: key,
+                }),
+            });
+        },
+        [navigate],
+    );
     const resultsProps = useMemo<ResultsProps>(
         () => ({
-            data: {
-                ...data.data,
-                ...dataElementGroups,
-            },
-            dataElementGroupSets,
+            data,
+            items,
+            dimensions,
             onChange,
             ...search,
             prefixColumns: [
-                // {
-                //     title:
-                //         search.v === "NDPIII"
-                //             ? "Sub-Interventions"
-                //             : "Interventions",
-                //     dataIndex: "dataElementGroupSet",
-                //     render: (_, record) => {
-                //         let current = "";
-                //         for (const group of dataElementGroupSets) {
-                //             if (Object(record).hasOwnProperty(group.id)) {
-                //                 current = group.name;
-                //                 break;
-                //             }
-                //         }
-                //         return current;
-                //     },
-                // },
                 {
                     title: "Outputs",
-                    dataIndex: "dataElementGroup",
+                    dataIndex: "AKzxCNn1zkQ",
+                    key: "AKzxCNn1zkQ",
+                    render: (text) => allOptionsMap?.get(text) || text,
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
+        [data, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

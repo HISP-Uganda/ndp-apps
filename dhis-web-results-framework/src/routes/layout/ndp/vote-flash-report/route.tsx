@@ -3,7 +3,7 @@ import { createRoute, Outlet } from "@tanstack/react-router";
 import { Flex, Form, Select, Typography } from "antd";
 import React from "react";
 import PerformanceLegend from "../../../../components/performance-legend";
-import { VoteSchema } from "../../../../types";
+import { FlashReportSchema } from "../../../../types";
 import { performanceLegendItems } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { NDPRoute } from "../route";
@@ -15,7 +15,7 @@ export const VoteFlashReportRoute = createRoute({
     loaderDeps: ({ search }) => ({
         v: search.v,
     }),
-    validateSearch: VoteSchema,
+    validateSearch: FlashReportSchema,
 });
 
 function Component() {

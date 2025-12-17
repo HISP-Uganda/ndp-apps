@@ -2,50 +2,50 @@ import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
 import { Flex } from "antd";
-import { NDPRoute } from "../route";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { dataElementGroupSetsQueryOptions } from "../../../../query-options";
-import { GoalValidator } from "../../../../types";
 import Filter from "../../../../components/Filter";
 import {
-    convertToDataElementGroupSetsOptions,
-    convertToDataElementGroupsOptions,
-} from "../../../../utils";
+    dataElementGroupSetsQueryOptions,
+    queryDataElements,
+} from "../../../../query-options";
+import { GoalValidator } from "../../../../types";
+import { NDPRoute } from "../route";
+import { RootRoute } from "../../../__root";
+import { uniqBy } from "lodash";
 
 export const ObjectiveRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "objectives",
     component: Component,
-    loaderDeps: ({ search }) => ({
-        v: search.v,
-    }),
     validateSearch: GoalValidator,
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
-            dataElementGroupSetsQueryOptions(
-                engine,
-                "resultsFrameworkObjective",
-                v,
-            ),
-        );
-        return data;
-    },
 });
 
 function Component() {
-    const { engine } = ObjectiveRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, category, categoryOptions } =
-        ObjectiveRoute.useSearch();
-    const { categories } = useLoaderData({ from: "__root__" });
-    const { data } = useSuspenseQuery(
-        dataElementGroupSetsQueryOptions(
-            engine,
-            "resultsFrameworkObjective",
-            v,
-        ),
-    );
+    const search = ObjectiveRoute.useSearch();
+    const { categories, strategicObjectives, allOptionsMap } =
+        RootRoute.useLoaderData();
     const navigate = ObjectiveRoute.useNavigate();
+
+    const [objectives, setObjectives] = React.useState<any[]>([]);
+
+    const { keyResultArea, objective, ou, pe, category, categoryOptions } =
+        search;
+
+    useEffect(() => {
+        let isMounted = true;
+        console.log("Loading Strategic Objectives", search);
+        async function loadObjectives() {
+            const result = await queryDataElements({
+                ...search,
+                attributeValue: "strategicObjective",
+                ndpVersion: search.v,
+            });
+            if (isMounted) setObjectives(result);
+        }
+        loadObjectives();
+        return () => {
+            isMounted = false;
+        };
+    }, [search.objective]);
 
     useEffect(() => {
         if (categoryOptions === undefined) {
@@ -61,7 +61,7 @@ function Component() {
     return (
         <Flex vertical gap={10} style={{ padding: 10 }}>
             <Filter
-                data={{ deg, degs, ou, pe }}
+                data={{ objective, ou, pe, keyResultArea }}
                 onChange={(val, next) => {
                     if (next) {
                         navigate({
@@ -82,14 +82,25 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "degs",
-                        options: convertToDataElementGroupSetsOptions(data),
+                        key: "objective",
+                        options: strategicObjectives.map((obj) => ({
+                            value: obj.code,
+                            label: obj.name,
+                        })),
                         label: "Strategic Objective",
                         defaultValue: "All",
                     },
                     {
-                        key: "deg",
-                        options: convertToDataElementGroupsOptions(degs, data),
+                        key: "keyResultArea",
+                        options: uniqBy(
+                            objectives.map(({ JmZO4hoIlfT }) => ({
+                                value: JmZO4hoIlfT,
+                                label:
+                                    allOptionsMap.get(JmZO4hoIlfT) ||
+                                    JmZO4hoIlfT,
+                            })),
+                            "value",
+                        ),
                         label: "Key Result Area",
                         defaultValue: "All",
                     },

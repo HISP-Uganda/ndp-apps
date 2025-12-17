@@ -16,17 +16,17 @@ export const OutcomePerformanceRoute = createRoute({
     loaderDeps: ({ search }) => ({
         v: search.v,
     }),
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                "objective",
-                v,
-            ),
-        );
-        return data;
-    },
+    // loader: async ({ context, deps: { v } }) => {
+    //     const { engine, queryClient } = context;
+    //     const data = queryClient.ensureQueryData(
+    //         dataElementGroupSetsWithProgramsQueryOptions(
+    //             engine,
+    //             "objective",
+    //             v,
+    //         ),
+    //     );
+    //     return data;
+    // },
     validateSearch: PerformanceSchema,
 });
 

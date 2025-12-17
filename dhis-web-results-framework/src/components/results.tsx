@@ -1,97 +1,110 @@
 import { DownloadOutlined } from "@ant-design/icons";
 import { useSearch } from "@tanstack/react-router";
 
-import { Button, Flex, Modal, Table, TableProps, Tabs, TabsProps } from "antd";
-import { orderBy, uniqBy } from "lodash";
+import {
+    Button,
+    Flex,
+    Form,
+    Modal,
+    Select,
+    Table,
+    TableProps,
+    Tabs,
+    TabsProps,
+} from "antd";
 import React, { useMemo } from "react";
 import { FaInfoCircle } from "react-icons/fa";
 import downloadExcelFromColumns from "../download-antd-table";
-import { RootRoute } from "../routes/__root";
-import { ResultsProps } from "../types";
-import { legendItems, makeDataElementData } from "../utils";
-import PerformanceLegend from "./performance-legend";
 import downloadPdfFromColumns from "../download-pdf-from-columns";
+import { RootRoute } from "../routes/__root";
+import {
+    AnalyticsData,
+    budgetColumns,
+    PERFORMANCE_LABELS,
+    ResultsProps,
+} from "../types";
+import { legendItems } from "../utils";
+import PerformanceLegend from "./performance-legend";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import quarterOfYear from "dayjs/plugin/quarterOfYear";
+import dayjs from "dayjs";
 
-const budgetColumns = {
-    lAyLQi6IqVF: "BR",
-    NfADZSy1VzB: "BS",
-    YE32G6hzVDl: "BP",
-    UHhWlfyy5bm: "BA",
-    bqIaasqpTas: "B",
-    Px8Lqkxy2si: "T",
-    HKtncMjp06U: "A",
-};
+dayjs.extend(advancedFormat);
+dayjs.extend(quarterOfYear);
 
-const makeIndicatorData = (data: Record<string, any>) => {
+const makeIndicatorData = (data: AnalyticsData): Partial<AnalyticsData>[] => {
     return [
-        { code: "Name", display: data["dx"] },
-        { code: "Description", display: data["description"] },
-        { code: "Computation method", display: data["Computation method"] },
-        { code: "Unit of Measure", display: data["Unit"] },
-        { code: "Indicator Source", display: data["Indicator Source"] },
+        { code: "Name", dx: data.name },
+        { code: "Description", dx: data["description"] ?? "" },
+        { code: "Computation method", dx: data["Computation method"] ?? "" },
+        { code: "Unit of Measure", dx: data["Unit"] ?? "" },
+        { code: "Indicator Source", dx: data["Indicator Source"] ?? "" },
 
         {
             code: "Alternative data source",
-            display: data["Alternative data source"],
+            dx: data["Alternative data source"],
         },
         {
             code: "Preferred data source",
-            display: data["Preferred data source"],
+            dx: data["Preferred data source"],
         },
-        { code: "Vote", display: data["dataSetOrganisationUnitName"] },
+        { code: "Vote", dx: data["dataSetOrganisationUnitName"] ?? "" },
         {
             code: "Accountability for indicator",
-            display: data["Accountability for indicator"],
+            dx: data["Accountability for indicator"],
         },
         {
             code: "Responsibility for indicator",
-            display: data["Responsibility for indicator"],
+            dx: data["Responsibility for indicator"],
         },
-        // { code: "Lead MDA", display: data["Lead MDA"] },
-        { code: "Other MDAs", display: data["Other MDAs"] },
-        { code: "Indicator code", display: data["code"] },
-        { code: "Indicator type", display: data["Indicator type"] },
-        { code: "Aggregation type", display: data["aggregationType"] },
+        // { code: "Lead MDA", dx: data["Lead MDA"]??"" },
+        { code: "Other MDAs", dx: data["Other MDAs"] ?? "" },
+        { code: "Indicator code", dx: data["code"] ?? "" },
+        { code: "Indicator type", dx: data["Indicator type"] ?? "" },
+        { code: "Aggregation type", dx: data["aggregationType"] ?? "" },
         {
             code: "Frequency of data collection",
-            display: data["Frequency of data collection"],
+            dx: data["Frequency of data collection"],
         },
         {
             code: "Reporting Frequency",
-            display:
+            dx:
                 data["dataSetPeriodType"] === "FinancialJuly"
                     ? "Financial Year"
                     : data["dataSetPeriodType"],
         },
 
-        // { code: "Baseline Status 2010", display: data["Baseline Status 2010"] },
+        // { code: "Baseline Status 2010", dx: data["Baseline Status 2010"]??"" },
         {
             code: "Chart of Accounts Code",
-            display: data["Chart of Accounts Code"],
+            dx: data["Chart of Accounts Code"],
         },
-        // { code: "Computation type", display: data["Computation type"] },
+        // { code: "Computation type", dx: data["Computation type"]??"" },
         {
             code: "Descending Indicator",
-            display: data["descending indicator type"] ? "Yes" : "No",
+            dx: data["descending indicator type"] ? "Yes" : "No",
         },
-        // { code: "Green range", display: data["Green range"] },
-        // { code: "Current Project Cost", display: data["Current Project Cost"] },
-        // { code: "Limitations", display: data["Limitations"] },
+        // { code: "Green range", dx: data["Green range"]??"" },
+        // { code: "Current Project Cost", dx: data["Current Project Cost"]??"" },
+        // { code: "Limitations", dx: data["Limitations"]??"" },
 
-        // { code: "Rationale", display: data["Rationale"] },
-        // { code: "Red range", display: data["Red range"] },
-        // { code: "References", display: data["References"] },
+        // { code: "Rationale", dx: data["Rationale"]??"" },
+        // { code: "Red range", dx: data["Red range"]??"" },
+        // { code: "References", dx: data["References"]??"" },
 
-        // { code: "Vision 2040", display: data["Vision 2040"] },
-        // { code: "Yellow range", display: data["Yellow range"] },
+        // { code: "Vision 2040", dx: data["Vision 2040"]??"" },
+        // { code: "Yellow range", dx: data["Yellow range"]??"" },
     ];
 };
 
-const PERFORMANCE_LABELS: Record<number, string> = {
-    0: "T",
-    1: "A",
-    2: "%",
-} as const;
+const quarterOrder = { Q1: "Q3", Q2: "Q4", Q3: "Q1", Q4: "Q2" };
+
+const fullQuarters = {
+    3: "Q1",
+    4: "Q2",
+    1: "Q3",
+    2: "Q4",
+};
 
 export function Results(props: ResultsProps) {
     const [modal, contextHolder] = Modal.useModal();
@@ -106,87 +119,43 @@ export function Results(props: ResultsProps) {
         category,
         categoryOptions,
         nonBaseline,
+        dimensions,
+        items,
     } = props;
     const { v } = useSearch({ from: "/layout/ndp" });
     const { configurations, categoryOptions: optionNames } =
         RootRoute.useLoaderData();
-    const { target, value, analyticsItems, finalData, baseline } =
-        useMemo(() => {
-            const cats = data.analytics.metaData.dimensions[category] ?? [];
-            const target = cats.at(-2) ?? "";
-            const value = cats.at(-1) ?? "";
-            const baseline = cats.at(0) ?? "";
-            const approved = cats.at(1) ?? "";
-            const analyticsItems = data.analytics.metaData.items;
-            let finalData = orderBy(
-                makeDataElementData({
-                    ...data,
-                    targetId: target,
-                    actualId: value,
-                    baselineId: baseline,
-                    category,
-                }),
-                ["code"],
-                ["asc"],
-            );
-            finalData = finalData.map((row) => {
-                const dataElementGroup = data.dataElementGroups
-                    .flatMap((group) => {
-                        const value = row[group];
-                        if (value === undefined) {
-                            return [];
-                        }
-                        return value;
-                    })
-                    .join(" ");
+    const cats = dimensions[category] ?? [];
+    const target = cats.at(-2) ?? "";
+    const baseline = cats.at(0) ?? "";
+    const value = cats.at(-1) ?? "";
 
-                const dataElementGroupSet = data.groupSets
-                    .flatMap((group) => {
-                        const value = row[group];
-                        if (value === undefined) {
-                            return [];
-                        }
-                        return value;
-                    })
-                    .join(" ");
+    const [currentQuarters, setCurrentQuarters] = React.useState<string[]>([
+        fullQuarters[dayjs().quarter()],
+    ]);
+    const indicatorColumns: TableProps<Partial<AnalyticsData>>["columns"] =
+        useMemo(
+            () => [
+                {
+                    title: "Indicator Code",
+                    dataIndex: "code",
+                    key: "code",
+                },
+                {
+                    title: "Indicator Name",
+                    dataIndex: "dx",
+                    key: "dx",
+                },
+            ],
+            [],
+        );
 
-                return { ...row, dataElementGroup, dataElementGroupSet };
-            });
-
-            return {
-                target,
-                value,
-                analyticsItems,
-                finalData,
-                baseline,
-                approved,
-            };
-        }, [data.analytics, category, categoryOptions]);
-
-    const indicatorColumns: TableProps<any>["columns"] = useMemo(
-        () => [
-            {
-                title: "Indicator Code",
-                dataIndex: "code",
-                key: "code",
-                width: "50%",
-            },
-            {
-                title: "Indicator Name",
-                dataIndex: "display",
-                key: "display",
-                width: "50%",
-            },
-        ],
-        [],
-    );
-
-    const nameColumn: TableProps<Record<string, any>>["columns"] = useMemo(
+    const nameColumn: TableProps<AnalyticsData>["columns"] = useMemo(
         () => [
             ...prefixColumns,
             {
                 title: nonBaseline ? "Budget Actions" : "Indicators",
-                dataIndex: "dx",
+                dataIndex: "name",
                 render: (text: string, record) => {
                     return (
                         <div>
@@ -201,7 +170,7 @@ export function Results(props: ResultsProps) {
                                 onClick={() => {
                                     modal.info({
                                         title: "Indicator Dictionary",
-                                        width: 600,
+                                        width: "70%",
                                         centered: true,
                                         content: (
                                             <Table
@@ -215,7 +184,10 @@ export function Results(props: ResultsProps) {
                                                 }}
                                                 pagination={false}
                                                 rowKey="code"
-                                                scroll={{ y: 700 }}
+                                                scroll={{
+                                                    y: 700,
+                                                    x: "max-content",
+                                                }}
                                                 showHeader={false}
                                                 bordered
                                             />
@@ -235,7 +207,7 @@ export function Results(props: ResultsProps) {
     const columns = useMemo(() => {
         const columnsMap = new Map<
             string,
-            TableProps<Record<string, any>>["columns"]
+            TableProps<AnalyticsData>["columns"]
         >();
 
         columnsMap.set("target", [
@@ -243,8 +215,8 @@ export function Results(props: ResultsProps) {
             ...pe.flatMap((pe) => {
                 const title =
                     configurations[v]?.data?.baseline === pe
-                        ? analyticsItems[baseline].name
-                        : analyticsItems[target].name;
+                        ? items[baseline].name
+                        : items[target].name;
                 const dataIndex =
                     configurations[v]?.data?.baseline === pe
                         ? `${pe}${baseline}`
@@ -261,10 +233,7 @@ export function Results(props: ResultsProps) {
                         ? categoryOptions?.slice(0, 2).map((option) => ({
                               title:
                                   budgetColumns[option] ||
-                                  analyticsItems[option]?.name?.replace(
-                                      "Budget ",
-                                      "",
-                                  ),
+                                  items[option]?.name?.replace("Budget ", ""),
                               dataIndex: `${pe}${option}`,
                               align: "center" as const,
                               minWidth: 90,
@@ -291,7 +260,7 @@ export function Results(props: ResultsProps) {
                     return [];
                 }
                 return {
-                    title: analyticsItems[pe].name,
+                    title: items[pe].name,
                     align: "center" as const,
                     children: nonBaseline
                         ? categoryOptions
@@ -300,7 +269,7 @@ export function Results(props: ResultsProps) {
                                   return {
                                       title:
                                           budgetColumns[option] ||
-                                          analyticsItems[option]?.name?.replace(
+                                          items[option]?.name?.replace(
                                               "Budget ",
                                               "",
                                           ),
@@ -310,17 +279,17 @@ export function Results(props: ResultsProps) {
                                   };
                               })
                               .concat(
-                                  [3, 4, 1, 2].map((quarter, index) => {
+                                  currentQuarters.map((quarter) => {
                                       const year = Number(pe.slice(0, 4));
                                       const currentYear =
-                                          quarter === 1 || quarter === 2
-                                              ? year + 1
-                                              : year;
+                                          quarter === "Q1" || quarter === "Q2"
+                                              ? year
+                                              : year + 1;
                                       return {
-                                          title: `Q${index + 1}`,
-                                          key: `${pe}${currentYear}Q${quarter}`,
+                                          title: quarter,
+                                          key: `${pe}${currentYear}${quarterOrder[quarter]}`,
                                           align: "center",
-                                          dataIndex: `${pe}${currentYear}Q${quarter}`,
+                                          dataIndex: `${pe}${currentYear}${quarterOrder[quarter]}`,
                                           minWidth: 100,
                                           children: [
                                               ...categoryOptions
@@ -330,17 +299,16 @@ export function Results(props: ResultsProps) {
                                                           budgetColumns[
                                                               option
                                                           ] ||
-                                                          analyticsItems[option]
-                                                              ?.name,
-                                                      dataIndex: `${currentYear}Q${quarter}${option}`,
-                                                      key: `${currentYear}Q${quarter}${option}`,
+                                                          items[option]?.name,
+                                                      dataIndex: `${currentYear}${quarterOrder[quarter]}${option}`,
+                                                      key: `${currentYear}${quarterOrder[quarter]}${option}`,
                                                       align: "center" as const,
                                                       minWidth: 40,
                                                   })),
                                               {
                                                   title: `%`,
-                                                  dataIndex: `${currentYear}Q${quarter}performance`,
-                                                  key: `${currentYear}Q${quarter}performance`,
+                                                  dataIndex: `${currentYear}${quarterOrder[quarter]}performance`,
+                                                  key: `${currentYear}${quarterOrder[quarter]}performance`,
                                                   align: "center",
                                                   minWidth: 40,
                                                   onCell: (
@@ -348,7 +316,7 @@ export function Results(props: ResultsProps) {
                                                   ) => {
                                                       return {
                                                           style: row[
-                                                              `${currentYear}Q${quarter}style`
+                                                              `${currentYear}${quarterOrder[quarter]}style`
                                                           ],
                                                       };
                                                   },
@@ -359,38 +327,38 @@ export function Results(props: ResultsProps) {
                               )
                         : (configurations[v]?.data?.baseline === pe
                               ? [baseline]
-                              : [target, value, "performance"]
+                              : ["target", "actual", "performance"]
                           ).flatMap((currentValue, index) => {
                               const year = Number(pe.slice(0, 4));
                               if (index === 1 && quarters) {
-                                  return [3, 4, 1, 2].map((quarter, index) => {
+                                  return currentQuarters.map((quarter) => {
                                       const currentYear =
-                                          quarter === 1 || quarter === 2
-                                              ? year + 1
-                                              : year;
+                                          quarter === "Q1" || quarter === "Q2"
+                                              ? year
+                                              : year + 1;
                                       return {
-                                          title: `Q${index + 1}`,
-                                          key: `${pe}${currentYear}Q${quarter}`,
+                                          title: quarter,
+                                          key: `${pe}${currentYear}${quarterOrder[quarter]}`,
                                           align: "center",
                                           children: [
                                               {
                                                   title: `A`,
-                                                  key: `${currentYear}Q${quarter}actual`,
-                                                  dataIndex: `${currentYear}Q${quarter}actual`,
+                                                  key: `${currentYear}${quarterOrder[quarter]}actual`,
+                                                  dataIndex: `${currentYear}${quarterOrder[quarter]}actual`,
                                                   align: "center",
                                                   minWidth: 40,
                                               },
                                               {
                                                   title: `%`,
-                                                  dataIndex: `${currentYear}Q${quarter}performance`,
-                                                  key: `${currentYear}Q${quarter}performance`,
+                                                  dataIndex: `${currentYear}${quarterOrder[quarter]}performance`,
+                                                  key: `${currentYear}${quarterOrder[quarter]}performance`,
                                                   align: "center",
                                                   onCell: (
                                                       row: Record<string, any>,
                                                   ) => {
                                                       return {
                                                           style: row[
-                                                              `${currentYear}Q${quarter}style`
+                                                              `${currentYear}${quarterOrder[quarter]}style`
                                                           ],
                                                       };
                                                   },
@@ -401,7 +369,7 @@ export function Results(props: ResultsProps) {
                                   });
                               } else {
                                   const title =
-                                      analyticsItems[currentValue]?.name ??
+                                      items[currentValue]?.name ??
                                       PERFORMANCE_LABELS[index];
                                   return {
                                       title:
@@ -435,7 +403,7 @@ export function Results(props: ResultsProps) {
         nameColumn,
         target,
         value,
-        analyticsItems,
+        items,
         postfixColumns,
         prefixColumns,
         configurations,
@@ -444,20 +412,20 @@ export function Results(props: ResultsProps) {
         quarters,
         pe,
     ]);
-    const tableProps = useMemo<TableProps<Record<string, any>>>(
+    const tableProps = useMemo<TableProps<AnalyticsData>>(
         () => ({
-            scroll: { y: "calc(100vh - 460px)" },
+            scroll: { y: "calc(100vh - 520px)" },
             rowKey: "id",
             bordered: true,
             sticky: true,
             tableLayout: "auto",
             pagination: false,
             size: "small",
-            dataSource: uniqBy(finalData, "id"),
+            dataSource: data,
         }),
-        [finalData],
+        [data],
     );
-    const items: TabsProps["items"] = useMemo(
+    const tabItems: TabsProps["items"] = useMemo(
         () => [
             {
                 key: "target",
@@ -477,7 +445,7 @@ export function Results(props: ResultsProps) {
                                 onClick={() =>
                                     downloadPdfFromColumns(
                                         columns.get("target"),
-                                        finalData,
+                                        data,
                                         "performance-report.pdf",
                                     )
                                 }
@@ -489,7 +457,7 @@ export function Results(props: ResultsProps) {
                                 onClick={() =>
                                     downloadExcelFromColumns(
                                         columns.get("target"),
-                                        finalData,
+                                        data,
                                         "performance-report.xlsx",
                                     )
                                 }
@@ -541,13 +509,31 @@ export function Results(props: ResultsProps) {
                                     </div>
                                 ))}
                             </Flex>
+                            {quarters && (
+                                <Form.Item label="Quarter">
+                                    <Select
+                                        style={{ width: 275 }}
+                                        options={[
+                                            { label: "Q1", value: "Q1" },
+                                            { label: "Q2", value: "Q2" },
+                                            { label: "Q3", value: "Q3" },
+                                            { label: "Q4", value: "Q4" },
+                                        ]}
+                                        value={currentQuarters}
+                                        onChange={(val) =>
+                                            setCurrentQuarters(val)
+                                        }
+                                        mode="multiple"
+                                    />
+                                </Form.Item>
+                            )}
 
                             <Flex justify="flex-end" gap={10}>
                                 <Button
                                     onClick={() =>
                                         downloadPdfFromColumns(
                                             columns.get("performance"),
-                                            finalData,
+                                            data,
                                             "performance-report.pdf",
                                         )
                                     }
@@ -559,7 +545,7 @@ export function Results(props: ResultsProps) {
                                     onClick={() =>
                                         downloadExcelFromColumns(
                                             columns.get("performance"),
-                                            finalData,
+                                            data,
                                             "performance-report.xlsx",
                                         )
                                     }
@@ -585,7 +571,7 @@ export function Results(props: ResultsProps) {
             <Tabs
                 activeKey={tab || "performance"}
                 type="card"
-                items={items}
+                items={tabItems}
                 onChange={onChange}
                 size="large"
                 renderTabBar={(props, DefaultTabBar) => (

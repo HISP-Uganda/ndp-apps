@@ -1,14 +1,11 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
-import { Button, Flex, Table, TableProps } from "antd";
-import { orderBy } from "lodash";
-import React, { useState } from "react";
-import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
-import { formatter, getCellStyle } from "../../../../utils";
+import { Flex, Table, TableProps } from "antd";
+import React from "react";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
+import { AnalyticsData } from "../../../../types";
+import { getCellStyle, processByPerformance } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { BudgetPerformanceRoute } from "./route";
-import downloadExcelFromColumns from "../../../../download-antd-table";
-import { DownloadOutlined } from "@ant-design/icons";
 
 export const BudgetPerformanceIndexRoute = createRoute({
     path: "/",
@@ -17,64 +14,62 @@ export const BudgetPerformanceIndexRoute = createRoute({
 });
 
 function Component() {
-    const { votes } = RootRoute.useLoaderData();
+    const { votes, ou, programs } = RootRoute.useLoaderData();
     const { engine } = BudgetPerformanceRoute.useRouteContext();
-    const results = BudgetPerformanceRoute.useLoaderData();
-    const { pe, quarters, category, categoryOptions } =
-        BudgetPerformanceIndexRoute.useSearch();
+    const search = BudgetPerformanceIndexRoute.useSearch();
+    const { data } = useAnalyticsQuery({
+        engine,
+        search: {
+            ...search,
+            pe: [search.pe ?? ""],
+            ou,
+        },
+        ndpVersion: search.v,
+        attributeValue: "action",
+        specificLevel: 3,
+        ouIsFilter: false,
+    });
 
-    const { data } = useSuspenseQuery(
-        dataElementsFromGroupQueryOptions({
-            engine,
-            dataElementGroupSets: results.dataElementGroupSets,
-            pe,
-            quarters,
-            category,
-            categoryOptions,
-            votes,
-        }),
-    );
+    // const [finalData, setFinalData] = useState(
+    //     votes.map((vote) => {
+    //         const dataForVote = data?.get(vote.id);
+    //         return {
+    //             ...vote,
+    //             ...dataForVote,
+    //         };
+    //     }),
+    // );
 
-    const [finalData, setFinalData] = useState(
-        votes.map((vote) => {
-            const dataForVote = data?.get(vote.id);
-            return {
-                ...vote,
-                ...dataForVote,
-            };
-        }),
-    );
+    // const handleChange: TableProps<(typeof finalData)[number]>["onChange"] = (
+    //     _pagination,
+    //     _filters,
+    //     sorter,
+    // ) => {
+    //     if (!Array.isArray(sorter)) {
+    //         const { field, order } = sorter;
+    //         if (field && order) {
+    //             setFinalData((prev) => {
+    //                 return orderBy(
+    //                     prev,
+    //                     [String(field)],
+    //                     [order === "ascend" ? "asc" : "desc"],
+    //                 );
+    //             });
+    //         } else {
+    //             setFinalData(() =>
+    //                 votes.map((vote) => {
+    //                     const dataForVote = data?.get(vote.id);
+    //                     return {
+    //                         ...vote,
+    //                         ...dataForVote,
+    //                     };
+    //                 }),
+    //             );
+    //         }
+    //     }
+    // };
 
-    const handleChange: TableProps<(typeof finalData)[number]>["onChange"] = (
-        _pagination,
-        _filters,
-        sorter,
-    ) => {
-        if (!Array.isArray(sorter)) {
-            const { field, order } = sorter;
-            if (field && order) {
-                setFinalData((prev) => {
-                    return orderBy(
-                        prev,
-                        [String(field)],
-                        [order === "ascend" ? "asc" : "desc"],
-                    );
-                });
-            } else {
-                setFinalData(() =>
-                    votes.map((vote) => {
-                        const dataForVote = data?.get(vote.id);
-                        return {
-                            ...vote,
-                            ...dataForVote,
-                        };
-                    }),
-                );
-            }
-        }
-    };
-
-    const columns: TableProps<(typeof finalData)[number]>["columns"] = [
+    const columns: TableProps<AnalyticsData>["columns"] = [
         {
             title: "Vote",
             dataIndex: "vote",
@@ -97,15 +92,15 @@ function Component() {
         },
         {
             title: `Cumm. Allocation (Ugx Bn)`,
-            dataIndex: "baseline",
-            key: "baseline",
+            dataIndex: `approved`,
+            key: "approved",
             width: 160,
             align: "center",
             sorter: true,
         },
         {
             title: `Cumm. Release (Ugx Bn)`,
-            dataIndex: "target",
+            dataIndex: `target`,
             key: "target",
             width: 160,
             align: "center",
@@ -113,7 +108,7 @@ function Component() {
         },
         {
             title: `Cumm. Expenditure (Ugx Bn)`,
-            dataIndex: "actual",
+            dataIndex: `actual`,
             key: "actual",
             width: 160,
             align: "center",
@@ -121,34 +116,23 @@ function Component() {
         },
         {
             title: `% Budget Released`,
-            key: "moderatelyAchieved",
+            key: "allocation",
+            dataIndex: "allocation",
             width: 160,
             align: "center",
-            render: (_, record) =>
-                formatter.format(
-                    record.baseline === 0 || record.target === 0
-                        ? 0
-                        : record.target / record.baseline,
-                ),
-
             onCell: (record) => ({
-                style: getCellStyle(
-                    record.baseline === 0 || record.target === 0
-                        ? 0
-                        : record.target / record.baseline,
-                ),
+                style: getCellStyle(record.approvedAllocation),
             }),
             sorter: true,
         },
         {
             title: `% Release Spent`,
-            key: "performance",
-            dataIndex: "performance",
+            key: "spend",
+            dataIndex: "spend",
             align: "center",
             width: 160,
-            render: (_, record) => formatter.format(record.performance),
             onCell: (record) => ({
-                style: getCellStyle(record.performance),
+                style: getCellStyle(record.actualSpend),
             }),
             sorter: true,
         },
@@ -156,7 +140,7 @@ function Component() {
 
     return (
         <Flex vertical gap="16px">
-            <Flex justify="flex-end">
+            {/* <Flex justify="flex-end">
                 <Button
                     onClick={() =>
                         downloadExcelFromColumns(
@@ -169,17 +153,23 @@ function Component() {
                 >
                     Download Excel
                 </Button>
-            </Flex>
+            </Flex> */}
             <Table
                 columns={columns}
-                dataSource={finalData}
+                dataSource={processByPerformance({
+                    dataElements: data,
+                    groupingBy: "orgUnit",
+                    programs,
+                    pe: search.pe ?? "",
+                    votes,
+                })}
                 scroll={{ y: "calc(100vh - 300px)" }}
-                rowKey="id"
+                rowKey="orgUnit"
                 bordered={true}
                 sticky={true}
                 pagination={false}
                 size="small"
-                onChange={handleChange}
+                // onChange={handleChange}
             />
         </Flex>
     );

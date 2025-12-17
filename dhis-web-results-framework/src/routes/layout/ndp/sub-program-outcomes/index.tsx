@@ -1,13 +1,10 @@
 import { createRoute } from "@tanstack/react-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Results } from "../../../../components/results";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
-import { SubProgramOutcomeRoute } from "./route";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { ResultsProps } from "../../../../types";
-import { derivePeriods } from "../../../../utils";
+import { SubProgramOutcomeRoute } from "./route";
+import { RootRoute } from "../../../__root";
 
 export const SubProgramOutcomeIndexRoute = createRoute({
     path: "/",
@@ -17,59 +14,45 @@ export const SubProgramOutcomeIndexRoute = createRoute({
 });
 
 function Component() {
+	const { allOptionsMap } = RootRoute.useLoaderData();
     const { engine } = SubProgramOutcomeIndexRoute.useRouteContext();
     const search = SubProgramOutcomeIndexRoute.useSearch();
     const navigate = SubProgramOutcomeIndexRoute.useNavigate();
-    const { dataElementGroupSets } = SubProgramOutcomeRoute.useLoaderData();
-    const dataElementGroups = useDataElementGroups(
-        search,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, {
-        ...search,
-        pe: derivePeriods(search.pe),
+    const { data, items, dimensions } = useAnalyticsQuery({
+        engine,
+        search: {
+            ...search,
+        },
+        ndpVersion: search.v,
+        attributeValue: "intermediateOutcome",
     });
-
-    const onChange = (key: string) => {
-        navigate({
-            search: (prev) => ({
-                ...prev,
-                tab: key,
-            }),
-        });
-    };
-
+    const onChange = useCallback(
+        (key: string) => {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    tab: key,
+                }),
+            });
+        },
+        [navigate],
+    );
     const resultsProps = useMemo<ResultsProps>(
         () => ({
-            ...search,
-            data: {
-                ...data.data,
-                ...dataElementGroups,
-            },
-            dataElementGroupSets,
+            data,
+            items,
+            dimensions,
             onChange,
+            ...search,
             prefixColumns: [
-                // {
-                //     title: "Programme Objectives",
-                //     dataIndex: "dataElementGroupSet",
-                //     render: (_, record) => {
-                //         let current = "";
-                //         for (const group of dataElementGroupSets) {
-                //             if (Object(record).hasOwnProperty(group.id)) {
-                //                 current = group.name;
-                //                 break;
-                //             }
-                //         }
-                //         return current;
-                //     },
-                // },
                 {
                     title: "Intermediate Outcomes",
-                    dataIndex: "dataElementGroup",
+                    dataIndex: "k9c6BOHIohu",
+                    render: (text) => allOptionsMap?.get(text) || text,
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
+        [data, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

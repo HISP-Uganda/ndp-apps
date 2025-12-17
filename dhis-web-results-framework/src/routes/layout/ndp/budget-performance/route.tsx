@@ -1,34 +1,17 @@
-import { createRoute, Outlet } from "@tanstack/react-router";
-import React, { useEffect } from "react";
-import { Flex, Form, Select } from "antd";
-import { NDPRoute } from "../route";
-import { PerformanceSchema } from "../../../../types";
-import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
-import { RootRoute } from "../../../__root";
 import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
+import { createRoute, Outlet } from "@tanstack/react-router";
+import { Flex, Form, Select } from "antd";
+import React, { useEffect } from "react";
 import PerformanceLegend from "../../../../components/performance-legend";
+import { PerformanceSchema } from "../../../../types";
 import { performanceLegendItems } from "../../../../utils";
+import { RootRoute } from "../../../__root";
+import { NDPRoute } from "../route";
 
 export const BudgetPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "budget-performance",
     component: Component,
-    loaderDeps: ({ search }) => ({
-        v: search.v,
-    }),
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                v === "NDPIII"
-                    ? "sub-intervention4action"
-                    : "intervention4actions",
-                v,
-            ),
-        );
-        return data;
-    },
     validateSearch: PerformanceSchema,
 });
 

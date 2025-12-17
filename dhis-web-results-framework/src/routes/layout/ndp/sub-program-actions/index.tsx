@@ -1,13 +1,11 @@
 import { createRoute } from "@tanstack/react-router";
 import React, { useMemo } from "react";
 import { Results } from "../../../../components/results";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
-import { SubProgramActionRoute } from "./route";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { ResultsProps } from "../../../../types";
 import { derivePeriods } from "../../../../utils";
+import { RootRoute } from "../../../__root";
+import { SubProgramActionRoute } from "./route";
 
 export const SubProgramActionIndexRoute = createRoute({
     path: "/",
@@ -17,46 +15,19 @@ export const SubProgramActionIndexRoute = createRoute({
 });
 
 function Component() {
+    const { allOptionsMap } = RootRoute.useLoaderData();
     const { engine } = SubProgramActionIndexRoute.useRouteContext();
-    const {
-        ou,
-        deg,
-        pe,
-        tab,
-        program,
-        degs,
-        quarters,
-        requiresProgram,
-        category,
-        categoryOptions,
-        nonBaseline,
-    } = SubProgramActionIndexRoute.useSearch();
+    const search = SubProgramActionIndexRoute.useSearch();
     const navigate = SubProgramActionIndexRoute.useNavigate();
-    const { dataElementGroupSets } = SubProgramActionRoute.useLoaderData();
-
-    const dataElementGroups = useDataElementGroups(
-        {
-            deg,
-            pe,
-            ou,
-            program,
-            degs,
-            requiresProgram,
-            category,
-            categoryOptions,
+    const { data, items, dimensions } = useAnalyticsQuery({
+        engine,
+        search: {
+            ...search,
+            pe: derivePeriods(search.pe),
         },
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, {
-        deg,
-        pe: derivePeriods(pe),
-        ou,
-        program,
-        degs,
-        category,
-        categoryOptions,
+        ndpVersion: search.v,
+        attributeValue: "action",
     });
-
     const onChange = (key: string) => {
         navigate({
             search: (prev) => ({
@@ -65,44 +36,23 @@ function Component() {
             }),
         });
     };
-
     const resultsProps = useMemo<ResultsProps>(
         () => ({
-            data: {
-                ...data.data,
-                ...dataElementGroups,
-            },
-            dataElementGroupSets,
+            data,
+            items,
+            dimensions,
             onChange,
-            tab,
-            deg,
-            ou,
-            pe,
-            degs,
-            quarters,
-            category,
-            categoryOptions,
-            nonBaseline,
+            ...search,
             prefixColumns: [
                 {
                     title: "Outputs",
-                    dataIndex: "dataElementGroup",
+                    dataIndex: "AKzxCNn1zkQ",
+                    key: "AKzxCNn1zkQ",
+                    render: (text) => allOptionsMap?.get(text) || text,
                 },
             ],
         }),
-        [
-            data.data,
-            dataElementGroupSets,
-            onChange,
-            tab,
-            deg,
-            ou,
-            pe,
-            degs,
-            quarters,
-            category,
-            categoryOptions,
-        ],
+        [data, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

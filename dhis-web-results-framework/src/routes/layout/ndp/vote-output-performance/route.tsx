@@ -1,7 +1,7 @@
 import { createFixedPeriodFromPeriodId } from "@dhis2/multi-calendar-dates";
 import { createRoute, Outlet } from "@tanstack/react-router";
 import { Flex, Form, Select, Typography } from "antd";
-import React from "react";
+import React, { useEffect } from "react";
 import PerformanceLegend from "../../../../components/performance-legend";
 import { VoteSchema } from "../../../../types";
 import { performanceLegendItems } from "../../../../utils";
@@ -12,19 +12,16 @@ export const VoteOutputPerformanceRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "vote-output-performance",
     component: Component,
-    loaderDeps: ({ search }) => ({
-        v: search.v,
-    }),
+
     validateSearch: VoteSchema,
 });
 
 function Component() {
-    const { configurations } = RootRoute.useLoaderData();
+    const { configurations, votes, categories } = RootRoute.useLoaderData();
     const navigate = VoteOutputPerformanceRoute.useNavigate();
-    const { v, ou, pe } = VoteOutputPerformanceRoute.useSearch();
+    const { v, ou, pe, categoryOptions, category } =
+        VoteOutputPerformanceRoute.useSearch();
     const config = configurations[v ?? ""]["data"];
-
-    const { votes } = RootRoute.useLoaderData();
 
     const periods = config["financialYears"].map((year: string) =>
         createFixedPeriodFromPeriodId({
@@ -32,6 +29,17 @@ function Component() {
             periodId: year,
         }),
     );
+
+    useEffect(() => {
+        if (categoryOptions === undefined) {
+            navigate({
+                search: (prev) => ({
+                    ...prev,
+                    categoryOptions: categories.get(category),
+                }),
+            });
+        }
+    }, []);
     return (
         <Flex
             vertical

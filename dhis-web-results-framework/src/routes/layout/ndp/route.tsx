@@ -9,7 +9,6 @@ export const NDPRoute = createRoute({
     component: Component,
     loaderDeps: ({ search }) => ({
         v: search.v,
-				
     }),
     loader: async ({ context, deps: { v } }) => {
         const { engine, queryClient } = context;

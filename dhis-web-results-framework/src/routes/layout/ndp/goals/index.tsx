@@ -1,11 +1,9 @@
 import { createRoute } from "@tanstack/react-router";
 import React, { useCallback, useMemo } from "react";
 import { Results } from "../../../../components/results";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { ResultsProps } from "../../../../types";
+import { RootRoute } from "../../../__root";
 import { GoalRoute } from "./route";
 
 export const GoalIndexRoute = createRoute({
@@ -16,16 +14,25 @@ export const GoalIndexRoute = createRoute({
 });
 
 function Component() {
+    const { keyResultAreas } = RootRoute.useLoaderData();
     const { engine } = GoalIndexRoute.useRouteContext();
     const search = GoalIndexRoute.useSearch();
     const navigate = GoalIndexRoute.useNavigate();
-    const dataElementGroupSets = GoalRoute.useLoaderData();
 
-    const dataElementGroups = useDataElementGroups(
+    const allKeyResultAreasMap = useMemo(() => {
+        const map = new Map<string, string>();
+        keyResultAreas?.forEach((kra) => {
+            map.set(kra.code, kra.name);
+        });
+        return map;
+    }, [keyResultAreas]);
+
+    const { data, items, dimensions } = useAnalyticsQuery({
+        engine,
         search,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, search);
+        ndpVersion: search.v,
+        attributeValue: "ndpGoal",
+    });
     const onChange = useCallback(
         (key: string) => {
             navigate({
@@ -37,47 +44,24 @@ function Component() {
         },
         [navigate],
     );
-
     const resultsProps = useMemo<ResultsProps>(
         () => ({
-            data: {
-                ...data.data,
-                ...dataElementGroups,
-            },
-            dataElementGroupSets,
+            data,
+            items,
+            dimensions,
             onChange,
             ...search,
             prefixColumns: [
-                // {
-                //     title: "Goal",
-                //     key: "dataElementGroupSet",
-                //     render: (_, record) => {
-                //         let current = "";
-                //         for (const group of dataElementGroupSets) {
-                //             if (Object(record).hasOwnProperty(group.id)) {
-                //                 current = group.name;
-                //                 break;
-                //             }
-                //         }
-                //         return current;
-                //     },
-                // },
                 {
-                    title: (
-                        <div
-                            style={{
-                                whiteSpace: "normal",
-                                wordBreak: "break-word",
-                            }}
-                        >
-                            Key Result Areas
-                        </div>
-                    ),
-                    dataIndex: "dataElementGroup",
+                    title: "Key Result Areas",
+                    dataIndex: "JmZO4hoIlfT",
+                    key: "JmZO4hoIlfT",
+                    render: (text: string) =>
+                        allKeyResultAreasMap?.get(text) || text,
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
+        [data, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

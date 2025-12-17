@@ -1,12 +1,11 @@
 import { createRoute } from "@tanstack/react-router";
 import React, { useCallback, useMemo } from "react";
 import { Results } from "../../../../components/results";
-import {
-    useAnalyticsQuery,
-    useDataElementGroups,
-} from "../../../../hooks/data-hooks";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { ResultsProps } from "../../../../types";
+import { derivePeriods } from "../../../../utils";
 import { ObjectiveRoute } from "./route";
+import { RootRoute } from "../../../__root";
 
 export const ObjectIndexRoute = createRoute({
     path: "/",
@@ -16,16 +15,29 @@ export const ObjectIndexRoute = createRoute({
 });
 
 function Component() {
+    const { keyResultAreas } = RootRoute.useLoaderData();
+
     const { engine } = ObjectIndexRoute.useRouteContext();
     const search = ObjectIndexRoute.useSearch();
     const navigate = ObjectIndexRoute.useNavigate();
-    const dataElementGroupSets = ObjectiveRoute.useLoaderData();
 
-    const dataElementGroups = useDataElementGroups(
-        search,
-        dataElementGroupSets,
-    );
-    const data = useAnalyticsQuery(engine, dataElementGroups, search);
+    const allKeyResultAreasMap = useMemo(() => {
+        const map = new Map<string, string>();
+        keyResultAreas?.forEach((kra) => {
+            map.set(kra.code, kra.name);
+        });
+        return map;
+    }, [keyResultAreas]);
+
+    const { data, items, dimensions } = useAnalyticsQuery({
+        engine,
+        search: {
+            ...search,
+            pe: derivePeriods(search.pe),
+        },
+        ndpVersion: search.v,
+        attributeValue: "strategicObjective",
+    });
 
     const onChange = useCallback(
         (key: string) => {
@@ -40,32 +52,22 @@ function Component() {
     );
     const resultsProps = useMemo<ResultsProps>(
         () => ({
-            data: { ...data.data, ...dataElementGroups },
-            dataElementGroupSets,
+            data,
+            items,
+            dimensions,
             onChange,
             ...search,
             prefixColumns: [
-                // {
-                //     title: "Objectives",
-                //     dataIndex: "dataElementGroupSet",
-                //     render: (_, record) => {
-                //         let current = "";
-                //         for (const group of dataElementGroupSets) {
-                //             if (Object(record).hasOwnProperty(group.id)) {
-                //                 current = group.name;
-                //                 break;
-                //             }
-                //         }
-                //         return current;
-                //     },
-                // },
                 {
                     title: "Key Result Areas",
-                    dataIndex: "dataElementGroup",
+                    dataIndex: "JmZO4hoIlfT",
+                    key: "JmZO4hoIlfT",
+                    render: (text: string) =>
+                        allKeyResultAreasMap?.get(text) || text,
                 },
             ],
         }),
-        [data.data, dataElementGroupSets, onChange, ...Object.values(search)],
+        [data, onChange, ...Object.values(search)],
     );
 
     return <Results {...resultsProps} />;

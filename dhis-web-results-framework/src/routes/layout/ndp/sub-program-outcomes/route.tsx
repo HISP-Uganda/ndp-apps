@@ -1,68 +1,52 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
 import React, { useEffect } from "react";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
 import { Flex } from "antd";
 import Filter from "../../../../components/Filter";
-import { dataElementGroupSetsWithProgramsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
 import { RootRoute } from "../../../__root";
 import { NDPRoute } from "../route";
+import { queryDataElements } from "../../../../query-options";
+import { uniqBy } from "lodash";
 
 export const SubProgramOutcomeRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "sub-program-outcomes",
     component: Component,
-    loaderDeps: ({ search }) => ({
-        v: search.v,
-    }),
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                "sub-programme",
-                v,
-            ),
-        );
-        return data;
-    },
     validateSearch: GoalValidator,
-    // errorComponent: () => <div>{null}</div>,
+    errorComponent: () => <div>{null}</div>,
 });
 
 function Component() {
-    const { engine } = SubProgramOutcomeRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, program, category, categoryOptions } =
-        SubProgramOutcomeRoute.useSearch();
+    const search = SubProgramOutcomeRoute.useSearch();
+    const options = NDPRoute.useLoaderData();
     const { categories } = RootRoute.useLoaderData();
-    const { data } = useSuspenseQuery(
-        dataElementGroupSetsWithProgramsQueryOptions(
-            engine,
-            "sub-programme",
-            v,
-        ),
-    );
+
     const navigate = SubProgramOutcomeRoute.useNavigate();
-    const { programGoals } = RootRoute.useLoaderData();
+    const { programGoals, programs, allOptionsMap } = RootRoute.useLoaderData();
+    const [objectives, setObjectives] = React.useState<any[]>([]);
+    const { objective, ou, pe, program, category, categoryOptions, v } = search;
 
     const programGoal = programGoals.find(
         (pg) => program !== undefined && pg.code.includes(program),
     );
 
-    const [objectives, setObjectives] = React.useState(
-        data.dataElementGroupSets,
-    );
-
     useEffect(() => {
-        const selectedObjective = data.dataElementGroupSets.filter((degSet) =>
-            degSet.attributeValues.some(
-                (av) =>
-                    av.attribute.id === "UBWSASWdyfi" && av.value === program,
-            ),
-        );
-        setObjectives(() => selectedObjective);
-    }, [program]);
+        let isMounted = true;
+        async function loadObjectives() {
+            const result = await queryDataElements({
+                ...search,
+                attributeValue: "intermediateOutcome",
+                ndpVersion: v,
+            });
+
+            if (isMounted) setObjectives(result);
+        }
+        loadObjectives();
+        return () => {
+            isMounted = false;
+        };
+    }, [search.program]);
 
     useEffect(() => {
         if (categoryOptions === undefined) {
@@ -77,7 +61,7 @@ function Component() {
     return (
         <Flex vertical gap={10} style={{ padding: 10, height: "100%" }}>
             <Filter
-                data={{ deg, degs, ou, pe, program }}
+                data={{ objective, ou, pe, program }}
                 onChange={(val, previous) => {
                     if (previous) {
                         navigate({
@@ -99,18 +83,23 @@ function Component() {
                 options={[
                     {
                         key: "program",
-                        options: data.options.map(({ name, code }) => ({
+                        options: programs.map(({ name, code }) => ({
                             value: code,
                             label: name,
                         })),
                         label: "NDP Programme",
                     },
                     {
-                        key: "degs",
-                        options: objectives.map(({ name, id }) => ({
-                            value: id,
-                            label: name,
-                        })),
+                        key: "objective",
+                        options: uniqBy(
+                            objectives.map(({ GuoVDNEBAXA }) => ({
+                                value: GuoVDNEBAXA,
+                                label:
+                                    allOptionsMap.get(GuoVDNEBAXA) ||
+                                    GuoVDNEBAXA,
+                            })),
+                            "value",
+                        ),
                         label: "Program Objective",
                     },
                 ]}

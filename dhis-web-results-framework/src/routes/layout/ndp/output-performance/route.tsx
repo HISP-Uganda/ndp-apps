@@ -20,17 +20,6 @@ export const OutputPerformanceRoute = createRoute({
     loaderDeps: ({ search }) => ({
         v: search.v,
     }),
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
-            dataElementGroupSetsWithProgramsQueryOptions(
-                engine,
-                v === "NDPIII" ? "sub-intervention" : "intervention",
-                v,
-            ),
-        );
-        return data;
-    },
     validateSearch: PerformanceSchema,
 });
 

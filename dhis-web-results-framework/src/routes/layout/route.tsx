@@ -1,22 +1,22 @@
 import {
-	createRoute,
-	Link,
-	Navigate,
-	Outlet,
-	useLoaderData,
-	useLocation,
+    createRoute,
+    Link,
+    Navigate,
+    Outlet,
+    useLoaderData,
+    useLocation,
 } from "@tanstack/react-router";
 import React, { useState } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
-	ConfigProvider,
-	Flex,
-	Select,
-	SelectProps,
-	Splitter,
-	Tree,
-	TreeDataNode
+    ConfigProvider,
+    Flex,
+    Select,
+    SelectProps,
+    Splitter,
+    Tree,
+    TreeDataNode,
 } from "antd";
 
 import { SettingOutlined } from "@ant-design/icons";
@@ -40,7 +40,7 @@ function Component() {
     const navigate = LayoutRoute.useNavigate();
     const { v } = LayoutRoute.useSearch();
 
-    const { configurations } = useLoaderData({ from: "__root__" });
+    const { configurations } = RootRoute.useLoaderData();
     if (
         isEmpty(configurations[v]) ||
         isEmpty(configurations[v].data) ||
@@ -65,9 +65,7 @@ function Component() {
 
     const {
         data: { ndpVersions, ou, votes },
-    } = useSuspenseQuery(
-        initialQueryOptions(engine, "uV4fZlNvUsw", "nZffnMQwoWr"),
-    );
+    } = useSuspenseQuery(initialQueryOptions(engine));
 
     const treeData: TreeDataNode[] = [
         {
@@ -90,7 +88,7 @@ function Component() {
                                         ou,
                                         v,
                                         program: undefined,
-                                        degs: undefined,
+                                        objective: undefined,
                                         deg: undefined,
                                         pe: visionPeriods,
                                         requiresProgram: false,
@@ -127,7 +125,7 @@ function Component() {
                                         ...prev,
                                         ou,
                                         v,
-                                        degs: undefined,
+                                        objective: undefined,
                                         deg: undefined,
                                         program: undefined,
                                         pe,
@@ -165,7 +163,7 @@ function Component() {
                                         ...prev,
                                         ou,
                                         v,
-                                        degs: "All",
+
                                         deg: undefined,
                                         program: undefined,
                                         pe,
@@ -214,7 +212,7 @@ function Component() {
                                         ou,
                                         v,
                                         program: undefined,
-                                        degs: undefined,
+                                        objective: undefined,
                                         deg: undefined,
                                         pe,
                                         quarters: v === "NDPIV",
@@ -253,7 +251,7 @@ function Component() {
                                         ou,
                                         v,
                                         program: undefined,
-                                        degs: undefined,
+                                        objective: undefined,
                                         deg: undefined,
                                         pe,
                                         quarters: v === "NDPIV",
@@ -292,7 +290,7 @@ function Component() {
                                         ou,
                                         v,
                                         program: undefined,
-                                        degs: undefined,
+                                        objective: undefined,
                                         deg: undefined,
                                         pe,
                                         quarters: v === "NDPIV",
@@ -330,7 +328,7 @@ function Component() {
                                         ou,
                                         v,
                                         program: undefined,
-                                        degs: undefined,
+                                        objective: undefined,
                                         deg: undefined,
                                         pe,
                                         quarters: v === "NDPIV",
@@ -376,7 +374,8 @@ function Component() {
                                         ou: votes[0].id,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
+                                        category: "Duw5yep8Vae",
                                     })}
                                     activeProps={{
                                         style: {
@@ -406,7 +405,8 @@ function Component() {
                                         ou: votes[0].id,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
+                                        category: "Duw5yep8Vae",
                                     })}
                                     activeProps={{
                                         style: {
@@ -436,7 +436,8 @@ function Component() {
                                         ou: votes[0].id,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
+                                        category: "Duw5yep8Vae",
                                     })}
                                     activeProps={{
                                         style: {
@@ -463,11 +464,10 @@ function Component() {
                             title: (
                                 <Link
                                     to="/ndp/vote-flash-report"
-                                    search={(prev) => ({
+                                    search={() => ({
                                         ou: votes[0].id,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
                                     })}
                                     activeProps={{
                                         style: {
@@ -505,7 +505,7 @@ function Component() {
                                         ou,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
                                         category: "Duw5yep8Vae",
                                         categoryOptions: undefined,
                                     })}
@@ -538,7 +538,7 @@ function Component() {
                                         ou,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
                                         category: "Duw5yep8Vae",
                                         categoryOptions: undefined,
                                         isSum: undefined,
@@ -572,7 +572,7 @@ function Component() {
                                         ou,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
                                         category: "Duw5yep8Vae",
                                         categoryOptions: undefined,
                                         isSum: undefined,
@@ -606,7 +606,7 @@ function Component() {
                                         ou,
                                         v,
                                         pe: currentFinancialYear,
-                                        quarters: v === "NDPIV",
+                                        quarters: undefined,
                                         category: "kfnptfEdnYl",
                                         categoryOptions: undefined,
                                         isSum: true,
@@ -649,7 +649,7 @@ function Component() {
                                 ...prev,
                                 ou,
                                 v,
-                                degs: "All",
+
                                 deg: "All",
                             })}
                             activeProps={{
@@ -681,7 +681,7 @@ function Component() {
                                 ...prev,
                                 ou,
                                 v,
-                                degs: "All",
+
                                 deg: "All",
                             })}
                             activeProps={{
@@ -721,7 +721,7 @@ function Component() {
                                 ...prev,
                                 ou,
                                 v,
-                                degs: undefined,
+                                objective: undefined,
                                 deg: undefined,
                                 program: undefined,
                                 pe: undefined,
@@ -760,7 +760,7 @@ function Component() {
                                 ...prev,
                                 ou,
                                 v,
-                                degs: "All",
+
                                 deg: "All",
                             })}
                             activeProps={{
@@ -792,7 +792,7 @@ function Component() {
                                 ...prev,
                                 ou,
                                 v,
-                                degs: "All",
+
                                 deg: "All",
                             })}
                             activeProps={{
@@ -825,7 +825,7 @@ function Component() {
                         ...prev,
                         ou,
                         v,
-                        degs: "All",
+
                         deg: "All",
                     })}
                     activeProps={{

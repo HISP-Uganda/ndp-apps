@@ -1,14 +1,12 @@
 import Dexie, { Table } from "dexie";
 import { OrgUnit } from "./types";
-import { flattenDataElementGroupSetsResponse } from "./utils";
+import { processDataElements } from "./utils";
 export class CQIDexie extends Dexie {
     organisationUnits!: Table<OrgUnit>;
     dataViewOrgUnits!: Table<OrgUnit>;
     analytics!: Table<Record<string, string | string[] | number | null>>;
     indicators!: Table<Record<string, string>>;
-    dataElements!: Table<
-        ReturnType<typeof flattenDataElementGroupSetsResponse>[number]
-    >;
+    dataElements!: Table<ReturnType<typeof processDataElements>[number]>;
 
     constructor() {
         super("ndp-rf");
@@ -16,7 +14,7 @@ export class CQIDexie extends Dexie {
             organisationUnits: "id,value,key,title,pId",
             dataViewOrgUnits: "id,value,key,title,pId",
             dataElements:
-                "[id+organisationUnits+NDP+dataElementGroupSetId+dataElementGroupId+dataSets],id,*organisationUnits,NDP,dataElementGroupSetId,dataElementGroupId,*dataSets",
+                "[id+fsIKncW1Eps+orgUnit],[fsIKncW1Eps+BmUMiIbD5XY],[fsIKncW1Eps+orgUnit],[fsIKncW1Eps+BmUMiIbD5XY+orgUnit],id,fsIKncW1Eps,BmUMiIbD5XY,orgUnit,*attributes",
         });
     }
 }

@@ -10,9 +10,7 @@ export const RootRoute = createRootRouteWithContext<{
     component: Outlet,
     loader: async ({ context }) => {
         const { engine, queryClient } = context;
-        const data = queryClient.ensureQueryData(
-            initialQueryOptions(engine, "uV4fZlNvUsw", "nZffnMQwoWr"),
-        );
+        const data = await queryClient.ensureQueryData(initialQueryOptions(engine));
         return data;
     },
 });

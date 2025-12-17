@@ -1,54 +1,28 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute, Outlet, useLoaderData } from "@tanstack/react-router";
 import { Flex } from "antd";
 import React, { useEffect } from "react";
 import Filter from "../../../../components/Filter";
-import { dataElementGroupSetsQueryOptions } from "../../../../query-options";
 import { GoalValidator } from "../../../../types";
-import {
-    convertToDataElementGroupSetsOptions,
-    convertToDataElementGroupsOptions,
-} from "../../../../utils";
 import { NDPRoute } from "../route";
+import { RootRoute } from "../../../__root";
 
 export const GoalRoute = createRoute({
     getParentRoute: () => NDPRoute,
     path: "goals",
     component: Component,
-    loaderDeps: ({ search }) => ({
-        v: search.v,
-    }),
-    loader: async ({ context, deps: { v } }) => {
-        const { engine, queryClient } = context;
-        const data = await queryClient.ensureQueryData(
-            dataElementGroupSetsQueryOptions(engine, "goal", v),
-        );
-        return data;
-    },
     validateSearch: GoalValidator,
 });
 
 function Component() {
-    const { engine } = GoalRoute.useRouteContext();
-    const { v, deg, degs, ou, pe, categoryOptions, category } =
+    const { v, ou, pe, categoryOptions, category, objective } =
         GoalRoute.useSearch();
-    const { categories } = useLoaderData({ from: "__root__" });
-    const { data } = useSuspenseQuery(
-        dataElementGroupSetsQueryOptions(engine, "goal", v),
-    );
+    const { categories, programGoals, keyResultAreas } =
+        RootRoute.useLoaderData();
     const navigate = GoalRoute.useNavigate();
 
+    const overallGoal = programGoals.find((goal) => goal.code === "ndpIVGoal");
+
     useEffect(() => {
-        if (degs === undefined) {
-            navigate({
-                search: (prev) => ({
-                    ...prev,
-                    degs: data?.[0]?.id,
-                    deg: "All",
-                    quarters: false,
-                }),
-            });
-        }
         if (categoryOptions === undefined) {
             navigate({
                 search: (prev) => ({
@@ -62,7 +36,7 @@ function Component() {
     return (
         <Flex vertical gap={10} style={{ padding: 10, height: "100%" }}>
             <Filter
-                data={{ deg, degs, ou, pe }}
+                data={{ ou, pe, objective }}
                 onChange={(val, previous) => {
                     if (previous) {
                         navigate({
@@ -83,19 +57,34 @@ function Component() {
                 }}
                 options={[
                     {
-                        key: "degs",
-                        options: convertToDataElementGroupSetsOptions(data),
-                        label: "Overall Goal",
-                        defaultValue: "All",
-                    },
-                    {
-                        key: "deg",
-                        options: convertToDataElementGroupsOptions(degs, data),
+                        key: "objective",
+                        options: keyResultAreas.map((kra) => ({
+                            label: kra.name,
+                            value: kra.code,
+                        })),
                         label: "Key Result Area",
                         defaultValue: "All",
                     },
                 ]}
             />
+
+            {overallGoal && (
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        gap: 10,
+                    }}
+                >
+                    {overallGoal && (
+                        <h3 style={{ margin: 0, color: "#1677FF" }}>Overall Goal:</h3>
+                    )}
+                    <h3 style={{ margin: 0, flex: 1 }}>
+                        {overallGoal?.name ?? "Overall goal not found"}
+                    </h3>
+                </div>
+            )}
+
             <Outlet />
         </Flex>
     );

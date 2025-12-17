@@ -20,9 +20,10 @@ export default function Filter({
     data: {
         ou?: string | string[];
         pe?: string[];
-        deg?: string;
-        degs?: string;
+        keyResultArea?: string;
+        objective?: string;
         program?: string;
+        goal?: string;
     };
     onChange: (
         val: { [key: string]: string | string[] | undefined },
@@ -85,10 +86,7 @@ export default function Filter({
                 }}
             >
                 {options.map((option, index) => {
-                    if (
-                        option.displayIfEmpty ||
-                        (option.options && option.options.length > 0)
-                    ) {
+                    if (option.displayIfEmpty || option.options) {
                         return (
                             <Form.Item
                                 label={option.label}

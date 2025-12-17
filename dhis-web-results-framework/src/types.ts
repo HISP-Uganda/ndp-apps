@@ -4,6 +4,7 @@ import type { TableColumnType, TableProps, TreeDataNode } from "antd";
 import { ToOptions } from "@tanstack/react-router";
 import { z } from "zod";
 import { router } from "./router";
+import { processDataElements } from "./utils";
 export const NDPValidator = z.object({
     v: z.string(),
 });
@@ -13,8 +14,7 @@ export const SettingsSearch = z.object({
 });
 
 export const GoalValidator = z.object({
-    deg: z.string().optional(),
-    degs: z.string().optional(),
+    objective: z.string().optional(),
     tab: z.string().optional(),
     pe: z.string().array().optional(),
     program: z.string().optional(),
@@ -24,6 +24,9 @@ export const GoalValidator = z.object({
     categoryOptions: z.string().array().optional(),
     ou: z.string(),
     nonBaseline: z.boolean().optional(),
+    q: z.string().optional(),
+    keyResultArea: z.string().optional(),
+    goal: z.string().optional(),
 });
 
 export const PerformanceSchema = z.object({
@@ -35,8 +38,15 @@ export const PerformanceSchema = z.object({
 export const VoteSchema = z.object({
     pe: z.string().optional(),
     quarters: z.boolean().optional(),
-    ou: z.string().optional(),
+    ou: z.string(),
+    category: z.string(),
+    categoryOptions: z.string().array().optional(),
     isSum: z.boolean().optional(),
+});
+
+export const FlashReportSchema = z.object({
+    pe: z.string().optional(),
+    ou: z.string(),
 });
 
 export const DataElementGroupSetResponseSchema = z.object({
@@ -142,7 +152,7 @@ export interface OrgUnitsResponse {
 }
 
 export type AttributeValue = {
-    attribute: { id: string; name: string };
+    attribute: { id: string; name: string; code: string };
     value: string;
 };
 
@@ -161,6 +171,7 @@ export type DataElementGroupSet = NameWithAttribute & {
 };
 
 export type DataElement = NameWithAttribute & {
+    code: string;
     dataElementGroups: Array<
         NameWithAttribute & {
             groupSets: NameWithAttribute[];
@@ -176,6 +187,7 @@ export type DataElement = NameWithAttribute & {
                 code: string;
                 displayName: string;
                 id: string;
+                path: string;
             }>;
         };
     }>;
@@ -186,7 +198,7 @@ type MetaData = {
     dimensions: Record<string, string[]>;
 };
 
-type Dx = {
+export type Dx = {
     uid: string;
     name: string;
     dimensionType: string;
@@ -226,17 +238,16 @@ export type PickerProps = {
     onChange: (periods: string[]) => void;
 };
 
+export type AnalyticsData = Record<string, any> &
+    ReturnType<typeof processDataElements>[number];
+
 export interface ResultsProps extends GoalSearch {
-    dataElementGroupSets: DataElementGroupSet[];
-    data: {
-        analytics: Analytics;
-        dataElements: Map<string, { [k: string]: string }>;
-        dataElementGroups: string[];
-        groupSets: string[];
-    };
+    data: AnalyticsData[];
+    items: Analytics["metaData"]["items"];
+    dimensions: Analytics["metaData"]["dimensions"];
     onChange?: (key: string) => void;
-    prefixColumns?: TableProps<Record<string, any>>["columns"];
-    postfixColumns?: TableProps<Record<string, any>>["columns"];
+    prefixColumns?: TableProps<AnalyticsData>["columns"];
+    postfixColumns?: TableProps<AnalyticsData>["columns"];
     quarters?: boolean;
 }
 
@@ -247,6 +258,7 @@ export type Option = {
     name: string;
     code: string;
     created: string;
+    optionSet?: { id: string };
 };
 export type OptionSet = {
     id: string;
@@ -264,30 +276,12 @@ export type DHIS2OrgUnit = {
     leaf: boolean;
     parent: { id: string };
     code?: string;
+    path: string;
 };
 
 export type ScorecardData = Map<
     string,
-    {
-        denominator: number;
-        achieved: number;
-        moderatelyAchieved: number;
-        notAchieved: number;
-        noData: number;
-        percentAchieved: number;
-        percentModeratelyAchieved: number;
-        percentNotAchieved: number;
-        percentNoData: number;
-        achievedWeighted: number;
-        moderatelyAchievedWeighted: number;
-        notAchievedWeighted: number;
-        noDataWeighted: number;
-        totalWeighted: number;
-        actual: number;
-        target: number;
-        baseline: number;
-        performance: number;
-    }
+    ReturnType<typeof processDataElements>[number]
 >;
 
 export const OrganisationUnitDataSetsSchema = z.object({
@@ -349,3 +343,19 @@ export const OrganisationUnitDataSetsSchema = z.object({
 export type OrganisationUnitDataSets = z.infer<
     typeof OrganisationUnitDataSetsSchema
 >;
+
+export const PERFORMANCE_LABELS: Record<number, string> = {
+    0: "T",
+    1: "A",
+    2: "%",
+} as const;
+
+export const budgetColumns = {
+    lAyLQi6IqVF: "BR",
+    NfADZSy1VzB: "BS",
+    YE32G6hzVDl: "BP",
+    UHhWlfyy5bm: "BA",
+    bqIaasqpTas: "B",
+    Px8Lqkxy2si: "T",
+    HKtncMjp06U: "A",
+};
