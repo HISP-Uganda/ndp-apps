@@ -5,69 +5,118 @@ import { IndexRoute } from "../routes";
 import { indicatorQueryOptions } from "../query-options";
 import { useQuery } from "@tanstack/react-query";
 import Spinner from "./Spinner";
+import { RootRoute } from "../routes/__root";
 
-const makeIndicatorData = (data: Record<string, any>) => {
+const makeIndicatorData = (
+    data: Record<string, any>,
+    categoryOptions: Map<string, string>,
+) => {
     return [
-        { code: "Name", display: data["name"] },
-        { code: "Description", display: data["description"] },
-        { code: "Computation method", display: data["Computation method"] },
-        { code: "Unit of Measure", display: data["Unit"] },
-        { code: "Indicator Source", display: data["Indicator Source"] },
-
+        { code: "Name", dx: data.name },
+        { code: "Description", dx: data["description"] ?? "" },
         {
-            code: "Alternative data source",
-            display: data["Alternative data source"],
+            code: "Measurement",
+            dx:
+                categoryOptions.get(data["Lxe84DpBHhm"]) ??
+                data["Lxe84DpBHhm"] ??
+                "",
         },
         {
-            code: "Preferred data source",
-            display: data["Preferred data source"],
-        },
-        { code: "Vote", display: data["dataSetOrganisationUnitName"] },
-        {
-            code: "Accountability for indicator",
-            display: data["Accountability for indicator"],
+            code: "Unit of Measure",
+            dx:
+                categoryOptions.get(data["FuRWtF51PyL"]) ??
+                data["FuRWtF51PyL"] ??
+                "",
         },
         {
-            code: "Responsibility for indicator",
-            display: data["Responsibility for indicator"],
+            code: "Data Source",
+            dx:
+                categoryOptions.get(data["Prss6OhQvYg"]) ??
+                data["Prss6OhQvYg"] ??
+                "",
         },
-        // { code: "Lead MDA", display: data["Lead MDA"] },
-        { code: "Other MDAs", display: data["Other MDAs"] },
-        { code: "Indicator code", display: data["code"] },
-        { code: "Indicator type", display: data["Indicator type"] },
-        { code: "Aggregation type", display: data["aggregationType"] },
+        {
+            code: "Responsibility for reporting",
+            dx:
+                categoryOptions.get(data["lIRw10zARY7"]) ??
+                data["lIRw10zARY7"] ??
+                "",
+        },
+        { code: "Indicator code", dx: data["code"] ?? "" },
+        { code: "Indicator type", dx: data["Indicator type"] ?? "" },
+        { code: "Aggregation type", dx: data["aggregationType"] ?? "" },
         {
             code: "Frequency of data collection",
-            display: data["Frequency of data collection"],
+            dx: data["M5nS9I96cCx"],
         },
         {
             code: "Reporting Frequency",
-            display:
+            dx:
                 data["dataSetPeriodType"] === "FinancialJuly"
                     ? "Financial Year"
                     : data["dataSetPeriodType"],
         },
 
-        // { code: "Baseline Status 2010", display: data["Baseline Status 2010"] },
-        {
-            code: "Chart of Accounts Code",
-            display: data["Chart of Accounts Code"],
-        },
-        // { code: "Computation type", display: data["Computation type"] },
         {
             code: "Descending Indicator",
-            display: data["descending indicator type"] ? "Yes" : "No",
+            dx: data["descending indicator type"] ? "Yes" : "No",
         },
-        // { code: "Green range", display: data["Green range"] },
-        // { code: "Current Project Cost", display: data["Current Project Cost"] },
-        // { code: "Limitations", display: data["Limitations"] },
-
-        // { code: "Rationale", display: data["Rationale"] },
-        // { code: "Red range", display: data["Red range"] },
-        // { code: "References", display: data["References"] },
-
-        // { code: "Vision 2040", display: data["Vision 2040"] },
-        // { code: "Yellow range", display: data["Yellow range"] },
+        {
+            code: "Goal",
+            dx:
+                categoryOptions.get(data["m3Be0z4xNnA"]) ??
+                data["m3Be0z4xNnA"] ??
+                "",
+        },
+        {
+            code: "Programme",
+            dx:
+                categoryOptions.get(data["UBWSASWdyfi"]) ??
+                data["UBWSASWdyfi"] ??
+                "",
+        },
+        {
+            code: "Strategic Objective",
+            dx:
+                categoryOptions.get(data["fwSdMAZ9egv"]) ??
+                data["fwSdMAZ9egv"] ??
+                "",
+        },
+        {
+            code: "Program Objective",
+            dx:
+                categoryOptions.get(data["GuoVDNEBAXA"]) ??
+                data["GuoVDNEBAXA"] ??
+                "",
+        },
+        {
+            code: "Program Intervention",
+            dx:
+                categoryOptions.get(data["LKWITZXQD9l"]) ??
+                data["LKWITZXQD9l"] ??
+                "",
+        },
+        {
+            code: "Intermediate Outcome",
+            dx:
+                categoryOptions.get(data["k9c6BOHIohu"]) ??
+                data["k9c6BOHIohu"] ??
+                "",
+        },
+        {
+            code: "Key Result Area",
+            dx:
+                categoryOptions.get(data["JmZO4hoIlfT"]) ??
+                data["JmZO4hoIlfT"] ??
+                "",
+        },
+        {
+            code: "Program Output",
+            dx:
+                categoryOptions.get(data["AKzxCNn1zkQ"]) ??
+                data["AKzxCNn1zkQ"] ??
+                "",
+        },
     ];
 };
 
@@ -76,6 +125,7 @@ export default function IndicatorDetails({
 }: {
     indicator: IDataElement;
 }) {
+    const { all } = RootRoute.useLoaderData();
     const indicatorColumns: TableProps<any>["columns"] = useMemo(
         () => [
             {
@@ -86,8 +136,8 @@ export default function IndicatorDetails({
             },
             {
                 title: "Indicator Name",
-                dataIndex: "display",
-                key: "display",
+                dataIndex: "dx",
+                key: "dx",
                 width: "50%",
             },
         ],
@@ -104,7 +154,7 @@ export default function IndicatorDetails({
         return (
             <Table
                 columns={indicatorColumns}
-                dataSource={makeIndicatorData(data)}
+                dataSource={makeIndicatorData(data, all)}
                 style={{
                     margin: 0,
                     padding: 0,

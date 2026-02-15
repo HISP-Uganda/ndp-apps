@@ -27,26 +27,7 @@ function Component() {
         queryByOu: true,
     });
     const [modal, contextHolder] = Modal.useModal();
-    const handleChange: TableProps<AnalyticsData>["onChange"] = (
-        _pagination,
-        _filters,
-        sorter,
-    ) => {
-        if (!Array.isArray(sorter)) {
-            const { field, order } = sorter;
-            // if (field && order) {
-            //     setProcessedData((prev) => {
-            //         return orderBy(
-            //             prev,
-            //             [String(field)],
-            //             [order === "ascend" ? "asc" : "desc"],
-            //         );
-            //     });
-            // } else {
-            //     setProcessedData(() => data);
-            // }
-        }
-    };
+
     const columns: TableProps<AnalyticsData>["columns"] = React.useMemo(() => {
         return [
             {
@@ -81,9 +62,22 @@ function Component() {
                                             <Table
                                                 columns={[
                                                     {
+                                                        title: "Code",
+                                                        dataIndex: "code",
+                                                        key: "code",
+                                                        width: 150,
+                                                    },
+                                                    {
                                                         title: "Name",
                                                         dataIndex: "name",
                                                         key: "name",
+                                                    },
+
+                                                    {
+                                                        title: "Description",
+                                                        dataIndex:
+                                                            "description",
+                                                        key: "description",
                                                     },
                                                 ]}
                                                 dataSource={record.groups}
@@ -94,7 +88,6 @@ function Component() {
                                                 pagination={false}
                                                 rowKey="code"
                                                 scroll={{ y: 700 }}
-                                                showHeader={false}
                                                 bordered
                                             />
                                         ),

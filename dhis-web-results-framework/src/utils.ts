@@ -18,7 +18,7 @@ import {
     Option,
     OrganisationUnitDataSets,
     OrgUnit,
-		PERFORMANCE_LABELS,
+    PERFORMANCE_LABELS,
 } from "./types";
 
 export const percentFormatter = new Intl.NumberFormat("en-US", {
@@ -493,10 +493,13 @@ export const selectSearchParams = <K extends keyof GoalSearch>(
     searchParams: GoalSearch,
     keys: K[],
 ): Pick<GoalSearch, K> => {
-    return keys.reduce((acc, key) => {
-        acc[key] = searchParams[key];
-        return acc;
-    }, {} as Pick<GoalSearch, K>);
+    return keys.reduce(
+        (acc, key) => {
+            acc[key] = searchParams[key];
+            return acc;
+        },
+        {} as Pick<GoalSearch, K>,
+    );
 };
 
 export function filterMapFunctional<K, V>(
@@ -1027,18 +1030,18 @@ export const getCellStyle = (value: number): CSSProperties => {
             value >= 1
                 ? PERFORMANCE_COLORS.green.bg
                 : value >= 0.75
-                ? PERFORMANCE_COLORS.yellow.bg
-                : value < 0.75
-                ? PERFORMANCE_COLORS.red.bg
-                : PERFORMANCE_COLORS.gray.bg,
+                  ? PERFORMANCE_COLORS.yellow.bg
+                  : value < 0.75
+                    ? PERFORMANCE_COLORS.red.bg
+                    : PERFORMANCE_COLORS.gray.bg,
         color:
             value >= 1
                 ? PERFORMANCE_COLORS.green.fg
                 : value >= 0.75
-                ? PERFORMANCE_COLORS.yellow.fg
-                : value < 0.75
-                ? PERFORMANCE_COLORS.red.fg
-                : PERFORMANCE_COLORS.gray.fg,
+                  ? PERFORMANCE_COLORS.yellow.fg
+                  : value < 0.75
+                    ? PERFORMANCE_COLORS.red.fg
+                    : PERFORMANCE_COLORS.gray.fg,
     };
 };
 
@@ -1095,7 +1098,7 @@ export const flattenOrganisationUnitDataSets = (
 
 export const processDataElements = (dataElements: DataElement[]) => {
     return dataElements.flatMap(
-        ({ attributeValues, id, name, code, dataSetElements }) => {
+        ({ attributeValues, id, name, code, dataSetElements, ...rest }) => {
             const organisationUnits = new Set(
                 dataSetElements.flatMap(({ dataSet: { organisationUnits } }) =>
                     organisationUnits.map((ou) => ou.path),
@@ -1131,6 +1134,7 @@ export const processDataElements = (dataElements: DataElement[]) => {
                     organisationUnits: Array.from(organisationUnits),
                     dataSets: Array.from(dataSets),
                     orgUnit: currentOu,
+										...rest
                 };
             });
             return data;
@@ -1310,7 +1314,7 @@ export const createPerformanceColumns = ({
     nonBaseline = false,
     quarters = false,
     categoryOptions = [],
-		items
+    items,
 }: {
     nameColumn: TableProps<AnalyticsData>["columns"];
     baseline: string;
@@ -1328,7 +1332,7 @@ export const createPerformanceColumns = ({
                 return [];
             }
             return {
-                title: items[pe].name,
+                title: items[pe]?.name,
                 align: "center" as const,
                 children: nonBaseline
                     ? categoryOptions

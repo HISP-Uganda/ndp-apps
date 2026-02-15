@@ -282,3 +282,9 @@ export interface GroupSet {
     id: string;
     attributeValues: IAttributeValue[];
 }
+
+export type OptionSet = {
+    id: string;
+    name: string;
+    options: Option[];
+};

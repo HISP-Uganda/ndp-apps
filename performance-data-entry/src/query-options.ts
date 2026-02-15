@@ -10,9 +10,11 @@ import {
     IDataElement,
     IDataSet,
     Option,
+    OptionSet,
     Search,
 } from "./types";
 import { convertToAntdTree } from "./utils";
+import { fromPairs } from "lodash";
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
@@ -27,19 +29,26 @@ export const initialQueryOptions = (
                         fields: "organisationUnits[id],dataSets",
                     },
                 },
-                ndp4: {
-                    resource: "optionSets/xLQd0SrtSF8/options",
-                    params: { fields: "id,name,code", paging: false },
-                },
-                ndp3: {
-                    resource: "optionSets/nZffnMQwoWr/options",
-                    params: { fields: "id,name,code", paging: false },
-                },
+                // ndp4: {
+                //     resource: "optionSets/xLQd0SrtSF8/options",
+                //     params: { fields: "id,name,code", paging: false },
+                // },
+                // ndp3: {
+                //     resource: "optionSets/nZffnMQwoWr/options",
+                //     params: { fields: "id,name,code", paging: false },
+                // },
                 configuration: {
                     resource: "dataStore/ndp-configurations",
                     params: {
                         fields: "baseline,financialYears",
                         paging: false,
+                    },
+                },
+                options: {
+                    resource: "optionSets",
+                    params: {
+                        filter: `id:in:[Az2bwwUIPWn,fALlyU4UYhZ,uV4fZlNvUsw,nZffnMQwoWr,D5J653eYk73,YY3JtOQIccj,xQG5xfRYb50,rcESKgz4zKM,jiBHfTa5VzB,zVYsHjAeHlG,fsIKncW1Eps,xLQd0SrtSF8,MfNa8J3R2Uv]`,
+                        fields: "id,name,options[*]",
                     },
                 },
                 central: {
@@ -50,8 +59,7 @@ export const initialQueryOptions = (
             const {
                 orgUnits: { organisationUnits, dataSets },
                 configuration,
-                ndp3: { options: ndp3 },
-                ndp4: { options: ndp4 },
+                options,
             } = response as unknown as {
                 orgUnits: {
                     organisationUnits: DHIS2OrgUnit[];
@@ -62,18 +70,40 @@ export const initialQueryOptions = (
                     baseline: string;
                     financialYears: string[];
                 }>;
-                ndp3: {
-                    options: Option[];
-                };
-                ndp4: {
-                    options: Option[];
-                };
+                // ndp3: {
+                //     options: Option[];
+                // };
+                // ndp4: {
+                //     options: Option[];
+                // };
+                options: { optionSets: OptionSet[] };
                 central: {
                     organisationUnits: Array<
                         Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">
                     >;
                 };
             };
+
+            const {
+                D5J653eYk73: programGoals,
+                fALlyU4UYhZ: programObjectives,
+                uV4fZlNvUsw: ndpVersions,
+                rcESKgz4zKM: programOutcomes,
+                jiBHfTa5VzB: programOutputs,
+                xQG5xfRYb50: strategicObjectives,
+                zVYsHjAeHlG: keyResultAreas,
+                xLQd0SrtSF8: programs,
+                MfNa8J3R2Uv: programInterventions,
+                xLQd0SrtSF8: ndp4,
+                nZffnMQwoWr: ndp3,
+            } = fromPairs(
+                options.optionSets.map((oset) => [oset.id, oset.options]),
+            );
+            const all: Map<string, string> = new Map(
+                options.optionSets
+                    .flatMap((oset) => oset.options)
+                    .map((o) => [o.code, o.name]),
+            );
 
             const nextQuery = (await engine.query(
                 organisationUnits.reduce<Record<string, any>>((acc, unit) => {
@@ -116,6 +146,7 @@ export const initialQueryOptions = (
                 ndp3,
                 ndp4,
                 dataSets,
+                all,
             };
         },
     });
@@ -434,11 +465,14 @@ export const indicatorQueryOptions = (
             })) as unknown as { indicator: IDataElement };
             return {
                 ...indicator,
-                ...indicator.attributeValues.reduce((acc, attr) => {
-                    acc[attr.attribute.name] = attr.value;
-                    acc[attr.attribute.id] = attr.value;
-                    return acc;
-                }, {} as Record<string, string>),
+                ...indicator.attributeValues.reduce(
+                    (acc, attr) => {
+                        acc[attr.attribute.name] = attr.value;
+                        acc[attr.attribute.id] = attr.value;
+                        return acc;
+                    },
+                    {} as Record<string, string>,
+                ),
 
                 ...indicator.dataElementGroups
                     .flatMap(({ attributeValues, groupSets }) => {
@@ -447,44 +481,59 @@ export const indicatorQueryOptions = (
                             ...groupSets.flatMap((gs) => gs.attributeValues),
                         ];
                     })
-                    .reduce((acc, attr) => {
-                        acc[attr.attribute.name] = attr.value;
-                        acc[attr.attribute.id] = attr.value;
-                        return acc;
-                    }, {} as Record<string, string>),
+                    .reduce(
+                        (acc, attr) => {
+                            acc[attr.attribute.name] = attr.value;
+                            acc[attr.attribute.id] = attr.value;
+                            return acc;
+                        },
+                        {} as Record<string, string>,
+                    ),
 
-                ...indicator.dataElementGroups.reduce((acc, deg) => {
-                    acc["dataElementGroupName"] = deg.name;
-                    acc["dataElementGroupId"] = deg.id;
-                    acc["dataElementGroupCode"] = deg.code;
-                    return acc;
-                }, {} as Record<string, string>),
+                ...indicator.dataElementGroups.reduce(
+                    (acc, deg) => {
+                        acc["dataElementGroupName"] = deg.name;
+                        acc["dataElementGroupId"] = deg.id;
+                        acc["dataElementGroupCode"] = deg.code;
+                        return acc;
+                    },
+                    {} as Record<string, string>,
+                ),
                 ...indicator.dataElementGroups
                     .flatMap(({ groupSets }) => groupSets)
-                    .reduce((acc, deg) => {
-                        acc["dataElementGroupSetName"] = deg.name;
-                        acc["dataElementGroupSetId"] = deg.id;
-                        acc["dataElementGroupSetCode"] = deg.code;
-                        return acc;
-                    }, {} as Record<string, string>),
+                    .reduce(
+                        (acc, deg) => {
+                            acc["dataElementGroupSetName"] = deg.name;
+                            acc["dataElementGroupSetId"] = deg.id;
+                            acc["dataElementGroupSetCode"] = deg.code;
+                            return acc;
+                        },
+                        {} as Record<string, string>,
+                    ),
 
                 ...indicator.dataSetElements
                     .flatMap(({ dataSet }) => dataSet)
-                    .reduce((acc, ds) => {
-                        acc["dataSetName"] = ds.name;
-                        acc["dataSetId"] = ds.id;
-                        acc["dataSetPeriodType"] = ds.periodType;
-                        return acc;
-                    }, {} as Record<string, string>),
+                    .reduce(
+                        (acc, ds) => {
+                            acc["dataSetName"] = ds.name;
+                            acc["dataSetId"] = ds.id;
+                            acc["dataSetPeriodType"] = ds.periodType;
+                            return acc;
+                        },
+                        {} as Record<string, string>,
+                    ),
 
                 ...indicator.dataSetElements
                     .flatMap(({ dataSet }) => dataSet.organisationUnits)
-                    .reduce((acc, ou) => {
-                        acc["dataSetOrganisationUnitName"] = ou.name;
-                        acc["dataSetOrganisationUnitCode"] = ou.code;
-                        acc["dataSetOrganisationUnitId"] = ou.id;
-                        return acc;
-                    }, {} as Record<string, string>),
+                    .reduce(
+                        (acc, ou) => {
+                            acc["dataSetOrganisationUnitName"] = ou.name;
+                            acc["dataSetOrganisationUnitCode"] = ou.code;
+                            acc["dataSetOrganisationUnitId"] = ou.id;
+                            return acc;
+                        },
+                        {} as Record<string, string>,
+                    ),
             };
         },
     });

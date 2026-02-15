@@ -169,8 +169,8 @@ export const queryAnalytics = async ({
         requiresProgram,
         queryByOu,
         isVision,
-				goal,
-				keyResultArea,
+        goal,
+        keyResultArea,
     });
     const dataElementsMap = new Map(dataElements.map((de) => [de.id, de]));
 
@@ -353,7 +353,7 @@ export const initialQueryOptions = (
                 options: {
                     resource: "optionSets",
                     params: {
-                        filter: `id:in:[Az2bwwUIPWn,fALlyU4UYhZ,uV4fZlNvUsw,nZffnMQwoWr,D5J653eYk73,YY3JtOQIccj,xQG5xfRYb50,rcESKgz4zKM,jiBHfTa5VzB,zVYsHjAeHlG,fsIKncW1Eps]`,
+                        filter: `id:in:[Az2bwwUIPWn,fALlyU4UYhZ,uV4fZlNvUsw,nZffnMQwoWr,D5J653eYk73,YY3JtOQIccj,xQG5xfRYb50,rcESKgz4zKM,jiBHfTa5VzB,zVYsHjAeHlG,fsIKncW1Eps,xLQd0SrtSF8,MfNa8J3R2Uv]`,
                         fields: "id,name,options[*]",
                     },
                 },
@@ -418,11 +418,12 @@ export const initialQueryOptions = (
                 D5J653eYk73: programGoals,
                 fALlyU4UYhZ: programObjectives,
                 uV4fZlNvUsw: ndpVersions,
-                nZffnMQwoWr: programs,
                 rcESKgz4zKM: programOutcomes,
                 jiBHfTa5VzB: programOutputs,
                 xQG5xfRYb50: strategicObjectives,
                 zVYsHjAeHlG: keyResultAreas,
+                xLQd0SrtSF8: programs,
+                MfNa8J3R2Uv:programInterventions
             } = fromPairs(
                 options.optionSets.map((oset) => [oset.id, oset.options]),
             );
@@ -463,6 +464,7 @@ export const initialQueryOptions = (
                 programOutputs,
                 strategicObjectives,
                 keyResultAreas,
+								programInterventions,
                 categories: new Map(
                     categories.map((c) => [
                         c.id,
@@ -539,11 +541,6 @@ export const dataElementGroupSetsWithProgramsQueryOptions = (
             objective,
         ],
         queryFn: async () => {
-            // const response = await engine.query({
-            //     optionSets: {
-            //         resource: `optionSets?filter=attributeValues.value:eq:${ndpVersion}&filter=attributeValues.value:eq:true&fields=options[id,name,code]`,
-            //     },
-            // });
             const dataElements = await db.dataElements
                 .where({ fsIKncW1Eps: ndpVersion, BmUMiIbD5XY: attributeValue })
                 .filter((de) => {
@@ -570,17 +567,6 @@ export const dataElementGroupSetsWithProgramsQueryOptions = (
                     );
                 })
                 .toArray();
-            // const {
-            //     optionSets: {
-            //         optionSets: [{ options }],
-            //     },
-            // } = response as unknown as {
-            //     optionSets: {
-            //         optionSets: Array<{
-            //             options: Option[];
-            //         }>;
-            //     };
-            // };
             return dataElements;
         },
     });
@@ -740,256 +726,6 @@ export const dataStoreQueryOptions = (
     });
 };
 
-export const dataElementsFromGroupQueryOptions = ({
-    engine,
-    dataElements,
-    pe,
-    quarters,
-    category,
-    categoryOptions,
-    isSum,
-    votes,
-}: {
-    engine: ReturnType<typeof useDataEngine>;
-    dataElements: Map<string, ReturnType<typeof processDataElements>[number]>;
-    pe: string[];
-    quarters?: boolean;
-    category: string;
-    categoryOptions: string[];
-    isSum?: boolean;
-    votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>;
-}) => {
-    return queryOptions({
-        queryKey: [
-            "dataElementsFromGroup",
-            dataElements.size,
-            pe,
-            category,
-            ...(categoryOptions ?? []),
-        ],
-        queryFn: async () => {
-            // const data = await queryAnalytics({
-            //     pe,
-            //     category,
-            //     categoryOptions,
-            //     dataElements,
-            //     quarters,
-            //     ous: votes.map((v) => v.id),
-            //     engine,
-            //     ouIsFilter: false,
-            // });
-
-            // const analyticsByKey = new Map<
-            //     string,
-            //     Array<{
-            //         dx: string;
-            //         value: string;
-            //         attribution: string;
-            //         ou: string;
-            //         pe: string;
-            //     }>
-            // >();
-
-            // currentData.forEach((row) => {
-            //     const key = `${row.ou}_${row.dx}`;
-            //     if (!analyticsByKey.has(key)) {
-            //         analyticsByKey.set(key, []);
-            //     }
-            //     analyticsByKey.get(key)!.push(row);
-            // });
-
-            // const data: ScorecardData = new Map();
-
-            // const dataElementsByOu = new Map<string, string[]>();
-
-            // for (const ou of ous) {
-            //     const dataElementsForOrgUnit = dataElementsByOu.get(ou) || [];
-            //     const grouped = dataElementsForOrgUnit.map((de) => {
-            //         const reportedDataElements =
-            //             analyticsByKey.get(`${ou}_${de}`) || [];
-
-            //         if (reportedDataElements.length === 0) {
-            //             return {
-            //                 dataElement: de,
-            //                 performance: 0,
-            //                 status: "nd",
-            //             };
-            //         }
-
-            //         const baseline = orderBy(
-            //             reportedDataElements.filter(
-            //                 (v) =>
-            //                     categoryOptions &&
-            //                     v.attribution === categoryOptions.at(-3),
-            //             ),
-            //             "period",
-            //             "desc",
-            //         );
-
-            //         const target = orderBy(
-            //             reportedDataElements.filter(
-            //                 (v) =>
-            //                     categoryOptions &&
-            //                     v.attribution === categoryOptions.at(-2),
-            //             ),
-            //             "period",
-            //             "desc",
-            //         );
-            //         const actual = orderBy(
-            //             reportedDataElements.filter((v) => {
-            //                 return (
-            //                     categoryOptions &&
-            //                     v.attribution === categoryOptions.at(-1)
-            //                 );
-            //             }),
-            //             "period",
-            //             "desc",
-            //         );
-
-            //         if (target && actual.length > 0) {
-            //             const actualTotal = isSum
-            //                 ? sum(actual.map((a) => Number(a.value)))
-            //                 : Number(actual[0]?.value ?? 0);
-            //             const targetTotal = isSum
-            //                 ? sum(target.map((t) => Number(t.value)))
-            //                 : Number(target[0]?.value ?? 0);
-            //             const baselineTotal = isSum
-            //                 ? sum(baseline.map((t) => Number(t.value)))
-            //                 : Number(baseline[0]?.value ?? 0);
-            //             const performanceRation = actualTotal / targetTotal;
-            //             const performance = performanceRation * 100;
-            //             if (isNaN(performance) || !isFinite(performance)) {
-            //                 return {
-            //                     dataElement: de,
-            //                     performance,
-            //                     status: "nd",
-            //                     target: targetTotal,
-            //                     actual: actualTotal,
-            //                     baseline: baselineTotal,
-            //                 };
-            //             }
-            //             if (performance >= 100) {
-            //                 return {
-            //                     dataElement: de,
-            //                     performance,
-            //                     status: "a",
-            //                     target: targetTotal,
-            //                     actual: actualTotal,
-            //                     baseline: baselineTotal,
-            //                 };
-            //             }
-
-            //             if (performance >= 75 && performance < 100) {
-            //                 return {
-            //                     dataElement: de,
-            //                     performance,
-            //                     status: "m",
-            //                     target: targetTotal,
-            //                     actual: actualTotal,
-            //                     baseline: baselineTotal,
-            //                 };
-            //             }
-
-            //             if (performance < 75) {
-            //                 return {
-            //                     dataElement: de,
-            //                     performance,
-            //                     status: "n",
-            //                     target: targetTotal,
-            //                     actual: actualTotal,
-            //                     baseline: baselineTotal,
-            //                 };
-            //             }
-
-            //             return {
-            //                 dataElement: de,
-            //                 performance,
-            //                 status: "nd",
-            //                 target: targetTotal,
-            //                 actual: actualTotal,
-            //                 baseline: baselineTotal,
-            //             };
-            //         }
-            //         return {
-            //             dataElement: de,
-            //             performance: 0,
-            //             status: "nd",
-            //             target: 0,
-            //             actual: 0,
-            //             baseline: 0,
-            //         };
-            //     });
-
-            //     const sumActual = sum(grouped.map((g) => g.actual || 0));
-            //     const sumTarget = sum(grouped.map((g) => g.target || 0));
-            //     const baselineTotal = sum(grouped.map((g) => g.baseline || 0));
-            //     const groupedPerformance = groupBy(grouped, "status");
-            //     const denominator = dataElementsForOrgUnit.length;
-            //     const achieved = groupedPerformance["a"]
-            //         ? groupedPerformance["a"].length
-            //         : 0;
-            //     const moderatelyAchieved = groupedPerformance["m"]
-            //         ? groupedPerformance["m"].length
-            //         : 0;
-            //     const notAchieved = groupedPerformance["n"]
-            //         ? groupedPerformance["n"].length
-            //         : 0;
-            //     const noData = groupedPerformance["nd"]
-            //         ? groupedPerformance["nd"].length
-            //         : 0;
-
-            //     const percentAchieved =
-            //         denominator !== 0 ? achieved / denominator : 0;
-            //     const percentModeratelyAchieved =
-            //         denominator !== 0 ? moderatelyAchieved / denominator : 0;
-            //     const percentNotAchieved =
-            //         denominator !== 0 ? notAchieved / denominator : 0;
-            //     const percentNoData =
-            //         denominator !== 0 ? noData / denominator : 0;
-
-            //     const achievedWeighted = percentAchieved * (1 / 2);
-            //     const moderatelyAchievedWeighted =
-            //         percentModeratelyAchieved * (7 / 20);
-            //     const notAchievedWeighted = percentNotAchieved * (3 / 20);
-            //     const noDataWeighted = percentNoData * (0 / 200);
-
-            //     const totalWeighted =
-            //         achievedWeighted +
-            //         moderatelyAchievedWeighted +
-            //         notAchievedWeighted +
-            //         noDataWeighted;
-            //     data.set(ou, {
-            //         denominator,
-            //         achieved,
-            //         moderatelyAchieved,
-            //         notAchieved,
-            //         noData,
-            //         percentAchieved,
-            //         percentModeratelyAchieved,
-            //         percentNotAchieved,
-            //         percentNoData,
-            //         achievedWeighted,
-            //         moderatelyAchievedWeighted,
-            //         notAchievedWeighted,
-            //         noDataWeighted,
-            //         totalWeighted,
-            //         actual: sumActual,
-            //         target: sumTarget,
-            //         baseline: baselineTotal,
-            //         performance: sumTarget === 0 ? 0 : sumActual / sumTarget,
-            //     });
-            // }
-            return [];
-        },
-        enabled:
-            pe !== undefined &&
-            category !== undefined &&
-            categoryOptions !== undefined &&
-            categoryOptions.length > 0,
-        retry: false,
-    });
-};
-
 export const ndpIndicatorsQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
     ndpVersion: string,
@@ -1006,7 +742,7 @@ export const ndpIndicatorsQueryOptions = (
                         dataElements: { dataElements },
                     } = (await engine.query({
                         dataElements: {
-                            resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[path]]]&paging=false`,
+                            resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,description,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[path]]]&paging=false`,
                         },
                     })) as {
                         dataElements: { dataElements: DataElement[] };
@@ -1021,7 +757,7 @@ export const ndpIndicatorsQueryOptions = (
                     dataElements: { dataElements },
                 } = (await engine.query({
                     dataElements: {
-                        resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[id]]]&paging=false`,
+                        resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,description,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[id]]]&paging=false`,
                     },
                 })) as {
                     dataElements: { dataElements: DataElement[] };

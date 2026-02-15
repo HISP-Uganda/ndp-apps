@@ -32,39 +32,47 @@ import dayjs from "dayjs";
 dayjs.extend(advancedFormat);
 dayjs.extend(quarterOfYear);
 
-const makeIndicatorData = (data: AnalyticsData): Partial<AnalyticsData>[] => {
+const makeIndicatorData = (
+    data: AnalyticsData,
+    categoryOptions: Map<string, string>,
+): Partial<AnalyticsData>[] => {
     return [
         { code: "Name", dx: data.name },
         { code: "Description", dx: data["description"] ?? "" },
-        { code: "Computation method", dx: data["Computation method"] ?? "" },
-        { code: "Unit of Measure", dx: data["Unit"] ?? "" },
-        { code: "Indicator Source", dx: data["Indicator Source"] ?? "" },
-
         {
-            code: "Alternative data source",
-            dx: data["Alternative data source"],
+            code: "Measurement",
+            dx:
+                categoryOptions.get(data["Lxe84DpBHhm"]) ??
+                data["Lxe84DpBHhm"] ??
+                "",
         },
         {
-            code: "Preferred data source",
-            dx: data["Preferred data source"],
-        },
-        { code: "Vote", dx: data["dataSetOrganisationUnitName"] ?? "" },
-        {
-            code: "Accountability for indicator",
-            dx: data["Accountability for indicator"],
+            code: "Unit of Measure",
+            dx:
+                categoryOptions.get(data["FuRWtF51PyL"]) ??
+                data["FuRWtF51PyL"] ??
+                "",
         },
         {
-            code: "Responsibility for indicator",
-            dx: data["Responsibility for indicator"],
+            code: "Data Source",
+            dx:
+                categoryOptions.get(data["Prss6OhQvYg"]) ??
+                data["Prss6OhQvYg"] ??
+                "",
         },
-        // { code: "Lead MDA", dx: data["Lead MDA"]??"" },
-        { code: "Other MDAs", dx: data["Other MDAs"] ?? "" },
+        {
+            code: "Responsibility for reporting",
+            dx:
+                categoryOptions.get(data["lIRw10zARY7"]) ??
+                data["lIRw10zARY7"] ??
+                "",
+        },
         { code: "Indicator code", dx: data["code"] ?? "" },
         { code: "Indicator type", dx: data["Indicator type"] ?? "" },
         { code: "Aggregation type", dx: data["aggregationType"] ?? "" },
         {
             code: "Frequency of data collection",
-            dx: data["Frequency of data collection"],
+            dx: data["M5nS9I96cCx"],
         },
         {
             code: "Reporting Frequency",
@@ -74,26 +82,66 @@ const makeIndicatorData = (data: AnalyticsData): Partial<AnalyticsData>[] => {
                     : data["dataSetPeriodType"],
         },
 
-        // { code: "Baseline Status 2010", dx: data["Baseline Status 2010"]??"" },
-        {
-            code: "Chart of Accounts Code",
-            dx: data["Chart of Accounts Code"],
-        },
-        // { code: "Computation type", dx: data["Computation type"]??"" },
         {
             code: "Descending Indicator",
             dx: data["descending indicator type"] ? "Yes" : "No",
         },
-        // { code: "Green range", dx: data["Green range"]??"" },
-        // { code: "Current Project Cost", dx: data["Current Project Cost"]??"" },
-        // { code: "Limitations", dx: data["Limitations"]??"" },
-
-        // { code: "Rationale", dx: data["Rationale"]??"" },
-        // { code: "Red range", dx: data["Red range"]??"" },
-        // { code: "References", dx: data["References"]??"" },
-
-        // { code: "Vision 2040", dx: data["Vision 2040"]??"" },
-        // { code: "Yellow range", dx: data["Yellow range"]??"" },
+        {
+            code: "Goal",
+            dx:
+                categoryOptions.get(data["m3Be0z4xNnA"]) ??
+                data["m3Be0z4xNnA"] ??
+                "",
+        },
+        {
+            code: "Programme",
+            dx:
+                categoryOptions.get(data["UBWSASWdyfi"]) ??
+                data["UBWSASWdyfi"] ??
+                "",
+        },
+        {
+            code: "Strategic Objective",
+            dx:
+                categoryOptions.get(data["fwSdMAZ9egv"]) ??
+                data["fwSdMAZ9egv"] ??
+                "",
+        },
+        {
+            code: "Program Objective",
+            dx:
+                categoryOptions.get(data["GuoVDNEBAXA"]) ??
+                data["GuoVDNEBAXA"] ??
+                "",
+        },
+        {
+            code: "Program Intervention",
+            dx:
+                categoryOptions.get(data["LKWITZXQD9l"]) ??
+                data["LKWITZXQD9l"] ??
+                "",
+        },
+        {
+            code: "Intermediate Outcome",
+            dx:
+                categoryOptions.get(data["k9c6BOHIohu"]) ??
+                data["k9c6BOHIohu"] ??
+                "",
+        },
+        {
+            code: "Key Result Area",
+            dx:
+                categoryOptions.get(data["JmZO4hoIlfT"]) ??
+                data["JmZO4hoIlfT"] ??
+                "",
+        },
+        {
+            code: "Program Output",
+            dx:
+                categoryOptions.get(data["AKzxCNn1zkQ"]) ??
+                data["AKzxCNn1zkQ"] ??
+                "",
+        },
     ];
 };
 
@@ -123,8 +171,11 @@ export function Results(props: ResultsProps) {
         items,
     } = props;
     const { v } = useSearch({ from: "/layout/ndp" });
-    const { configurations, categoryOptions: optionNames } =
-        RootRoute.useLoaderData();
+    const {
+        configurations,
+        categoryOptions: optionNames,
+        allOptionsMap,
+    } = RootRoute.useLoaderData();
     const cats = dimensions[category] ?? [];
     const target = cats.at(-2) ?? "";
     const baseline = cats.at(0) ?? "";
@@ -177,6 +228,7 @@ export function Results(props: ResultsProps) {
                                                 columns={indicatorColumns}
                                                 dataSource={makeIndicatorData(
                                                     record,
+                                                    allOptionsMap,
                                                 )}
                                                 style={{
                                                     margin: 0,
@@ -215,8 +267,8 @@ export function Results(props: ResultsProps) {
             ...pe.flatMap((pe) => {
                 const title =
                     configurations[v]?.data?.baseline === pe
-                        ? items[baseline].name
-                        : items[target].name;
+                        ? items[baseline]?.name
+                        : items[target]?.name;
                 const dataIndex =
                     configurations[v]?.data?.baseline === pe
                         ? `${pe}${baseline}`
@@ -228,7 +280,6 @@ export function Results(props: ResultsProps) {
                 return {
                     title,
                     align: "center" as const,
-                    // minWidth: 90,
                     children: nonBaseline
                         ? categoryOptions?.slice(0, 2).map((option) => ({
                               title:
@@ -260,7 +311,7 @@ export function Results(props: ResultsProps) {
                     return [];
                 }
                 return {
-                    title: items[pe].name,
+                    title: items[pe]?.name,
                     align: "center" as const,
                     children: nonBaseline
                         ? categoryOptions

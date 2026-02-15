@@ -165,7 +165,7 @@ export default function CategoryCombo({
                             onClick={() => {
                                 modal.info({
                                     title: "Indicator Dictionary",
-                                    width: 600,
+                                    width: 700,
                                     centered: true,
                                     content: (
                                         <IndicatorDetails indicator={record} />
