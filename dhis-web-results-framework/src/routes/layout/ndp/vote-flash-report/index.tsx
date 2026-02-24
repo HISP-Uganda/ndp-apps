@@ -1,6 +1,14 @@
 import { DownloadOutlined } from "@ant-design/icons";
 import { createRoute } from "@tanstack/react-router";
-import { Button, Flex, Table, TableProps, Typography } from "antd";
+import {
+    Button,
+    Descriptions,
+    DescriptionsProps,
+    Flex,
+    Table,
+    TableProps,
+    Typography,
+} from "antd";
 import React, { useState } from "react";
 import Performance from "../../../../components/performance";
 import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
@@ -13,6 +21,31 @@ import {
 } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { VoteFlashReportRoute } from "./route";
+
+const quarterOrder = { Q1: "Q3", Q2: "Q4", Q3: "Q1", Q4: "Q2" };
+
+const fullQuarters = {
+    3: "Q1",
+    4: "Q2",
+    1: "Q3",
+    2: "Q4",
+};
+
+const makePeriod = (pe: string[], quarters?: boolean) => {
+    const periodFilter = new Set(pe);
+    if (quarters) {
+        for (const p of pe) {
+            const year = Number(p?.slice(0, 4));
+            const q1 = `${year}Q3`;
+            const q2 = `${year}Q4`;
+            const q3 = `${year + 1}Q1`;
+            const q4 = `${year + 1}Q2`;
+            periodFilter.add(q1).add(q2).add(q3).add(q4);
+        }
+    }
+    return Array.from(periodFilter);
+};
+
 export const VoteFlashReportIndexRoute = createRoute({
     path: "/",
     getParentRoute: () => VoteFlashReportRoute,
@@ -394,35 +427,6 @@ function Component() {
             ];
         }, []);
 
-    const intermediateOutcomeColumns: TableProps<AnalyticsData>["columns"] =
-        React.useMemo(() => {
-            return [
-                {
-                    title: `Code`,
-                    dataIndex: "UBWSASWdyfi",
-                    key: "UBWSASWdyfi",
-                    width: 80,
-                    align: "center",
-                    sorter: true,
-                },
-                {
-                    title: `Programme`,
-                    dataIndex: "program",
-                    key: "program",
-                    render: (text: string) => {
-                        return text.replace(/\d+/g, "").trim();
-                    },
-                    sorter: true,
-                },
-                {
-                    title: `Intermediate Outcome`,
-                    dataIndex: "YlPvYLC4VfO",
-                    key: "YlPvYLC4VfO",
-                    sorter: true,
-                },
-            ];
-        }, []);
-
     const outComeDetailedColumns = React.useMemo(() => {
         return createPerformanceColumns({
             baseline: "",
@@ -507,8 +511,46 @@ function Component() {
             size: "small",
             dataSource: outcomes,
             columns: outComeDetailedColumns,
+            expandable: {
+                expandedRowRender: (record) => {
+                    const itemValues: DescriptionsProps["items"] = [pe].flatMap(
+                        (pe) => {
+                            const year = Number(pe.slice(0, 4));
+                            return [3, 4, 1, 2].flatMap((quarter) => {
+                                const currentYear =
+                                    quarter === 1 || quarter === 2
+                                        ? year
+                                        : year + 1;
+                                const period = `${currentYear}${fullQuarters[quarter]}`;
+                                const comment = record[`${period}comment`];
+                                if (comment) {
+                                    return {
+                                        label: `${outcomeItems?.[pe]?.name} ${quarterOrder[fullQuarters[quarter]]}`,
+                                        children: comment,
+                                        key: `${pe}${quarter}`,
+                                    };
+                                }
+                                return [];
+                            });
+                        },
+                    );
+                    return (
+                        <Descriptions
+                            size="small"
+                            column={1}
+                            items={itemValues}
+                        />
+                    );
+                },
+                rowExpandable: (record) => {
+                    const actual = makePeriod([pe], true);
+                    return actual.some(
+                        (period) => !!record[`${period}comment`],
+                    );
+                },
+            },
         }),
-        [outcomes],
+        [outcomes, pe],
     );
     const intermediateOutcomeTableProps = React.useMemo<
         TableProps<AnalyticsData>
@@ -522,6 +564,44 @@ function Component() {
             size: "small",
             dataSource: intermediateOutcomes,
             columns: intermediateOutcomeDetailedColumns,
+            expandable: {
+                expandedRowRender: (record) => {
+                    const itemValues: DescriptionsProps["items"] = [pe].flatMap(
+                        (pe) => {
+                            const year = Number(pe.slice(0, 4));
+                            return [3, 4, 1, 2].flatMap((quarter) => {
+                                const currentYear =
+                                    quarter === 1 || quarter === 2
+                                        ? year
+                                        : year + 1;
+                                const period = `${currentYear}${fullQuarters[quarter]}`;
+                                const comment = record[`${period}comment`];
+                                if (comment) {
+                                    return {
+                                        label: `${intermediateOutcomeItems?.[pe]?.name} ${quarterOrder[fullQuarters[quarter]]}`,
+                                        children: comment,
+                                        key: `${pe}${quarter}`,
+                                    };
+                                }
+                                return [];
+                            });
+                        },
+                    );
+                    return (
+                        <Descriptions
+                            size="small"
+                            column={1}
+                            items={itemValues}
+                        />
+                    );
+                },
+                rowExpandable: (record) => {
+                    const actual = makePeriod([pe], true);
+                    return actual.some(
+                        (period) => !!record[`${period}comment`],
+                    );
+                },
+            },
         }),
         [intermediateOutcomes],
     );
@@ -535,6 +615,45 @@ function Component() {
             size: "small",
             dataSource: outputs,
             columns: outputDetailedColumns,
+
+            expandable: {
+                expandedRowRender: (record) => {
+                    const itemValues: DescriptionsProps["items"] = [pe].flatMap(
+                        (pe) => {
+                            const year = Number(pe.slice(0, 4));
+                            return [3, 4, 1, 2].flatMap((quarter) => {
+                                const currentYear =
+                                    quarter === 1 || quarter === 2
+                                        ? year
+                                        : year + 1;
+                                const period = `${currentYear}${fullQuarters[quarter]}`;
+                                const comment = record[`${period}comment`];
+                                if (comment) {
+                                    return {
+                                        label: `${outputItems?.[pe]?.name} ${quarterOrder[fullQuarters[quarter]]}`,
+                                        children: comment,
+                                        key: `${pe}${quarter}`,
+                                    };
+                                }
+                                return [];
+                            });
+                        },
+                    );
+                    return (
+                        <Descriptions
+                            size="small"
+                            column={1}
+                            items={itemValues}
+                        />
+                    );
+                },
+                rowExpandable: (record) => {
+                    const actual = makePeriod([pe], true);
+                    return actual.some(
+                        (period) => !!record[`${period}comment`],
+                    );
+                },
+            },
         }),
         [outputs],
     );
@@ -548,6 +667,45 @@ function Component() {
             size: "small",
             dataSource: actions,
             columns: actionDetailedColumns,
+
+            expandable: {
+                expandedRowRender: (record) => {
+                    const itemValues: DescriptionsProps["items"] = [pe].flatMap(
+                        (pe) => {
+                            const year = Number(pe.slice(0, 4));
+                            return [3, 4, 1, 2].flatMap((quarter) => {
+                                const currentYear =
+                                    quarter === 1 || quarter === 2
+                                        ? year
+                                        : year + 1;
+                                const period = `${currentYear}${fullQuarters[quarter]}`;
+                                const comment = record[`${period}comment`];
+                                if (comment) {
+                                    return {
+                                        label: `${actionItems?.[pe]?.name} ${quarterOrder[fullQuarters[quarter]]}`,
+                                        children: comment,
+                                        key: `${pe}${quarter}`,
+                                    };
+                                }
+                                return [];
+                            });
+                        },
+                    );
+                    return (
+                        <Descriptions
+                            size="small"
+                            column={1}
+                            items={itemValues}
+                        />
+                    );
+                },
+                rowExpandable: (record) => {
+                    const actual = makePeriod([pe], true);
+                    return actual.some(
+                        (period) => !!record[`${period}comment`],
+                    );
+                },
+            },
         }),
         [actions],
     );

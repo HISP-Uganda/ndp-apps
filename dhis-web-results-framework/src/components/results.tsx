@@ -3,6 +3,8 @@ import { useSearch } from "@tanstack/react-router";
 
 import {
     Button,
+    Descriptions,
+    DescriptionsProps,
     Flex,
     Form,
     Modal,
@@ -31,6 +33,21 @@ import dayjs from "dayjs";
 
 dayjs.extend(advancedFormat);
 dayjs.extend(quarterOfYear);
+
+const makePeriod = (pe: string[], quarters?: boolean) => {
+    const periodFilter = new Set(pe);
+    if (quarters) {
+        for (const p of pe) {
+            const year = Number(p?.slice(0, 4));
+            const q1 = `${year}Q3`;
+            const q2 = `${year}Q4`;
+            const q3 = `${year + 1}Q1`;
+            const q4 = `${year + 1}Q2`;
+            periodFilter.add(q1).add(q2).add(q3).add(q4);
+        }
+    }
+    return Array.from(periodFilter);
+};
 
 const makeIndicatorData = (
     data: AnalyticsData,
@@ -473,8 +490,43 @@ export function Results(props: ResultsProps) {
             pagination: false,
             size: "small",
             dataSource: data,
+            expandable: {
+                expandedRowRender: (record) => {
+                    const itemValues: DescriptionsProps["items"] = pe.flatMap(
+                        (pe) => {
+                            const year = Number(pe.slice(0, 4));
+                            return currentQuarters.flatMap((quarter) => {
+                                const currentYear =
+                                    quarter === "Q1" || quarter === "Q2"
+                                        ? year
+                                        : year + 1;
+                                const period = `${currentYear}${quarterOrder[quarter]}`;
+                                const comment = record[`${period}comment`];
+
+                                if (comment) {
+                                    return {
+                                        label: `${items?.[pe]?.name} ${quarter}`,
+                                        children: comment,
+                                        key: `${pe}${quarter}`,
+                                    };
+                                }
+                                return [];
+                            });
+                        },
+                    );
+                    return (
+                        <Descriptions size="small" column={1} items={itemValues} />
+                    );
+                },
+                rowExpandable: (record) => {
+                    const actual = makePeriod(pe, quarters);
+                    return actual.some(
+                        (period) => !!record[`${period}comment`],
+                    );
+                },
+            },
         }),
-        [data],
+        [data, currentQuarters],
     );
     const tabItems: TabsProps["items"] = useMemo(
         () => [

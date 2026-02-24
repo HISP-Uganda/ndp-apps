@@ -274,78 +274,6 @@ export const fixedPeriods = [
     "FYAPR",
 ];
 
-// export const makeDataElementData = (data: {
-//     data: AnalyticsData[];
-//     targetId: string;
-//     actualId: string;
-//     baselineId: string;
-//     category: string;
-// }) => {
-//     const {
-//         rows,
-//         metaData: { items, dimensions },
-//     } = data.analytics;
-
-//     const allData: Map<string, string> = new Map(
-//         rows.map((row) => {
-//             return [
-//                 row.slice(0, row.length - 1).join(""),
-//                 String(row[row.length - 1]),
-//             ];
-//         }),
-//     );
-//     return dimensions.dx.map((a) => {
-//         const current: Map<string, any> = new Map();
-//         const dataElementDetails = data.dataElements.get(a);
-//         dimensions["pe"]?.forEach((pe) => {
-//             const baseline = Number(allData.get(`${a}${data.baselineId}${pe}`));
-
-//             const categoryValues = dimensions[data.category]?.map((cat) =>
-//                 Number(allData.get(`${a}${cat}${pe}`)),
-//             );
-
-//             let target = categoryValues.at(-2) ?? NaN;
-//             let actual = categoryValues.at(-1) ?? NaN;
-//             let year = pe.slice(0, 4);
-//             if (pe.indexOf("Q") > -1) {
-//                 const quarter = pe.slice(-1);
-//                 if (quarter === "1" || quarter === "2") {
-//                     year = String(Number(year) - 1);
-//                 }
-//                 target = Number(allData.get(`${a}${data.targetId}${year}July`));
-//             }
-//             const ratio = calculatePerformanceRatio(actual, target);
-//             const { performance, style } = findBackground(
-//                 ratio,
-//                 dataElementDetails?.["descending indicator type"],
-//             );
-//             if (isNaN(ratio)) {
-//                 current.set(`${pe}performance`, "-");
-//             } else {
-//                 current.set(`${pe}performance`, formatPercentage(ratio / 100));
-//             }
-//             current.set(`${pe}style`, style);
-//             current.set(`${pe}performance-group`, performance);
-//             current.set(`${pe}target`, isNaN(target) ? "-" : target);
-//             current.set(`${pe}actual`, isNaN(actual) ? "-" : actual);
-//             current.set(`${pe}baseline`, isNaN(baseline) ? "-" : baseline);
-//             current.set(`${pe}${data.targetId}`, isNaN(target) ? "-" : target);
-//             current.set(`${pe}${data.actualId}`, isNaN(actual) ? "-" : actual);
-//             current.set(
-//                 `${pe}${data.baselineId}`,
-//                 isNaN(baseline) ? "-" : baseline,
-//             );
-//         });
-//         return {
-//             id: a,
-//             dx: items[a].name,
-//             code: items[a].code,
-//             ...Object.fromEntries(current),
-//             ...dataElementDetails,
-//         };
-//     });
-// };
-
 export const extractDataElementGroups = (
     dataElementGroupSets: DataElementGroupSet[],
     degs?: string,
@@ -409,61 +337,6 @@ export const extractDataElementGroupsByProgram = (
     };
 };
 
-// export const resolveDataElementGroups = (
-//     searchParams: GoalSearch,
-//     dataElementGroupSets: DataElementGroupSet[],
-// ): { groupSets: string[]; dataElementGroups: string[] } => {
-//     const {  objective, program, requiresProgram } = searchParams;
-//     if (requiresProgram && program === undefined) {
-//         return {
-//             groupSets: [],
-//             dataElementGroups: [],
-//         };
-//     }
-
-//     if (deg !== undefined && deg !== "All") {
-//         return {
-//             groupSets: [objective ?? ""],
-//             dataElementGroups: [deg],
-//         };
-//     }
-
-//     if (program !== undefined) {
-//         const values = extractDataElementGroupsByProgram(
-//             dataElementGroupSets,
-//             program,
-//             objective,
-//         );
-//         return values;
-//     }
-//     const dataElementGroups = extractDataElementGroups(
-//         dataElementGroupSets,
-//         objective,
-//     );
-
-//     return {
-//         groupSets: dataElementGroupSets.map((d) => d.id),
-//         dataElementGroups,
-//     };
-// };
-// export const buildQueryParams = (
-//     { dataElementGroups }: { groupSets: string[]; dataElementGroups: string[] },
-//     searchParams: GoalSearch,
-// ) => {
-//     const { pe, ou, program, category, categoryOptions, degs } = searchParams;
-
-//     return {
-//         deg: dataElementGroups.map((de) => `DE_GROUP-${de}`).join(";"),
-//         pe,
-//         ou,
-//         category,
-//         categoryOptions,
-//         degs,
-//         ...(ou && { ou }),
-//         ...(program && { program }),
-//     };
-// };
-
 export const validateDataElementGroupSets = (
     dataElementGroupSets: any,
 ): dataElementGroupSets is DataElementGroupSet[] => {
@@ -514,7 +387,11 @@ export function filterMapFunctional<K, V>(
 export const calculatePerformanceRatio = (
     actual: number,
     target: number,
+    aggregationType: string,
 ): number => {
+    if (aggregationType === "LAST") {
+        return actual;
+    }
     if (isNaN(actual) || isNaN(target) || target === 0) return NaN;
     return (actual * 100) / target;
 };
@@ -1134,7 +1011,7 @@ export const processDataElements = (dataElements: DataElement[]) => {
                     organisationUnits: Array.from(organisationUnits),
                     dataSets: Array.from(dataSets),
                     orgUnit: currentOu,
-										...rest
+                    ...rest,
                 };
             });
             return data;

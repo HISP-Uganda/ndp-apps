@@ -46,6 +46,5 @@ export const useAnalyticsQuery = ({
         ],
     );
     const { data } = useSuspenseQuery(queryOptions);
-
     return data;
 };

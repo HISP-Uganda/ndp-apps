@@ -199,18 +199,26 @@ export const queryAnalytics = async ({
         }
 
         params.append("dimension", orgUnitParam);
-        params.append("dimension", orgUnitParam);
         params.append("dimension", `${category}:${categoryOptions?.join(";")}`);
         params.append("dimension", `pe:${Array.from(periodFilter).join(";")}`);
 
         const queries: Record<string, any> = {};
+        const dataValuesQueries: Record<string, any> = {};
 
         chunk(dataElementIds, analyticsChunkSize).forEach((deIds, index) => {
             const currentParams = new URLSearchParams(params);
             currentParams.append("dimension", `dx:${deIds.join(";")}`);
 
             queries[`analytics${index}`] = {
-                resource: `analytics??${currentParams.toString()}`,
+                resource: `analytics?${currentParams.toString()}`,
+            };
+        });
+
+        chunk(dataElementIds, analyticsChunkSize).forEach((deIds, index) => {
+            const currentParams = new URLSearchParams(params);
+            currentParams.append("dimension", `dx:${deIds.join(";")}`);
+            dataValuesQueries[`dataValues${index}`] = {
+                resource: `dataValueSets?orgUnit=${ou}&period=${Array.from(periodFilter).join(",")}&dataElement=${deIds.join(",")}&attributeOptionCombo=${categoryOptions.join(",")}&children=true`,
             };
         });
 
@@ -218,6 +226,41 @@ export const queryAnalytics = async ({
             string,
             Analytics
         >;
+
+        const currentDataValues = (await engine.query(
+            dataValuesQueries,
+        )) as Record<
+            string,
+            {
+                dataValues?: Array<{
+                    dataElement: string;
+                    value: string;
+                    period: string;
+                    orgUnit: string;
+                    categoryOptionCombo: string;
+                    attributeOptionCombo: string;
+                    comment?: string;
+                }>;
+            }
+        >;
+
+        const allComments: Record<string, string> = {};
+        for (const [, dataValues] of Object.entries(currentDataValues)) {
+            if (dataValues) {
+                for (const dv of dataValues.dataValues ?? []) {
+                    try {
+                        if (dv.comment) {
+                            const { explanation } = JSON.parse(dv.comment) as {
+                                explanation?: string;
+                                attachments?: string;
+                            };
+                            allComments[`${dv.dataElement}-${dv.period}-comment`] =
+                                `${allComments[`${dv.dataElement}-${dv.period}-comment`] ?? ""}\r${explanation ?? ""}`;
+                        }
+                    } catch (error) {}
+                }
+            }
+        }
 
         for (const [, analytics] of Object.entries(currentData)) {
             items = { ...items, ...analytics.metaData.items };
@@ -274,6 +317,7 @@ export const queryAnalytics = async ({
                             const ratio = calculatePerformanceRatio(
                                 actualValue,
                                 targetValue,
+                                de.aggregationType,
                             );
                             const { performance, style } = findBackground(
                                 ratio,
@@ -323,6 +367,7 @@ export const queryAnalytics = async ({
                                 `${pe}${approved}`,
                                 isNaN(approvedValue) ? "-" : approvedValue,
                             );
+                            current.set(`${pe}comment`, allComments[`${dx}-${pe}-comment`] ?? "");
                         }
                         return {
                             ...de,
@@ -423,7 +468,7 @@ export const initialQueryOptions = (
                 xQG5xfRYb50: strategicObjectives,
                 zVYsHjAeHlG: keyResultAreas,
                 xLQd0SrtSF8: programs,
-                MfNa8J3R2Uv:programInterventions
+                MfNa8J3R2Uv: programInterventions,
             } = fromPairs(
                 options.optionSets.map((oset) => [oset.id, oset.options]),
             );
@@ -464,7 +509,7 @@ export const initialQueryOptions = (
                 programOutputs,
                 strategicObjectives,
                 keyResultAreas,
-								programInterventions,
+                programInterventions,
                 categories: new Map(
                     categories.map((c) => [
                         c.id,
