@@ -8,6 +8,12 @@ import { Button, Flex, Select } from "antd";
 import React, { useMemo, useState } from "react";
 import { PeriodType } from "../types";
 
+function moveNumbersToEnd(str: string): string {
+    const numbers = str.match(/\d+/g) || [];
+    const text = str.replace(/\d+/g, "").replace(/\s+/g, " ").trim();
+    return `${text} ${numbers.join(" ")}`.trim();
+}
+
 export default function PeriodPicker({
     period,
     onChange,
@@ -69,14 +75,14 @@ export default function PeriodPicker({
                     });
                 })
                 .map(({ name, id }) => ({
-                    label: name,
+                    label: moveNumbersToEnd(name),
                     value: id,
                 }));
         }
         return periods.flatMap(({ name, id, startDate, endDate }) => {
             if (startDate >= minDate && endDate <= maxDate) {
                 return {
-                    label: name,
+                    label: moveNumbersToEnd(name),
                     value: id,
                 };
             }
@@ -119,10 +125,11 @@ export default function PeriodPicker({
                         setYear((prev) => prev - 1);
                         onChange(undefined);
                     }}
-                    disabled={
-                        year <= minYear ||
-                        (periodType === "FYJUL" && defaultPeriods.length > 0)
-                    }
+                    // disabled={
+                    //     year <= minYear ||
+                    //     (periodType === "FYJUL" && defaultPeriods.length > 0)
+                    // }
+										disabled
                 />
                 <Button
                     icon={<RightOutlined />}
@@ -130,10 +137,11 @@ export default function PeriodPicker({
                         setYear((prev) => prev + 1);
                         onChange(undefined);
                     }}
-                    disabled={
-                        year > maxYear ||
-                        (periodType === "FYJUL" && defaultPeriods.length > 0)
-                    }
+										disabled
+                    // disabled={
+                    //     year > maxYear ||
+                    //     (periodType === "FYJUL" && defaultPeriods.length > 0)
+                    // }
                 />
             </Flex>
         </Flex>

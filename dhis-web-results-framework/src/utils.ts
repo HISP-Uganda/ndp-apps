@@ -388,11 +388,13 @@ export const calculatePerformanceRatio = (
     actual: number,
     target: number,
     aggregationType: string,
+    isReducing: string,
 ): number => {
     if (aggregationType === "LAST") {
         return actual;
     }
     if (isNaN(actual) || isNaN(target) || target === 0) return NaN;
+    if (isReducing) return (target * 100) / actual;
     return (actual * 100) / target;
 };
 
@@ -569,181 +571,6 @@ export const getDefaultPeriods = (financialYears: string[]) => {
         };
     }
 };
-
-// export const createColumns = (
-//     votes: Array<Omit<DHIS2OrgUnit, "leaf" | "dataSets" | "parent">>,
-//     data?: ScorecardData,
-// ) => {
-//     const finalData = votes.map((vote) => {
-//         const dataForVote = data?.get(vote.id);
-//         return {
-//             ...vote,
-//             ...dataForVote,
-//         };
-//     });
-//     const columns: TableProps<(typeof finalData)[number]>["columns"] = [
-//         {
-//             title: "Vote",
-//             dataIndex: "code",
-//             key: "code",
-//             width: 80,
-//             align: "center",
-//             render: (_, record) => record.code?.replace("V", ""),
-//             sorter: true,
-//         },
-//         {
-//             title: "Institution",
-//             dataIndex: "name",
-//             key: "name",
-//             filterSearch: true,
-//             filters: votes.map((v) => ({ text: v.name, value: v.name })),
-//             onFilter: (value, record) =>
-//                 record.name.indexOf(value as string) === 0,
-//             sorter: true,
-//         },
-//         {
-//             title: `No of Indicators`,
-//             dataIndex: "denominator",
-//             key: "denominator",
-//             width: 140,
-//             align: "center",
-//             render: (_, record) => data?.get(record.id)?.denominator ?? "",
-//             sorter: true,
-//         },
-//         {
-//             title: `A`,
-//             dataIndex: "achieved",
-//             key: "achieved",
-//             width: 70,
-//             align: "center",
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.green.bg,
-//                     color: PERFORMANCE_COLORS.green.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `M`,
-//             dataIndex: "moderatelyAchieved",
-//             key: "moderatelyAchieved",
-//             width: 70,
-//             align: "center",
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
-//                     color: PERFORMANCE_COLORS.yellow.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `N`,
-//             dataIndex: "notAchieved",
-//             key: "notAchieved",
-//             width: 70,
-//             align: "center",
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.red.bg,
-//                     color: PERFORMANCE_COLORS.red.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `ND`,
-//             dataIndex: "noData",
-//             key: "noData",
-//             width: 70,
-//             align: "center",
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
-//                     color: PERFORMANCE_COLORS.gray.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `% A`,
-//             dataIndex: "percentAchieved",
-//             key: "percentAchieved",
-//             width: 80,
-//             align: "center",
-//             render: (_, record) =>
-//                 formatter.format(record.percentAchieved ?? 0),
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.green.bg,
-//                     color: PERFORMANCE_COLORS.green.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `% M`,
-//             dataIndex: "percentModeratelyAchieved",
-//             key: "percentModeratelyAchieved",
-//             width: 80,
-//             align: "center",
-//             render: (_, record) =>
-//                 formatter.format(record.percentModeratelyAchieved ?? 0),
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.yellow.bg,
-//                     color: PERFORMANCE_COLORS.yellow.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `% N`,
-//             dataIndex: "percentNotAchieved",
-//             key: "percentNotAchieved",
-//             width: 80,
-//             align: "center",
-//             render: (_, record) =>
-//                 formatter.format(record.percentNotAchieved ?? 0),
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.red.bg,
-//                     color: PERFORMANCE_COLORS.red.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `% ND`,
-//             dataIndex: "percentNoData",
-//             key: "percentNoData",
-//             width: 85,
-//             align: "center",
-//             render: (_, record) => formatter.format(record.percentNoData ?? 0),
-//             onHeaderCell: () => ({
-//                 style: {
-//                     backgroundColor: PERFORMANCE_COLORS.gray.bg,
-//                     color: PERFORMANCE_COLORS.gray.fg,
-//                 },
-//             }),
-//             sorter: true,
-//         },
-//         {
-//             title: `Weighted Score (%)`,
-//             dataIndex: "totalWeighted",
-//             key: "totalWeighted",
-//             align: "center",
-//             width: 120,
-//             render: (_, record) => formatter.format(record.totalWeighted ?? 0),
-//             onCell: (record) => ({
-//                 style: getCellStyle(record.totalWeighted ?? 0),
-//             }),
-//             sorter: true,
-//         },
-//     ];
-//     return { columns, finalData };
-// };
 
 export const flattenDataElementGroupSetsResponse = ({
     dataElementGroupSets,
@@ -1224,7 +1051,8 @@ export const createPerformanceColumns = ({
                                       ),
                                   dataIndex: `${pe}${option}`,
                                   align: "center" as const,
-                                  minWidth: 50,
+                                  // minWidth: 50,
+                                  width: 110,
                               };
                           })
                           .concat(
@@ -1239,7 +1067,8 @@ export const createPerformanceColumns = ({
                                       key: `${pe}${currentYear}Q${quarter}`,
                                       align: "center",
                                       dataIndex: `${pe}${currentYear}Q${quarter}`,
-                                      minWidth: 100,
+                                      // minWidth: 100,
+                                      width: 110,
                                       children: [
                                           ...categoryOptions
                                               .slice(2)
@@ -1250,14 +1079,16 @@ export const createPerformanceColumns = ({
                                                   dataIndex: `${currentYear}Q${quarter}${option}`,
                                                   key: `${currentYear}Q${quarter}${option}`,
                                                   align: "center" as const,
-                                                  minWidth: 40,
+                                                  // minWidth: 40,
+                                                  width: 110,
                                               })),
                                           {
                                               title: `%`,
                                               dataIndex: `${currentYear}Q${quarter}performance`,
                                               key: `${currentYear}Q${quarter}performance`,
                                               align: "center",
-                                              minWidth: 40,
+                                              // minWidth: 40,
+                                              width: 110,
                                               onCell: (
                                                   row: Record<string, any>,
                                               ) => {
@@ -1287,13 +1118,15 @@ export const createPerformanceColumns = ({
                                       title: `Q${index + 1}`,
                                       key: `${pe}${currentYear}Q${quarter}`,
                                       align: "center",
+                                      width: 110,
                                       children: [
                                           {
                                               title: `A`,
                                               key: `${currentYear}Q${quarter}actual`,
                                               dataIndex: `${currentYear}Q${quarter}actual`,
                                               align: "center",
-                                              minWidth: 40,
+                                              // minWidth: 40,
+                                              width: 110,
                                           },
                                           {
                                               title: `%`,
@@ -1309,7 +1142,8 @@ export const createPerformanceColumns = ({
                                                       ],
                                                   };
                                               },
-                                              minWidth: 40,
+                                              // minWidth: 40,
+                                              width: 110,
                                           },
                                       ],
                                   };
@@ -1321,7 +1155,8 @@ export const createPerformanceColumns = ({
                               return {
                                   title: budgetColumns[currentValue] || title,
                                   key: `${pe}${currentValue}`,
-                                  minWidth: baseline === pe ? 78 : undefined,
+                                  // minWidth: baseline === pe ? 78 : undefined,
+                                  width: 110,
                                   align: "center",
                                   onCell: (row: Record<string, any>) => {
                                       if (index === 2) {

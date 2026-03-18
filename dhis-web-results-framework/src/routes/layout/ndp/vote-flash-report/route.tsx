@@ -108,7 +108,7 @@ function Component() {
                 </Form.Item>
             </Flex>
             <Typography.Title level={3} style={{ margin: 0 }}>
-                Vote Flash Report
+                Consolidated Performance Report
             </Typography.Title>
             <Typography.Title level={5} style={{ margin: 0 }}>
                 {votes.find((vote) => vote.id === ou)?.name}

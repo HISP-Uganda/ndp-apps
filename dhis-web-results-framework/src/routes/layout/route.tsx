@@ -484,7 +484,7 @@ function Component() {
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    NAPR/NHAPR
+                                    Consolidated Performance Report
                                 </Link>
                             ),
                             key: "/ndp/vote-flash-report",

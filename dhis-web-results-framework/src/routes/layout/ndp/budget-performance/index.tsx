@@ -1,11 +1,13 @@
 import { createRoute } from "@tanstack/react-router";
-import { Flex, Table, TableProps } from "antd";
+import { Flex, Table, TableProps,Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import React from "react";
 import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { AnalyticsData } from "../../../../types";
 import { getCellStyle, processByPerformance } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { BudgetPerformanceRoute } from "./route";
+import downloadExcelFromColumns from "../../../../download-antd-table";
 
 export const BudgetPerformanceIndexRoute = createRoute({
     path: "/",
@@ -29,45 +31,6 @@ function Component() {
         specificLevel: 3,
         ouIsFilter: false,
     });
-
-    // const [finalData, setFinalData] = useState(
-    //     votes.map((vote) => {
-    //         const dataForVote = data?.get(vote.id);
-    //         return {
-    //             ...vote,
-    //             ...dataForVote,
-    //         };
-    //     }),
-    // );
-
-    // const handleChange: TableProps<(typeof finalData)[number]>["onChange"] = (
-    //     _pagination,
-    //     _filters,
-    //     sorter,
-    // ) => {
-    //     if (!Array.isArray(sorter)) {
-    //         const { field, order } = sorter;
-    //         if (field && order) {
-    //             setFinalData((prev) => {
-    //                 return orderBy(
-    //                     prev,
-    //                     [String(field)],
-    //                     [order === "ascend" ? "asc" : "desc"],
-    //                 );
-    //             });
-    //         } else {
-    //             setFinalData(() =>
-    //                 votes.map((vote) => {
-    //                     const dataForVote = data?.get(vote.id);
-    //                     return {
-    //                         ...vote,
-    //                         ...dataForVote,
-    //                     };
-    //                 }),
-    //             );
-    //         }
-    //     }
-    // };
 
     const columns: TableProps<AnalyticsData>["columns"] = [
         {
@@ -140,12 +103,18 @@ function Component() {
 
     return (
         <Flex vertical gap="16px">
-            {/* <Flex justify="flex-end">
+            <Flex justify="flex-end">
                 <Button
                     onClick={() =>
                         downloadExcelFromColumns(
                             columns,
-                            finalData,
+                            processByPerformance({
+                                dataElements: data,
+                                groupingBy: "orgUnit",
+                                programs,
+                                pe: search.pe ?? "",
+                                votes,
+                            }),
                             "budget-performance-report.xlsx",
                         )
                     }
@@ -153,7 +122,7 @@ function Component() {
                 >
                     Download Excel
                 </Button>
-            </Flex> */}
+            </Flex>
             <Table
                 columns={columns}
                 dataSource={processByPerformance({

@@ -107,6 +107,7 @@ export default function TableCell({
                 <InputNumber
                     style={{
                         width: "100%",
+												textAlign:"center"
                     }}
                     value={currentValue}
                     onChange={(value) => {
@@ -114,6 +115,8 @@ export default function TableCell({
                     }}
                     onBlur={(e) => handleUpdate(e.target.value)}
                     disabled={isLoading || disabled}
+										className=""
+										
                 />
             </Spin>
         );
@@ -148,6 +151,7 @@ export default function TableCell({
             <Input
                 style={{
                     width: "100%",
+                    textAlign: "center",
                 }}
                 value={currentValue}
                 onChange={(e) => {

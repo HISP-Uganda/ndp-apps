@@ -14,6 +14,9 @@ import {
     Tabs,
     TabsProps,
 } from "antd";
+import dayjs from "dayjs";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import quarterOfYear from "dayjs/plugin/quarterOfYear";
 import React, { useMemo } from "react";
 import { FaInfoCircle } from "react-icons/fa";
 import downloadExcelFromColumns from "../download-antd-table";
@@ -26,28 +29,12 @@ import {
     ResultsProps,
 } from "../types";
 import { legendItems } from "../utils";
+import AttachmentDownload from "./attachment-download";
 import PerformanceLegend from "./performance-legend";
-import advancedFormat from "dayjs/plugin/advancedFormat";
-import quarterOfYear from "dayjs/plugin/quarterOfYear";
-import dayjs from "dayjs";
+import { PDFBuilder } from "../pdf-builder";
 
 dayjs.extend(advancedFormat);
 dayjs.extend(quarterOfYear);
-
-const makePeriod = (pe: string[], quarters?: boolean) => {
-    const periodFilter = new Set(pe);
-    if (quarters) {
-        for (const p of pe) {
-            const year = Number(p?.slice(0, 4));
-            const q1 = `${year}Q3`;
-            const q2 = `${year}Q4`;
-            const q3 = `${year + 1}Q1`;
-            const q4 = `${year + 1}Q2`;
-            periodFilter.add(q1).add(q2).add(q3).add(q4);
-        }
-    }
-    return Array.from(periodFilter);
-};
 
 const makeIndicatorData = (
     data: AnalyticsData,
@@ -343,7 +330,7 @@ export function Results(props: ResultsProps) {
                                           ),
                                       dataIndex: `${pe}${option}`,
                                       align: "center" as const,
-                                      minWidth: 50,
+                                      width: 150,
                                   };
                               })
                               .concat(
@@ -358,7 +345,7 @@ export function Results(props: ResultsProps) {
                                           key: `${pe}${currentYear}${quarterOrder[quarter]}`,
                                           align: "center",
                                           dataIndex: `${pe}${currentYear}${quarterOrder[quarter]}`,
-                                          minWidth: 100,
+                                          width: 110,
                                           children: [
                                               ...categoryOptions
                                                   .slice(2)
@@ -371,14 +358,14 @@ export function Results(props: ResultsProps) {
                                                       dataIndex: `${currentYear}${quarterOrder[quarter]}${option}`,
                                                       key: `${currentYear}${quarterOrder[quarter]}${option}`,
                                                       align: "center" as const,
-                                                      minWidth: 40,
+                                                      width: 110,
                                                   })),
                                               {
                                                   title: `%`,
                                                   dataIndex: `${currentYear}${quarterOrder[quarter]}performance`,
                                                   key: `${currentYear}${quarterOrder[quarter]}performance`,
                                                   align: "center",
-                                                  minWidth: 40,
+                                                  width: 110,
                                                   onCell: (
                                                       row: Record<string, any>,
                                                   ) => {
@@ -408,13 +395,14 @@ export function Results(props: ResultsProps) {
                                           title: quarter,
                                           key: `${pe}${currentYear}${quarterOrder[quarter]}`,
                                           align: "center",
+                                          width: 150,
                                           children: [
                                               {
                                                   title: `A`,
                                                   key: `${currentYear}${quarterOrder[quarter]}actual`,
                                                   dataIndex: `${currentYear}${quarterOrder[quarter]}actual`,
                                                   align: "center",
-                                                  minWidth: 40,
+                                                  width: 110,
                                               },
                                               {
                                                   title: `%`,
@@ -430,7 +418,7 @@ export function Results(props: ResultsProps) {
                                                           ],
                                                       };
                                                   },
-                                                  minWidth: 40,
+                                                  width: 110,
                                               },
                                           ],
                                       };
@@ -443,11 +431,7 @@ export function Results(props: ResultsProps) {
                                       title:
                                           budgetColumns[currentValue] || title,
                                       key: `${pe}${currentValue}`,
-                                      minWidth:
-                                          configurations[v]?.data?.baseline ===
-                                          pe
-                                              ? 78
-                                              : undefined,
+                                      width: 110,
                                       align: "center",
                                       onCell: (row: Record<string, any>) => {
                                           if (index === 2) {
@@ -515,19 +499,85 @@ export function Results(props: ResultsProps) {
                         },
                     );
                     return (
-                        <Descriptions size="small" column={1} items={itemValues} />
+                        <Flex vertical>
+                            <Descriptions
+                                size="small"
+                                column={1}
+                                items={itemValues}
+                            />
+
+                            <Flex>
+                                {pe
+                                    .flatMap((pe) => {
+                                        const year = Number(pe.slice(0, 4));
+                                        return currentQuarters.flatMap(
+                                            (quarter) => {
+                                                const currentYear =
+                                                    quarter === "Q1" ||
+                                                    quarter === "Q2"
+                                                        ? year
+                                                        : year + 1;
+                                                const period = `${currentYear}${quarterOrder[quarter]}`;
+                                                const attachment =
+                                                    record[
+                                                        `${period}attachment`
+                                                    ];
+
+                                                if (attachment) {
+                                                    return attachment;
+                                                }
+                                                return [];
+                                            },
+                                        );
+                                    })
+                                    .map((a) => (
+                                        <AttachmentDownload attachment={a} />
+                                    ))}
+                            </Flex>
+                        </Flex>
                     );
                 },
                 rowExpandable: (record) => {
-                    const actual = makePeriod(pe, quarters);
-                    return actual.some(
-                        (period) => !!record[`${period}comment`],
-                    );
+                    const allData = pe.flatMap((pe) => {
+                        const year = Number(pe.slice(0, 4));
+                        return currentQuarters.flatMap((quarter) => {
+                            const currentYear =
+                                quarter === "Q1" || quarter === "Q2"
+                                    ? year
+                                    : year + 1;
+                            const period = `${currentYear}${quarterOrder[quarter]}`;
+                            const comment = record[`${period}comment`];
+
+                            if (comment) {
+                                return true;
+                            }
+                            return [];
+                        });
+                    });
+                    return allData.length > 0;
                 },
+                defaultExpandAllRows: true,
             },
         }),
         [data, currentQuarters],
     );
+
+    const extractOutcomeComments = (record: any) => {
+        const comments = pe.flatMap((pe) => {
+            const year = Number(pe.slice(0, 4));
+            return currentQuarters.flatMap((quarter) => {
+                const currentYear =
+                    quarter === "Q1" || quarter === "Q2" ? year : year + 1;
+                const period = `${currentYear}${quarterOrder[quarter]}`;
+                const comment = record[`${period}comment`];
+                if (comment) {
+                    return `${year}/${year + 1} ${quarter}:\n ${comment}\n`;
+                }
+                return [];
+            });
+        });
+        return comments.length > 0 ? comments.join("\r") : null;
+    };
     const tabItems: TabsProps["items"] = useMemo(
         () => [
             {
@@ -545,13 +595,21 @@ export function Results(props: ResultsProps) {
                     >
                         <Flex justify="flex-end" gap={10}>
                             <Button
-                                onClick={() =>
-                                    downloadPdfFromColumns(
-                                        columns.get("target"),
-                                        data,
-                                        "performance-report.pdf",
-                                    )
-                                }
+                                onClick={() => {
+                                    console.log("Are we here");
+                                    const builder = new PDFBuilder({
+                                        orientation: "landscape",
+                                    });
+
+                                    builder
+
+                                        .addTableWithComments(
+                                            columns.get("target"),
+                                            data,
+                                            extractOutcomeComments,
+                                        )
+                                        .download("Vote_Flash_Report.pdf");
+                                }}
                                 icon={<DownloadOutlined />}
                             >
                                 Download PDF
@@ -633,13 +691,27 @@ export function Results(props: ResultsProps) {
 
                             <Flex justify="flex-end" gap={10}>
                                 <Button
-                                    onClick={() =>
-                                        downloadPdfFromColumns(
-                                            columns.get("performance"),
-                                            data,
-                                            "performance-report.pdf",
-                                        )
-                                    }
+                                    // onClick={() =>
+                                    //     downloadPdfFromColumns(
+                                    //         columns.get("performance"),
+                                    //         data,
+                                    //         "performance-report.pdf",
+                                    //     )
+                                    // }
+                                    onClick={() => {
+                                        const builder = new PDFBuilder({
+                                            orientation: "landscape",
+                                        });
+
+                                        builder
+
+                                            .addTableWithComments(
+                                                columns.get("performance"),
+                                                data,
+                                                extractOutcomeComments,
+                                            )
+                                            .download("report.pdf");
+                                    }}
                                     icon={<DownloadOutlined />}
                                 >
                                     Download PDF

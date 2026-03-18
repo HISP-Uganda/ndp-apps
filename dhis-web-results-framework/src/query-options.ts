@@ -1,6 +1,8 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions } from "@tanstack/react-query";
 import { Dexie } from "dexie";
+import { UploadProps } from "antd";
+
 import {
     chunk,
     fromPairs,
@@ -28,6 +30,57 @@ import {
     formatPercentage,
     processDataElements,
 } from "./utils";
+
+export const attachmentsQueryOptions = (
+    baseUrl: string,
+    engine: ReturnType<typeof useDataEngine>,
+    attachments: string,
+) => {
+    return queryOptions({
+        queryKey: ["attachments-query-options", attachments],
+        queryFn: async () => {
+            const defaultFileList: UploadProps<any>["defaultFileList"] = [];
+            try {
+                const { attachment } = JSON.parse(
+                    attachments ?? '{"explanation": "", "attachment": []}',
+                );
+                if (
+                    attachment &&
+                    Array.isArray(attachment) &&
+                    attachment.length > 0
+                ) {
+                    for (const a of attachment) {
+                        try {
+                            const event = (await engine.query({
+                                event: {
+                                    resource: `events/${a}`,
+                                    params: {
+                                        event: a,
+                                    },
+                                },
+                            })) as any;
+                            const fileResourceId = event.event.dataValues.find(
+                                (dv: any) => dv.dataElement === "qeGJBGmsr0d",
+                            )?.value;
+                            const { fileResource } = (await engine.query({
+                                fileResource: {
+                                    resource: `fileResources/${fileResourceId}`,
+                                },
+                            })) as any;
+                            defaultFileList.push({
+                                uid: a,
+                                name: fileResource?.name,
+                                status: "done",
+                                url: `${baseUrl}/api/events/files?dataElementUid=qeGJBGmsr0d&eventUid=${a}`,
+                            });
+                        } catch (error) {}
+                    }
+                }
+            } catch (error) {}
+            return defaultFileList;
+        },
+    });
+};
 
 export const queryDataElements = async ({
     ndpVersion,
@@ -245,6 +298,7 @@ export const queryAnalytics = async ({
         >;
 
         const allComments: Record<string, string> = {};
+        const allAttachments: Record<string, string> = {};
         for (const [, dataValues] of Object.entries(currentDataValues)) {
             if (dataValues) {
                 for (const dv of dataValues.dataValues ?? []) {
@@ -252,16 +306,19 @@ export const queryAnalytics = async ({
                         if (dv.comment) {
                             const { explanation } = JSON.parse(dv.comment) as {
                                 explanation?: string;
-                                attachments?: string;
                             };
-                            allComments[`${dv.dataElement}-${dv.period}-comment`] =
+                            allAttachments[
+                                `${dv.dataElement}-${dv.period}-attachment`
+                            ] = dv.comment;
+                            allComments[
+                                `${dv.dataElement}-${dv.period}-comment`
+                            ] =
                                 `${allComments[`${dv.dataElement}-${dv.period}-comment`] ?? ""}\r${explanation ?? ""}`;
                         }
                     } catch (error) {}
                 }
             }
         }
-
         for (const [, analytics] of Object.entries(currentData)) {
             items = { ...items, ...analytics.metaData.items };
             dimensions = { ...dimensions, ...analytics.metaData.dimensions };
@@ -318,6 +375,7 @@ export const queryAnalytics = async ({
                                 actualValue,
                                 targetValue,
                                 de.aggregationType,
+                                de["descending indicator type"],
                             );
                             const { performance, style } = findBackground(
                                 ratio,
@@ -367,7 +425,14 @@ export const queryAnalytics = async ({
                                 `${pe}${approved}`,
                                 isNaN(approvedValue) ? "-" : approvedValue,
                             );
-                            current.set(`${pe}comment`, allComments[`${dx}-${pe}-comment`] ?? "");
+                            current.set(
+                                `${pe}comment`,
+                                allComments[`${dx}-${pe}-comment`] ?? "",
+                            );
+                            current.set(
+                                `${pe}attachment`,
+                                allAttachments[`${dx}-${pe}-attachment`] ?? [],
+                            );
                         }
                         return {
                             ...de,

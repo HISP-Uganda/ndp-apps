@@ -1,3 +1,7 @@
 * {
 	font-family: Cambria, Georgia, serif !important;
 }
+
+.ant-input-number-input {
+  text-align: center !important;
+}

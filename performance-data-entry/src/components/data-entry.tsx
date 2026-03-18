@@ -1,4 +1,4 @@
-import { Flex, Modal, Typography } from "antd";
+import { Flex, Typography } from "antd";
 import { TableProps } from "antd/es/table";
 import React from "react";
 import {
@@ -10,8 +10,31 @@ import {
 } from "../types";
 import TableCell from "./TableCell";
 import CommentCell from "./comment-cell";
-import { FaInfoCircle } from "react-icons/fa";
-import modal from "antd/es/modal";
+
+function replaceQNumber(str: string): string {
+    const map: Record<string, string> = {
+        "1": "3",
+        "2": "4",
+        "3": "1",
+        "4": "2",
+    };
+
+    return str.replace(/Q(\d)$/, (_, n) => ` - Q${map[n] ?? n}`);
+}
+
+function equivalentNumberFromString(str: string) {
+    const map: Record<string, string> = {
+        "1": "3",
+        "2": "4",
+        "3": "1",
+        "4": "2",
+    };
+
+    const match = str.match(/Q(\d)(?:\/\d+)?$/);
+    if (!match) return null;
+
+    return map[match[1]];
+}
 
 export function generateGroupedColumns({
     dataSet,
@@ -44,6 +67,10 @@ export function generateGroupedColumns({
             columns?.push(groupedColumn);
         } else {
             categoryCombo.categoryOptionCombos?.forEach((coc) => {
+                const indexToLock =
+                    dataSet.categoryCombo.categoryOptionCombos.length === 3
+                        ? 2
+                        : 1;
                 dataSet.categoryCombo.categories
                     .flatMap((cat) => cat.categoryOptions)
                     .forEach((dataSetCOC, index, arr) => {
@@ -55,11 +82,22 @@ export function generateGroupedColumns({
                                     ),
                             );
                         let period = pe;
-                        let periodText = "";
+                        let periodText = pe?.includes("Q")
+                            ? `${Number(targetYear.slice(0, 4))}/${String(
+                                  Number(targetYear.slice(0, 4)) + 1,
+                              ).slice(2)} - Q${equivalentNumberFromString(pe)}`
+                            : pe;
+
                         if (
-                            (dataSetCOC.name.includes("Target") ||
-                                dataSetCOC.name.includes("Planned") ||
-                                dataSetCOC.name.includes("Approved")) &&
+                            (String(dataSetCOC.name)
+                                .toLowerCase()
+                                .includes("target") ||
+                                String(dataSetCOC.name)
+                                    .toLowerCase()
+                                    .includes("planned") ||
+                                String(dataSetCOC.name)
+                                    .toLowerCase()
+                                    .includes("approved")) &&
                             targetYear
                         ) {
                             period = targetYear;
@@ -69,7 +107,9 @@ export function generateGroupedColumns({
                                 Number(targetYear.slice(0, 4)) + 1,
                             ).slice(2)}`;
                         } else if (
-                            dataSetCOC.name.includes("Baseline") &&
+                            String(dataSetCOC.name)
+                                .toLowerCase()
+                                .includes("baseline") &&
                             baselineYear
                         ) {
                             period = baselineYear;
@@ -91,6 +131,12 @@ export function generateGroupedColumns({
                                         style={{ color: "#05416eff" }}
                                     >
                                         {periodText}
+                                        {indexToLock === 1 ? (
+                                            <>
+                                                <br />
+                                                {`(Ugx Bn)`}
+                                            </>
+                                        ) : null}
                                     </Typography.Text>
                                 </Flex>
                             ),
@@ -108,7 +154,7 @@ export function generateGroupedColumns({
                                     ou={ou}
                                     pe={period}
                                     de={record.id}
-                                    disabled={index < 1 || disabled}
+                                    disabled={index < indexToLock || disabled}
                                 />
                             ),
                         });
@@ -138,7 +184,9 @@ export function generateGroupedColumns({
                                         dataSet={dataSet}
                                         targetYear={targetYear}
                                         baselineYear={baselineYear}
-                                        disabled={index < 1 || disabled}
+                                        disabled={
+                                            index < indexToLock || disabled
+                                        }
                                     />
                                 ),
                             });

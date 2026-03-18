@@ -1,10 +1,10 @@
-import { createRoute } from "@tanstack/react-router";
-import { useSuspenseQueries } from "@tanstack/react-query";
-import { Button, Flex, Table, type TableProps } from "antd";
-import { orderBy } from "lodash";
-import React, { useState } from "react";
 import { DownloadOutlined } from "@ant-design/icons";
-import { dataElementsFromGroupQueryOptions } from "../../../../query-options";
+import { createRoute } from "@tanstack/react-router";
+import { Button, Flex, Table, type TableProps } from "antd";
+import React, { useState } from "react";
+import PerformanceLegend from "../../../../components/performance-legend";
+import downloadExcelFromColumns from "../../../../download-antd-table";
+import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import {
     formatter,
     getCellStyle,
@@ -13,9 +13,6 @@ import {
 } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { OverallPerformanceRoute } from "./route";
-import PerformanceLegend from "../../../../components/performance-legend";
-import downloadExcelFromColumns from "../../../../download-antd-table";
-import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 
 export const OverallPerformanceIndexRoute = createRoute({
     path: "/",

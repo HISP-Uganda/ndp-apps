@@ -22,7 +22,7 @@ const PerformanceLegend = React.memo(
                         {item.label}
                     </div>
                 ))}
-            </Flex>
+            </Flex>	
         );
     },
 );

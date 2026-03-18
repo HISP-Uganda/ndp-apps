@@ -1,26 +1,30 @@
 import { DownloadOutlined } from "@ant-design/icons";
 import { createRoute } from "@tanstack/react-router";
 import {
-    Button,
-    Descriptions,
-    DescriptionsProps,
-    Flex,
-    Table,
-    TableProps,
-    Typography,
+	Button,
+	Descriptions,
+	DescriptionsProps,
+	Flex,
+	Table,
+	TableProps,
+	Typography,
 } from "antd";
 import React, { useState } from "react";
 import Performance from "../../../../components/performance";
 import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { AnalyticsData } from "../../../../types";
 import {
-    createPerformanceColumns,
-    formatter,
-    getCellStyle,
-    processByPerformance,
+	createPerformanceColumns,
+	formatter,
+	getCellStyle,
+	PERFORMANCE_COLORS,
+	processByPerformance,
 } from "../../../../utils";
 import { RootRoute } from "../../../__root";
 import { VoteFlashReportRoute } from "./route";
+
+import { ExcelBuilder } from "../../../../excel-builder";
+import { PDFBuilder } from "../../../../pdf-builder";
 
 const quarterOrder = { Q1: "Q3", Q2: "Q4", Q3: "Q1", Q4: "Q2" };
 
@@ -238,7 +242,7 @@ function Component() {
             key: "code",
             align: "center",
             sorter: true,
-            width: 70,
+            width: 150,
         },
         {
             title: "Programme",
@@ -250,7 +254,7 @@ function Component() {
             title: " Absorption Rate (%)",
             dataIndex: "absorptionRate",
             key: "absorptionRate",
-            width: 180,
+            width: 200,
             align: "center",
             sorter: true,
             render: (_, record) => formatter.format(record.absorptionRate),
@@ -261,7 +265,7 @@ function Component() {
         {
             title: "Output Performance",
             dataIndex: "outputPerformance",
-            width: 180,
+            width: 200,
             key: "outputPerformance",
             align: "center",
             sorter: true,
@@ -275,7 +279,7 @@ function Component() {
             dataIndex: "overallScore",
             key: "overallScore",
             align: "center",
-            width: 180,
+            width: 200,
             sorter: true,
             render: (_, record) => formatter.format(record.overallScore),
             onCell: (record) => ({
@@ -291,7 +295,7 @@ function Component() {
             key: "code",
             align: "center",
             sorter: true,
-            width: 80,
+            width: 150,
         },
         {
             title: "Programme",
@@ -354,7 +358,7 @@ function Component() {
                     title: `Code`,
                     dataIndex: "UBWSASWdyfi",
                     key: "UBWSASWdyfi",
-                    width: 80,
+                    width: 150,
                     align: "center",
                     sorter: true,
                 },
@@ -375,7 +379,7 @@ function Component() {
                     title: `Code`,
                     dataIndex: "UBWSASWdyfi",
                     key: "UBWSASWdyfi",
-                    width: 80,
+                    width: 150,
                     align: "center",
                     sorter: true,
                 },
@@ -404,7 +408,7 @@ function Component() {
                     title: `Code`,
                     dataIndex: "UBWSASWdyfi",
                     key: "UBWSASWdyfi",
-                    width: 80,
+                    width: 150,
                     align: "center",
                     sorter: true,
                 },
@@ -426,6 +430,147 @@ function Component() {
                 },
             ];
         }, []);
+
+    const performanceColumns: TableProps<AnalyticsData>["columns"] =
+        React.useMemo(() => {
+            return [
+                {
+                    title: `No of Indicators`,
+                    dataIndex: "total",
+                    key: "total",
+                    width: 240,
+                    align: "center",
+                    render: (_, record) => record.total ?? "",
+                    sorter: true,
+                },
+                {
+                    title: `A`,
+                    dataIndex: "achieved",
+                    key: "achieved",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.green.bg,
+                            color: PERFORMANCE_COLORS.green.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `M`,
+                    dataIndex: "moderatelyAchieved",
+                    key: "moderatelyAchieved",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.yellow.bg,
+                            color: PERFORMANCE_COLORS.yellow.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `N`,
+                    dataIndex: "notAchieved",
+                    key: "notAchieved",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.red.bg,
+                            color: PERFORMANCE_COLORS.red.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `ND`,
+                    dataIndex: "noData",
+                    key: "noData",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.gray.bg,
+                            color: PERFORMANCE_COLORS.gray.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `% A`,
+                    dataIndex: "percentAchieved",
+                    key: "percentAchieved",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.green.bg,
+                            color: PERFORMANCE_COLORS.green.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `% M`,
+                    dataIndex: "percentModeratelyAchieved",
+                    key: "percentModeratelyAchieved",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.yellow.bg,
+                            color: PERFORMANCE_COLORS.yellow.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `% N`,
+                    dataIndex: "percentNotAchieved",
+                    key: "percentNotAchieved",
+                    width: 110,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.red.bg,
+                            color: PERFORMANCE_COLORS.red.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+                {
+                    title: `% ND`,
+                    dataIndex: "percentNoData",
+                    key: "percentNoData",
+                    width: 120,
+                    align: "center",
+                    onHeaderCell: () => ({
+                        style: {
+                            backgroundColor: PERFORMANCE_COLORS.gray.bg,
+                            color: PERFORMANCE_COLORS.gray.fg,
+                        },
+                    }),
+                    sorter: true,
+                },
+            ];
+        }, []);
+
+    // Complete column sets for Summary Performance tables (initial + performance columns)
+    const programCompleteColumns = React.useMemo(
+        () => (programColumns ?? []).concat(performanceColumns),
+        [programColumns, performanceColumns],
+    );
+    const outcomeCompleteColumns = React.useMemo(
+        () => (outcomeColumns ?? []).concat(performanceColumns),
+        [outcomeColumns, performanceColumns],
+    );
+    const outputCompleteColumns = React.useMemo(
+        () => (outputColumns ?? []).concat(performanceColumns),
+        [outputColumns, performanceColumns],
+    );
 
     const outComeDetailedColumns = React.useMemo(() => {
         return createPerformanceColumns({
@@ -481,7 +626,7 @@ function Component() {
             dimensions: outputDimensions,
             pe: [pe],
         });
-    }, []);
+    }, [categories, outputItems, outputDimensions, pe]);
     const actionDetailedColumns = React.useMemo(() => {
         return createPerformanceColumns({
             baseline: categories.get("kfnptfEdnYl")?.[0] || "",
@@ -710,28 +855,295 @@ function Component() {
         [actions],
     );
 
+    // Comment extractor functions for exports
+    const extractOutcomeComments = React.useCallback(
+        (record: any) => {
+            const comments: string[] = [];
+            const year = Number(pe.slice(0, 4));
+            [1, 2, 3, 4].forEach((quarter) => {
+                const currentYear =
+                    quarter === 1 || quarter === 2 ? year : year + 1;
+                const period = `${currentYear}${fullQuarters[quarter]}`;
+                const comment = record[`${period}comment`];
+                if (comment) {
+                    const quarterLabel = quarterOrder[fullQuarters[quarter]];
+                    comments.push(`${quarterLabel}: ${comment}\r`);
+                }
+            });
+            return comments.length > 0 ? comments.join("") : null;
+        },
+        [pe],
+    );
+
+    const extractIntermediateOutcomeComments = React.useCallback(
+        (record: any) => {
+            const comments: string[] = [];
+            const year = Number(pe.slice(0, 4));
+            [1, 2, 3, 4].forEach((quarter) => {
+                const currentYear =
+                    quarter === 1 || quarter === 2 ? year : year + 1;
+                const period = `${currentYear}${fullQuarters[quarter]}`;
+                const comment = record[`${period}comment`];
+                if (comment) {
+                    const quarterLabel = quarterOrder[fullQuarters[quarter]];
+                    comments.push(`${quarterLabel}: ${comment}\r`);
+                }
+            });
+            return comments.length > 0 ? comments.join("") : null;
+        },
+        [pe],
+    );
+
+    const extractOutputComments = React.useCallback(
+        (record: any) => {
+            const comments: string[] = [];
+            const year = Number(pe.slice(0, 4));
+            [1, 2, 3, 4].forEach((quarter) => {
+                const currentYear =
+                    quarter === 1 || quarter === 2 ? year : year + 1;
+                const period = `${currentYear}${fullQuarters[quarter]}`;
+                const comment = record[`${period}comment`];
+                if (comment) {
+                    const quarterLabel = quarterOrder[fullQuarters[quarter]];
+                    comments.push(`${quarterLabel}: ${comment}\r`);
+                }
+            });
+            return comments.length > 0 ? comments.join("") : null;
+        },
+        [pe],
+    );
+
+    const extractActionComments = React.useCallback(
+        (record: any) => {
+            const comments: string[] = [];
+            const year = Number(pe.slice(0, 4));
+            [1, 2, 3, 4].forEach((quarter) => {
+                const currentYear =
+                    quarter === 1 || quarter === 2 ? year : year + 1;
+                const period = `${currentYear}${fullQuarters[quarter]}`;
+                const comment = record[`${period}comment`];
+                if (comment) {
+                    const quarterLabel = quarterOrder[fullQuarters[quarter]];
+                    comments.push(`${quarterLabel}: ${comment}\r`);
+                }
+            });
+            return comments.length > 0 ? comments.join("") : null;
+        },
+        [pe],
+    );
+
     return (
         <Flex vertical gap="16px">
             <Flex justify="flex-end" gap={10}>
                 <Button
-                    // onClick={() => {
-                    //     generateVoteFlashReport(
-                    //         {
-                    //             voteCode: "015",
-                    //             voteCodeDetail: "MIN-FIN",
-                    //             voteName: "Ministry of Finance",
-                    //             annualPeriod: "July 2025 – June 2026",
-                    //             quarterlyPeriod: "July 2025 – September 2025",
-                    //         },
-                    //         exampleData,
-                    //         "Vote_Flash_Report.pdf",
-                    //     );
-                    // }}
+                    onClick={() => {
+                        // Find the vote name from the votes array
+                        const currentVote = votes.find((vote) => vote.id === ou);
+                        const voteName = currentVote?.name || "";
+
+                        const year = Number(pe.slice(0, 4));
+                        const financialYear = `Financial Year ${year}/${year + 1}`;
+
+                        const builder = new PDFBuilder({
+                            orientation: "landscape",
+                            coverPage: {
+                                image: "./ugx2.png",
+                                title: "Consolidated Performance Report",
+                                voteName: voteName,
+                                financialYear: financialYear,
+                            },
+                        });
+
+                        builder
+                            .addTitle(
+                                "SECTION 1.0 SUMMARY HIGHLIGHTS OF PERFORMANCE",
+                                1,
+                            )
+                            .addTitle("1.1 Performance Scorecards", 2)
+                            .addTitle("1.1.1 Overall Scorecard", 3)
+                            .addTable(columns, finalData)
+                            .addSpacing(3)
+                            .addTitle("1.1.2 Budget Performance Scorecard", 3)
+                            .addTable(budgetColumns, budgetData)
+                            .addSpacing(3)
+                            .addTitle("1.2 Summary Performance", 2)
+                            .addTitle(
+                                "1.2.1 Indicator Performance by Programme",
+                                3,
+                            )
+                            .addTable(
+                                programCompleteColumns,
+                                processByPerformance({
+                                    dataElements: programData,
+                                    groupingBy: "UBWSASWdyfi",
+                                    programs,
+                                    pe,
+                                    votes,
+                                }),
+                            )
+                            .addSpacing(3)
+                            .addTitle("1.2.2 Outcome Performance", 3)
+                            .addTable(
+                                outcomeCompleteColumns,
+                                processByPerformance({
+                                    dataElements: outcomes,
+                                    groupingBy: "YlPvYLC4VfO",
+                                    programs,
+                                    pe,
+                                    votes,
+                                }),
+                            )
+                            .addSpacing(3)
+                            .addTitle("1.2.3 Output Performance", 3)
+                            .addTable(
+                                outputCompleteColumns,
+                                processByPerformance({
+                                    dataElements: outputs,
+                                    groupingBy: "AKzxCNn1zkQ",
+                                    programs,
+                                    pe,
+                                    votes,
+                                }),
+                            )
+                            .addSpacing(3)
+                            .addTitle("SECTION 2.0 DETAILED PERFORMANCE", 1)
+                            .addTitle("2.1 Detailed Outcome Performance", 2)
+                            .addTableWithComments(
+                                outComeDetailedColumns,
+                                outcomes,
+                                extractOutcomeComments,
+                            )
+                            .addSpacing(3)
+                            .addTitle(
+                                "2.2 Detailed Intermediate Outcome Performance",
+                                2,
+                            )
+                            .addTableWithComments(
+                                intermediateOutcomeDetailedColumns,
+                                intermediateOutcomes,
+                                extractIntermediateOutcomeComments,
+                            )
+                            .addSpacing(3)
+                            .addTitle("2.3 Detailed Output Performance", 2)
+                            .addTableWithComments(
+                                outputDetailedColumns,
+                                outputs,
+                                extractOutputComments,
+                            )
+                            .addSpacing(3)
+                            .addTitle(
+                                "2.4 Detailed PIAP Actions Budget Performance",
+                                2,
+                            )
+                            .addTableWithComments(
+                                actionDetailedColumns,
+                                actions,
+                                extractActionComments,
+                            )
+                            .download("Vote_Flash_Report.pdf");
+                    }}
                     icon={<DownloadOutlined />}
                 >
                     Download PDF
                 </Button>
-                <Button onClick={() => {}} icon={<DownloadOutlined />}>
+                <Button
+                    onClick={() => {
+                        const builder = new ExcelBuilder({
+                            title: "Consolidated Performance Report",
+                            sheetName: "Consolidated Performance Report",
+                        });
+
+                        builder
+                            .addSpacer(1)
+                            .addTitle(
+                                "SECTION 1.0 SUMMARY HIGHLIGHTS OF PERFORMANCE",
+                                1,
+                            )
+                            .addTitle("1.1 Performance Scorecards", 2)
+                            .addTitle("1.1.1 Overall Scorecard", 3)
+                            .addTable(columns, finalData)
+                            .addSpacer(3)
+                            .addTitle("1.1.2 Budget Performance Scorecard", 3)
+                            .addTable(budgetColumns, budgetData)
+                            .addSpacer(3)
+                            .addTitle("1.2 Summary Performance", 2)
+                            .addTitle(
+                                "1.2.1 Indicator Performance by Programme",
+                                3,
+                            )
+                            .addTable(
+                                programCompleteColumns,
+                                processByPerformance({
+                                    dataElements: programData,
+                                    groupingBy: "UBWSASWdyfi",
+                                    programs,
+                                    pe,
+                                    votes,
+                                }),
+                            )
+                            .addSpacer(3)
+                            .addTitle("1.2.2 Outcome Performance", 3)
+                            .addTable(
+                                outcomeCompleteColumns,
+                                processByPerformance({
+                                    dataElements: outcomes,
+                                    groupingBy: "YlPvYLC4VfO",
+                                    programs,
+                                    pe,
+                                    votes,
+                                }),
+                            )
+                            .addSpacer(3)
+                            .addTitle("1.2.3 Output Performance", 3)
+                            .addTable(
+                                outputCompleteColumns,
+                                processByPerformance({
+                                    dataElements: outputs,
+                                    groupingBy: "AKzxCNn1zkQ",
+                                    programs,
+                                    pe,
+                                    votes,
+                                }),
+                            )
+                            .addSpacer(3)
+                            .addTitle("SECTION 2.0 DETAILED PERFORMANCE", 1)
+                            .addTitle("2.1 Detailed Outcome Performance", 2)
+                            .addTableWithComments(
+                                outComeDetailedColumns,
+                                outcomes,
+                                extractOutcomeComments,
+                            )
+                            .addSpacer(3)
+                            .addTitle(
+                                "2.2 Detailed Intermediate Outcome Performance",
+                                2,
+                            )
+                            .addTableWithComments(
+                                intermediateOutcomeDetailedColumns,
+                                intermediateOutcomes,
+                                extractIntermediateOutcomeComments,
+                            )
+                            .addSpacer(3)
+                            .addTitle("2.3 Detailed Output Performance", 2)
+                            .addTableWithComments(
+                                outputDetailedColumns,
+                                outputs,
+                                extractOutputComments,
+                            )
+                            .addSpacer(3)
+                            .addTitle(
+                                "2.4 Detailed PIAP Actions Budget Performance",
+                                2,
+                            )
+                            .addTableWithComments(
+                                actionDetailedColumns,
+                                actions,
+                                extractActionComments,
+                            )
+                            .download("Vote_Flash_Report.xlsx");
+                    }}
+                    icon={<DownloadOutlined />}
+                >
                     Download Excel
                 </Button>
             </Flex>

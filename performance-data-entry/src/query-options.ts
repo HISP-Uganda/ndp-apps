@@ -1,20 +1,19 @@
 import { useDataEngine } from "@dhis2/app-runtime";
 import { queryOptions, useMutation } from "@tanstack/react-query";
 import { UploadProps } from "antd";
+import { fromPairs } from "lodash";
 import { db } from "./db";
 import {
-    CompleteDataSetRegistrations,
-    DataSetValues,
-    DHIS2OrgUnit,
-    FileResource,
-    IDataElement,
-    IDataSet,
-    Option,
-    OptionSet,
-    Search,
+	CompleteDataSetRegistrations,
+	DataSetValues,
+	DHIS2OrgUnit,
+	FileResource,
+	IDataElement,
+	IDataSet,
+	OptionSet,
+	Search
 } from "./types";
 import { convertToAntdTree } from "./utils";
-import { fromPairs } from "lodash";
 
 export const initialQueryOptions = (
     engine: ReturnType<typeof useDataEngine>,
@@ -29,14 +28,6 @@ export const initialQueryOptions = (
                         fields: "organisationUnits[id],dataSets",
                     },
                 },
-                // ndp4: {
-                //     resource: "optionSets/xLQd0SrtSF8/options",
-                //     params: { fields: "id,name,code", paging: false },
-                // },
-                // ndp3: {
-                //     resource: "optionSets/nZffnMQwoWr/options",
-                //     params: { fields: "id,name,code", paging: false },
-                // },
                 configuration: {
                     resource: "dataStore/ndp-configurations",
                     params: {
@@ -240,8 +231,8 @@ export const dataValuesQueryOptions = (
                             explanation: string;
                             attachment: string[];
                         };
-                        explanation = e;
-                        attachments = a;
+                        explanation = e ?? "";
+                        attachments = a ?? [];
                     } catch (error) {
                         console.error("Failed to parse comment", error);
                     }
@@ -250,7 +241,6 @@ export const dataValuesQueryOptions = (
             });
 
             const attachments = expanded.flatMap((dv) => dv.attachments);
-
             const allAttachments = new Map<string, FileResource>();
 
             for (const a of attachments) {

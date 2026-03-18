@@ -1,9 +1,10 @@
 import { DownloadOutlined } from "@ant-design/icons";
-import { Button, Flex, Modal, Table, TableProps } from "antd";
+import { Button, Flex, Table, TableProps } from "antd";
 import React from "react";
+import { ExcelBuilder } from "../excel-builder";
 import { RootRoute } from "../routes/__root";
-import { PERFORMANCE_COLORS, processByPerformance } from "../utils";
 import { AnalyticsData } from "../types";
+import { PERFORMANCE_COLORS, processByPerformance } from "../utils";
 
 export default function Performance({
     data,
@@ -179,6 +180,28 @@ export default function Performance({
                         //     )
                         // }
                         icon={<DownloadOutlined />}
+                        onClick={() => {
+                            const builder = new ExcelBuilder({
+                                title: "Consolidated Performance Report",
+                                sheetName: "Consolidated Performance Report",
+                            });
+
+                            builder
+                                .addSpacer(1)
+
+                                .addTable(
+                                    (initialColumns ?? []).concat(columns),
+                                    processByPerformance({
+                                        dataElements: data,
+                                        groupingBy,
+                                        programs,
+                                        pe,
+                                        votes,
+                                    }),
+                                )
+
+                                .download("Vote_Flash_Report.xlsx");
+                        }}
                     >
                         Download Excel
                     </Button>

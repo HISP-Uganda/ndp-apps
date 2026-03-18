@@ -116,15 +116,15 @@ export interface PIAPActionData {
  * Complete report data structure
  */
 export interface VoteFlashReportData {
-    scorecards: ScorecardData[];
-    budgetPerformance: BudgetPerformanceData[];
-    indicatorPerformance: IndicatorPerformanceData[];
-    outcomePerformance: OutcomePerformanceData[];
-    outputPerformance: OutcomePerformanceData[];
-    detailedOutcomes: DetailedOutcomeData[];
-    detailedIntermediateOutcomes: DetailedOutcomeData[];
-    detailedOutputs: DetailedOutcomeData[];
-    piapActions: PIAPActionData[];
+    scorecards: any[];
+    budgetPerformance: any[];
+    indicatorPerformance: any[];
+    outcomePerformance: any[];
+    outputPerformance: any[];
+    detailedOutcomes: any[];
+    detailedIntermediateOutcomes: any[];
+    detailedOutputs: any[];
+    piapActions: any[];
 }
 
 /**
@@ -249,7 +249,7 @@ export class VoteFlashReportGenerator {
     /**
      * Add scorecard table
      */
-    private addScorecardTable(data: ScorecardData[]): void {
+    private addScorecardTable(data: any[]): void {
         const headers = [
             [
                 "Prog. Code",
@@ -261,12 +261,12 @@ export class VoteFlashReportGenerator {
             ],
         ];
         const bodyData = data.map((item) => [
-            item.programCode,
+            item.code,
             item.programmeName,
-            item.absorptionRate.toString(),
-            item.outputPerformance.toString(),
-            item.outcomePerformance.toString(),
-            item.compositeScore.toString(),
+            item.absorptionRate?.toString(),
+            item.outputPerformance?.toString(),
+            item.outcomePerformance?.toString(),
+            item.compositeScore?.toString(),
         ]);
 
         autoTable(this.doc, {
@@ -307,11 +307,11 @@ export class VoteFlashReportGenerator {
         const bodyData = data.map((item) => [
             item.code,
             item.programmeName,
-            item.approvedBudget.toFixed(1),
-            item.release.toFixed(1),
-            item.spent.toFixed(1),
-            item.percentRelease.toFixed(1),
-            item.percentReleaseSpent.toFixed(1),
+            item.approvedBudget?.toFixed(1),
+            item.release?.toFixed(1),
+            item.spent?.toFixed(1),
+            item.percentRelease?.toFixed(1),
+            item.percentReleaseSpent?.toFixed(1),
         ]);
 
         autoTable(this.doc, {
@@ -358,15 +358,15 @@ export class VoteFlashReportGenerator {
         const bodyData = data.map((item) => [
             item.code,
             item.programmeName,
-            item.numberOfIndicators.toString(),
-            item.achieved.toString(),
-            item.moderatelyAchieved.toString(),
-            item.notAchieved.toString(),
-            item.noData.toString(),
-            item.percentAchieved.toFixed(0),
-            item.percentModerate.toFixed(0),
-            item.percentNotAchieved.toFixed(0),
-            item.percentNoData.toFixed(0),
+            item.numberOfIndicators?.toString(),
+            item.achieved?.toString(),
+            item.moderatelyAchieved?.toString(),
+            item.notAchieved?.toString(),
+            item.noData?.toString(),
+            item.percentAchieved,
+            item.percentModerate,
+            item.percentNotAchieved,
+            item.percentNoData,
         ]);
 
         autoTable(this.doc, {
@@ -413,15 +413,15 @@ export class VoteFlashReportGenerator {
             item.code,
             item.programmeName,
             item.outcome,
-            item.numberOfIndicators.toString(),
-            item.achieved.toString(),
-            item.moderatelyAchieved.toString(),
-            item.notAchieved.toString(),
-            item.noData.toString(),
-            item.percentAchieved.toFixed(0),
-            item.percentModerate.toFixed(0),
-            item.percentNotAchieved.toFixed(0),
-            item.percentNoData.toFixed(0),
+            item.numberOfIndicators?.toString(),
+            item.achieved?.toString(),
+            item.moderatelyAchieved?.toString(),
+            item.notAchieved?.toString(),
+            item.noData?.toString(),
+            item.percentAchieved,
+            item.percentModerate,
+            item.percentNotAchieved,
+            item.percentNoData,
         ]);
 
         autoTable(this.doc, {
