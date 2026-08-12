@@ -12,7 +12,6 @@ import {
     Card,
     Col,
     Collapse,
-    Dropdown,
     Empty,
     InputNumber,
     Row,
@@ -213,10 +212,6 @@ function Component() {
     );
 
     const summaryCards = useMemo(() => {
-        const assigned = sortedRows.reduce(
-            (sum, row) => sum + row.assignedDataSetCount,
-            0,
-        );
         const financialYearRate =
             sortedRows.length === 0
                 ? 0
@@ -231,12 +226,6 @@ function Component() {
                 value: sortedRows.length,
                 bg: "#d8e8ff",
                 color: "#1f4b8f",
-            },
-            {
-                title: "Assigned Datasets",
-                value: assigned,
-                bg: "#d7f1ef",
-                color: "#16656b",
             },
             {
                 title: "Financial Year Rate",
@@ -502,36 +491,7 @@ function Component() {
                                 />
                             </Card>
                         </Col>
-                        <Col xs={24} md={8}>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    justifyContent: "flex-end",
-                                    alignItems: "flex-start",
-                                    height: "100%",
-                                }}
-                            >
-                                <Dropdown
-                                    menu={{
-                                        items: [
-                                            { key: "pdf", label: "PDF", onClick: handlePdfExport },
-                                            {
-                                                key: "excel",
-                                                label: "Excel",
-                                                onClick: handleExcelExport,
-                                            },
-                                        ],
-                                    }}
-                                    trigger={["click"]}
-                                >
-                                    <Button
-                                        size="small"
-                                        icon={<DownloadOutlined />}
-                                        disabled={sortedRows.length === 0}
-                                    />
-                                </Dropdown>
-                            </div>
-                        </Col>
+                        <Col xs={24} md={8} />
                     </Row>
                 </div>
 
@@ -541,44 +501,56 @@ function Component() {
                     </div>
                 ) : (
                     <>
-                        <div ref={summaryRef} style={{ marginBottom: "8px" }}>
-                            <Row gutter={[12, 12]} style={{ marginBottom: "8px" }}>
+                        <div
+                            ref={summaryRef}
+                            className="reporting-rates-summary-toolbar"
+                            style={{ marginBottom: "8px" }}
+                        >
+                            <div className="reporting-rates-summary-cards">
                                 {summaryCards.map((card) => (
-                                    <Col key={card.title} xs={24} sm={12} md={8} lg={6}>
-                                        <Card
-                                            size="small"
-                                            styles={{
-                                                body: {
-                                                    backgroundColor: card.bg,
-                                                    color: card.color,
-                                                    borderRadius: "8px",
-                                                    minHeight: "92px",
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    justifyContent: "space-between",
-                                                },
+                                    <Card
+                                        key={card.title}
+                                        className="reporting-rates-summary-card"
+                                        size="small"
+                                        styles={{
+                                            body: {
+                                                backgroundColor: card.bg,
+                                                color: card.color,
+                                                borderRadius: "8px",
+                                            },
                                             }}
                                         >
-                                            <Text
-                                                strong
-                                                style={{ color: card.color, fontSize: "14px" }}
-                                            >
-                                                {card.title}
-                                            </Text>
-                                            <Text
-                                                style={{
-                                                    color: card.color,
-                                                    fontSize: "28px",
-                                                    fontWeight: 700,
-                                                    lineHeight: 1,
-                                                }}
-                                            >
-                                                {card.value}
-                                            </Text>
-                                        </Card>
-                                    </Col>
+                                        <Text
+                                            style={{
+                                                color: card.color,
+                                                fontSize: "15px",
+                                                fontWeight: 600,
+                                            }}
+                                        >
+                                            <span style={{ fontWeight: 700 }}>{card.title}</span>
+                                            {`: ${card.value}`}
+                                        </Text>
+                                    </Card>
                                 ))}
-                            </Row>
+                            </div>
+                            <div className="reporting-rates-download-actions">
+                                <Button
+                                    type="default"
+                                    icon={<DownloadOutlined />}
+                                    disabled={sortedRows.length === 0}
+                                    onClick={handlePdfExport}
+                                >
+                                    Download PDF
+                                </Button>
+                                <Button
+                                    type="default"
+                                    icon={<DownloadOutlined />}
+                                    disabled={sortedRows.length === 0}
+                                    onClick={handleExcelExport}
+                                >
+                                    Download Excel
+                                </Button>
+                            </div>
                         </div>
 
                         {reportRowsQuery.error && (

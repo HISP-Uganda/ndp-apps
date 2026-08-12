@@ -180,6 +180,82 @@
 	min-width: 0;
 }
 
+.reporting-rates-summary-card .ant-card-body {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 0;
+	min-height: 44px;
+	padding: 10px 12px !important;
+}
+
+.reporting-rates-summary-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.reporting-rates-summary-cards {
+	display: flex;
+	align-items: stretch;
+	gap: 8px;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	max-width: 100%;
+}
+
+.reporting-rates-summary-cards .ant-card {
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
+.reporting-rates-download-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	margin-left: auto;
+}
+
+.indicator-dictionary-header-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 12px;
+}
+
+.indicator-dictionary-search-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1 1 360px;
+	min-width: 0;
+}
+
+.indicator-dictionary-search-label {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
+.indicator-dictionary-search-input {
+	flex: 1 1 auto;
+	min-width: 180px;
+}
+
+.indicator-dictionary-action-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	margin-left: auto;
+}
+
 .policy-actions-footer {
 	flex: 0 0 auto;
 }
@@ -522,6 +598,17 @@
 	}
 
 	.policy-actions-download-button {
+		width: 100%;
+	}
+
+	.indicator-dictionary-search-row {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 6px;
+	}
+
+	.indicator-dictionary-action-row {
+		margin-left: 0;
 		width: 100%;
 	}
 

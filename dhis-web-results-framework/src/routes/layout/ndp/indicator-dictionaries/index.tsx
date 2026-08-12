@@ -15,7 +15,6 @@ import {
     Checkbox,
     Col,
     Collapse,
-    Dropdown,
     Empty,
     Input,
     InputNumber,
@@ -417,19 +416,6 @@ function Component() {
             .download("Indicator_Dictionary.xlsx");
     }, [exportColumns, filteredRows]);
 
-    const downloadMenuItems = [
-        {
-            key: "pdf",
-            label: "PDF",
-            onClick: handlePdfExport,
-        },
-        {
-            key: "excel",
-            label: "Excel",
-            onClick: handleExcelExport,
-        },
-    ];
-
     const handleMdaClear = () => {
         setSelectedMDA(undefined);
     };
@@ -573,49 +559,36 @@ function Component() {
                     </Col>
                 </Row>
 
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "flex-end",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                        marginBottom: "12px",
-                    }}
-                >
-                    <div
-                        style={{
-                            minWidth: viewportWidth < 768 ? "100%" : "260px",
-                            flex: 1,
-                        }}
-                    >
-                        <Text strong style={{ display: "block", marginBottom: "6px" }}>
+                <div className="indicator-dictionary-header-toolbar">
+                    <div className="indicator-dictionary-search-row">
+                        <Text strong className="indicator-dictionary-search-label">
                             Search
                         </Text>
                         <Input
                             allowClear
+                            className="indicator-dictionary-search-input"
                             placeholder="Search by name or code"
                             value={searchText}
                             onChange={(event) => setSearchText(event.target.value)}
                         />
                     </div>
-                    <div
-                        style={{
-                            display: "flex",
-                            gap: "8px",
-                            alignItems: "center",
-                            marginLeft: "auto",
-                        }}
-                    >
-                        <Dropdown
-                            menu={{ items: downloadMenuItems }}
-                            trigger={["click"]}
+                    <div className="indicator-dictionary-action-row">
+                        <Button
+                            type="default"
+                            icon={<DownloadOutlined />}
+                            disabled={filteredRows.length === 0}
+                            onClick={handlePdfExport}
                         >
-                            <Button
-                                size="small"
-                                icon={<DownloadOutlined />}
-                                disabled={filteredRows.length === 0}
-                            />
-                        </Dropdown>
+                            Download PDF
+                        </Button>
+                        <Button
+                            type="default"
+                            icon={<DownloadOutlined />}
+                            disabled={filteredRows.length === 0}
+                            onClick={handleExcelExport}
+                        >
+                            Download Excel
+                        </Button>
                         <Button
                             size="small"
                             icon={<TableOutlined />}

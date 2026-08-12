@@ -179,6 +179,11 @@ function hexToRgbTuple(hex: string): [number, number, number] {
     ];
 }
 
+const PDF_HEADER_BG = "#BBD1EE";
+const PDF_HEADER_FG = "#25364A";
+const PDF_TITLE_FG = "#000000";
+const PDF_SUBTITLE_FG = "#2F3D4C";
+
 export async function exportTrackerTableToExcel({
     columns,
     rows,
@@ -203,16 +208,12 @@ export async function exportTrackerTableToExcel({
     titleRow.getCell(1).font = {
         bold: true,
         size: 14,
-        color: { argb: "FFFFFFFF" },
-    };
-    titleRow.getCell(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF365F91" },
+        color: { argb: hexToArgb(PDF_TITLE_FG) },
     };
     titleRow.getCell(1).alignment = {
         horizontal: "left",
         vertical: "middle",
+        wrapText: true,
     };
     titleRow.height = 22;
 
@@ -224,7 +225,7 @@ export async function exportTrackerTableToExcel({
         subtitleRow.getCell(1).font = {
             italic: true,
             size: 10,
-            color: { argb: "FF2F3D4C" },
+            color: { argb: hexToArgb(PDF_SUBTITLE_FG) },
         };
         subtitleRow.getCell(1).alignment = {
             horizontal: "left",
@@ -242,8 +243,9 @@ export async function exportTrackerTableToExcel({
         const cell = headerRow.getCell(index + 1);
         cell.value = column.title;
         const headerStyle = column.onHeaderCell?.()?.style;
-        const headerBg = normalizeHexColor(headerStyle?.backgroundColor) ?? "#365F91";
-        const headerFg = normalizeHexColor(headerStyle?.color) ?? "#FFFFFF";
+        const headerBg =
+            normalizeHexColor(headerStyle?.backgroundColor) ?? PDF_HEADER_BG;
+        const headerFg = normalizeHexColor(headerStyle?.color) ?? PDF_HEADER_FG;
         cell.font = {
             bold: true,
             color: { argb: hexToArgb(headerFg) },
