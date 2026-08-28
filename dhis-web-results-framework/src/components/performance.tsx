@@ -17,12 +17,17 @@ export default function Performance({
     groupingBy,
     initialColumns,
     showDownload = true,
+    exportValueTransforms,
 }: {
     data: AnalyticsData[];
     pe: string;
     groupingBy: string;
     initialColumns: TableProps<AnalyticsData>["columns"];
     showDownload?: boolean;
+    exportValueTransforms?: Record<
+        string,
+        (value: unknown, record: AnalyticsData) => unknown
+    >;
 }) {
     const { programs, votes } = RootRoute.useLoaderData();
     const [sortField, setSortField] = React.useState<string>();
@@ -206,6 +211,21 @@ export default function Performance({
             }),
         [mergedColumns, sortField, sortOrder],
     );
+    const exportRows = React.useMemo(() => {
+        if (!exportValueTransforms) {
+            return sortedRows;
+        }
+
+        return sortedRows.map((row) => {
+            const transformedRow = { ...row };
+
+            Object.entries(exportValueTransforms).forEach(([key, transform]) => {
+                transformedRow[key] = transform(row[key], row);
+            });
+
+            return transformedRow;
+        });
+    }, [exportValueTransforms, sortedRows]);
 
     return (
         <Flex vertical gap="16px">
@@ -229,7 +249,7 @@ export default function Performance({
                             builder
                                 .addSpacer(1)
 
-                                .addTable(sortedColumns, sortedRows)
+                                .addTable(sortedColumns, exportRows)
 
                                 .download("Vote_Flash_Report.xlsx");
                         }}

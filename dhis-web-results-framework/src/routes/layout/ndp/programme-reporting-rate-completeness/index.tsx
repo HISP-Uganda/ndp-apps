@@ -82,7 +82,7 @@ function Component() {
     const [sortOrder, setSortOrder] = useState<PeriodSortOrder>();
     const [reportPanelHeight, setReportPanelHeight] = useState<number>();
     const [tableScrollY, setTableScrollY] = useState(320);
-    const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(true);
+    const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
     const reportPanelRef = useRef<HTMLDivElement>(null);
     const reportHeaderRef = useRef<HTMLDivElement>(null);
     const summaryRef = useRef<HTMLDivElement>(null);

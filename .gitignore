@@ -5,6 +5,7 @@ src/locales
 build
 
 dhis-web-results-framework/guide.md
+progress_report.md
 
 # Distribution folders
 **/dist/

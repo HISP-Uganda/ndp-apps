@@ -1,5 +1,9 @@
+import {
+    MinusSquareOutlined,
+    PlusSquareOutlined,
+} from "@ant-design/icons";
 import { createRoute, Outlet } from "@tanstack/react-router";
-import { Col, Flex, Form, Row, Select, Typography } from "antd";
+import { Card, Col, Collapse, Flex, Form, Row, Select, Typography } from "antd";
 import React from "react";
 import PerformanceLegend from "../../../../components/performance-legend";
 import { ProgramReportSchema } from "../../../../types";
@@ -22,6 +26,7 @@ function Component() {
     const { programs, configurations } = RootRoute.useLoaderData();
     const navigate = ProgramFlashReportRoute.useNavigate();
     const { v, pe, program } = ProgramFlashReportRoute.useSearch();
+    const [isFiltersOpen, setIsFiltersOpen] = React.useState(false);
     const config = configurations[v ?? ""]["data"];
     const periods = config["financialYears"].map((year: string) =>
         createFixedPeriodFromPeriodId({
@@ -64,65 +69,99 @@ function Component() {
             style={{ padding: 10, height: "100%", flex: 1 }}
             gap={10}
         >
-            <Row
+            <Card
+                size="small"
                 style={{
                     width: "50%",
                     maxWidth: "50%",
                     backgroundColor: "#BBD1EE",
-                    padding: 10,
-                    border: "1px solid #729fcf",
+                    borderColor: "#729fcf",
                     borderRadius: "3px",
                 }}
+                styles={{ body: { padding: "12px" } }}
             >
-                <Col span={24}>
-                    <Form.Item
-                        label="Programme"
-                        layout="vertical"
-                        style={{ margin: 0, padding: 5 }}
-                    >
-                        <Select
-                            options={programs.map(({ name, id, code }) => ({
-                                label: name,
-                                value: code,
-                            }))}
-                            style={{ width: "100%" }}
-                            value={program}
-                            onChange={(value) => {
-                                navigate({
-                                    search: (prev) => ({
-                                        ...prev,
-                                        program: value,
-                                    }),
-                                });
-                            }}
-                        />
-                    </Form.Item>
-                </Col>
-                <Col span={24}>
-                    <Form.Item
-                        label="Period"
-                        layout="vertical"
-                        style={{ margin: 0, padding: 5 }}
-                    >
-                        <Select
-                            options={periods.map(({ name, id }) => ({
-                                label: name,
-                                value: id,
-                            }))}
-                            style={{ width: "100%" }}
-                            value={pe}
-                            onChange={(value) => {
-                                navigate({
-                                    search: (prev) => ({
-                                        ...prev,
-                                        pe: value,
-                                    }),
-                                });
-                            }}
-                        />
-                    </Form.Item>
-                </Col>
-            </Row>
+                <Collapse
+                    bordered={false}
+                    activeKey={isFiltersOpen ? ["filters"] : []}
+                    onChange={(keys) =>
+                        setIsFiltersOpen(
+                            Array.isArray(keys)
+                                ? keys.includes("filters")
+                                : keys === "filters",
+                        )
+                    }
+                    expandIcon={({ isActive }) =>
+                        isActive ? (
+                            <MinusSquareOutlined style={{ fontSize: "20px" }} />
+                        ) : (
+                            <PlusSquareOutlined style={{ fontSize: "20px" }} />
+                        )
+                    }
+                    expandIconPosition="end"
+                    items={[
+                        {
+                            key: "filters",
+                            label: (
+                                <Typography.Text strong style={{ fontSize: "14px" }}>
+                                    Advanced report filters
+                                </Typography.Text>
+                            ),
+                            children: (
+                                <Row>
+                                    <Col span={24}>
+                                        <Form.Item
+                                            label="Programme"
+                                            layout="vertical"
+                                            style={{ margin: 0, padding: 5 }}
+                                        >
+                                            <Select
+                                                options={programs.map(({ name, id, code }) => ({
+                                                    label: name,
+                                                    value: code,
+                                                }))}
+                                                style={{ width: "100%" }}
+                                                value={program}
+                                                onChange={(value) => {
+                                                    navigate({
+                                                        search: (prev) => ({
+                                                            ...prev,
+                                                            program: value,
+                                                        }),
+                                                    });
+                                                }}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={24}>
+                                        <Form.Item
+                                            label="Period"
+                                            layout="vertical"
+                                            style={{ margin: 0, padding: 5 }}
+                                        >
+                                            <Select
+                                                options={periods.map(({ name, id }) => ({
+                                                    label: name,
+                                                    value: id,
+                                                }))}
+                                                style={{ width: "100%" }}
+                                                value={pe}
+                                                onChange={(value) => {
+                                                    navigate({
+                                                        search: (prev) => ({
+                                                            ...prev,
+                                                            pe: value,
+                                                        }),
+                                                    });
+                                                }}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+                            ),
+                        },
+                    ]}
+                />
+            </Card>
 
             <Typography.Title level={3} style={{ margin: 0 }}>
                 Consolidated Program Performance Report

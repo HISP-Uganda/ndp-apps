@@ -108,6 +108,10 @@ function Component() {
             groupingBy="YlPvYLC4VfO"
             initialColumns={columns}
             pe={search.pe ?? ""}
+            exportValueTransforms={{
+                YlPvYLC4VfO: (value) =>
+                    allOptionsMap?.get(String(value)) || value,
+            }}
         />
     );
 }
