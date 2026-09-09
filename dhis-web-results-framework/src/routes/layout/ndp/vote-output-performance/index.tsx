@@ -126,6 +126,10 @@ function Component() {
             groupingBy="AKzxCNn1zkQ"
             initialColumns={columns}
             pe={search.pe ?? ""}
+            exportValueTransforms={{
+                AKzxCNn1zkQ: (value) =>
+                    allOptionsMap?.get(String(value)) || value,
+            }}
         />
     );
 }

@@ -9,7 +9,7 @@ import {
     TableProps,
     Typography,
 } from "antd";
-import React, { useState } from "react";
+import React from "react";
 import Performance from "../../../../components/performance";
 import { useAnalyticsQuery } from "../../../../hooks/data-hooks";
 import { AnalyticsData } from "../../../../types";
@@ -20,6 +20,11 @@ import {
     PERFORMANCE_COLORS,
     processByPerformance,
 } from "../../../../utils";
+import {
+    applySortOrderToColumns,
+    normalizeSorterField,
+    sortRowsByColumn,
+} from "../../../../utils/table-sort";
 import { RootRoute } from "../../../__root";
 import { VoteFlashReportRoute } from "./route";
 
@@ -34,6 +39,24 @@ const fullQuarters = {
     1: "Q3",
     2: "Q4",
 };
+
+const budgetNumberFormatter = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
+function formatBudgetScorecardValue(value: unknown) {
+    if (value === "-" || value === "" || value === null || value === undefined) {
+        return "-";
+    }
+
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue)) {
+        return String(value);
+    }
+
+    return budgetNumberFormatter.format(numericValue);
+}
 
 const makePeriod = (pe: string[], quarters?: boolean) => {
     const periodFilter = new Set(pe);
@@ -62,6 +85,13 @@ function Component() {
     const { categories, programs, votes, allOptionsMap } =
         RootRoute.useLoaderData();
     const { v, ou = "", pe = "" } = VoteFlashReportRoute.useSearch();
+    const [scorecardSortState, setScorecardSortState] = React.useState<{
+        overall: { field?: string; order?: "ascend" | "descend" };
+        budget: { field?: string; order?: "ascend" | "descend" };
+    }>({
+        overall: {},
+        budget: {},
+    });
 
     const {
         data: outputs,
@@ -176,35 +206,8 @@ function Component() {
         ...budgetData.map((d) => d["UBWSASWdyfi"]),
     ]);
 
-    const [finalData, setFinalData] = useState(
-        Array.from(allPrograms).map((vote) => {
-            const outputPerformance =
-                outputData.find((d) => d["UBWSASWdyfi"] === vote)
-                    ?.totalWeighted ?? 0;
-            const outcomePerformance =
-                outcomeData.find((d) => d["UBWSASWdyfi"] === vote)
-                    ?.totalWeighted ?? 0;
-            const absorptionRate =
-                budgetData.find((d) => d["UBWSASWdyfi"] === vote)
-                    ?.performance ?? 0;
-            const overallScore =
-                0.4 * outcomePerformance +
-                0.4 * outputPerformance +
-                0.2 * absorptionRate;
-            return {
-                ...(budgetData.find((d) => d["UBWSASWdyfi"] === vote) ?? {}),
-                ...(outcomeData.find((d) => d["UBWSASWdyfi"] === vote) ?? {}),
-                ...(outputData.find((d) => d["UBWSASWdyfi"] === vote) ?? {}),
-                outputPerformance,
-                outcomePerformance,
-                absorptionRate,
-                overallScore,
-            };
-        }),
-    );
-
-    React.useEffect(() => {
-        setFinalData(() =>
+    const finalData = React.useMemo(
+        () =>
             Array.from(allPrograms).map((vote) => {
                 const outputPerformance =
                     outputData.find((d) => d["UBWSASWdyfi"] === vote)
@@ -232,8 +235,8 @@ function Component() {
                     overallScore,
                 };
             }),
-        );
-    }, [ou]);
+        [allPrograms, budgetData, outcomeData, outputData],
+    );
 
     const columns: TableProps<(typeof finalData)[number]>["columns"] = [
         {
@@ -321,6 +324,7 @@ function Component() {
             key: "approved",
             width: 160,
             align: "center",
+            render: (value: unknown) => formatBudgetScorecardValue(value),
             sorter: true,
         },
         {
@@ -329,6 +333,7 @@ function Component() {
             key: "target",
             width: 160,
             align: "center",
+            render: (value: unknown) => formatBudgetScorecardValue(value),
             sorter: true,
         },
         {
@@ -337,6 +342,7 @@ function Component() {
             key: "actual",
             width: 160,
             align: "center",
+            render: (value: unknown) => formatBudgetScorecardValue(value),
             sorter: true,
         },
         {
@@ -362,6 +368,80 @@ function Component() {
             sorter: true,
         },
     ];
+    const sortedOverallScorecardRows = React.useMemo(
+        () =>
+            sortRowsByColumn({
+                rows: finalData,
+                columns,
+                sortField: scorecardSortState.overall.field,
+                sortOrder: scorecardSortState.overall.order,
+            }),
+        [columns, finalData, scorecardSortState.overall.field, scorecardSortState.overall.order],
+    );
+    const sortedBudgetScorecardRows = React.useMemo(
+        () =>
+            sortRowsByColumn({
+                rows: budgetData,
+                columns: budgetColumns,
+                sortField: scorecardSortState.budget.field,
+                sortOrder: scorecardSortState.budget.order,
+            }),
+        [
+            budgetColumns,
+            budgetData,
+            scorecardSortState.budget.field,
+            scorecardSortState.budget.order,
+        ],
+    );
+    const sortedOverallScorecardColumns = React.useMemo(
+        () =>
+            applySortOrderToColumns({
+                columns,
+                sortField: scorecardSortState.overall.field,
+                sortOrder: scorecardSortState.overall.order,
+            }),
+        [columns, scorecardSortState.overall.field, scorecardSortState.overall.order],
+    );
+    const sortedBudgetScorecardColumns = React.useMemo(
+        () =>
+            applySortOrderToColumns({
+                columns: budgetColumns,
+                sortField: scorecardSortState.budget.field,
+                sortOrder: scorecardSortState.budget.order,
+            }),
+        [
+            budgetColumns,
+            scorecardSortState.budget.field,
+            scorecardSortState.budget.order,
+        ],
+    );
+    const handleScorecardTableChange = React.useCallback(
+        (tableKey: "overall" | "budget"): TableProps<AnalyticsData>["onChange"] =>
+            (_pagination, _filters, sorter) => {
+                if (Array.isArray(sorter)) {
+                    return;
+                }
+
+                const field = normalizeSorterField(
+                    sorter.field ?? sorter.columnKey,
+                );
+
+                setScorecardSortState((previous) => ({
+                    ...previous,
+                    [tableKey]:
+                        !field || !sorter.order
+                            ? {}
+                            : {
+                                  field,
+                                  order:
+                                      sorter.order === "descend"
+                                          ? "descend"
+                                          : "ascend",
+                              },
+                }));
+            },
+        [],
+    );
 
     const programColumns: TableProps<AnalyticsData>["columns"] =
         React.useMemo(() => {
@@ -601,7 +681,7 @@ function Component() {
             dimensions: outcomeDimensions,
             pe: [pe],
         });
-    }, []);
+    }, [categories, outcomeDimensions, outcomeItems, pe]);
 
     const intermediateOutcomeDetailedColumns = React.useMemo(() => {
         return createPerformanceColumns({
@@ -620,7 +700,7 @@ function Component() {
             dimensions: outcomeDimensions,
             pe: [pe],
         });
-    }, []);
+    }, [categories, outcomeDimensions, outcomeItems, pe]);
     const outputDetailedColumns = React.useMemo(() => {
         return createPerformanceColumns({
             baseline: categories.get("Duw5yep8Vae")?.[0] || "",
@@ -638,7 +718,7 @@ function Component() {
             dimensions: outputDimensions,
             pe: [pe],
         });
-    }, [categories, outputItems, outputDimensions, pe]);
+    }, [categories, outputDimensions, outputItems, pe]);
     const actionDetailedColumns = React.useMemo(() => {
         return createPerformanceColumns({
             baseline: categories.get("kfnptfEdnYl")?.[0] || "",
@@ -656,7 +736,7 @@ function Component() {
             dimensions: actionDimensions,
             pe: [pe],
         });
-    }, []);
+    }, [actionDimensions, actionItems, categories, pe]);
 
     const outcomeTableProps = React.useMemo<TableProps<AnalyticsData>>(
         () => ({
@@ -707,7 +787,7 @@ function Component() {
                 },
             },
         }),
-        [outcomes, pe],
+        [outComeDetailedColumns, outcomeItems, outcomes, pe],
     );
     const intermediateOutcomeTableProps = React.useMemo<
         TableProps<AnalyticsData>
@@ -760,7 +840,12 @@ function Component() {
                 },
             },
         }),
-        [intermediateOutcomes],
+        [
+            intermediateOutcomeDetailedColumns,
+            intermediateOutcomeItems,
+            intermediateOutcomes,
+            pe,
+        ],
     );
     const outputTableProps = React.useMemo<TableProps<AnalyticsData>>(
         () => ({
@@ -812,7 +897,7 @@ function Component() {
                 },
             },
         }),
-        [outputs],
+        [outputDetailedColumns, outputItems, outputs, pe],
     );
     const actionTableProps = React.useMemo<TableProps<AnalyticsData>>(
         () => ({
@@ -864,7 +949,7 @@ function Component() {
                 },
             },
         }),
-        [actions],
+        [actionDetailedColumns, actionItems, actions, pe],
     );
 
     // Comment extractor functions for exports
@@ -975,10 +1060,16 @@ function Component() {
                             )
                             .addTitle("1.1 Performance Scorecards", 2)
                             .addTitle("1.1.1 Overall Scorecard", 3)
-                            .addTable(columns, finalData)
+                            .addTable(
+                                sortedOverallScorecardColumns,
+                                sortedOverallScorecardRows,
+                            )
                             .addSpacing(3)
                             .addTitle("1.1.2 Budget Performance Scorecard", 3)
-                            .addTable(budgetColumns, budgetData)
+                            .addTable(
+                                sortedBudgetScorecardColumns,
+                                sortedBudgetScorecardRows,
+                            )
                             .addSpacing(3)
                             .addTitle("1.2 Summary Performance", 2)
                             .addTitle(
@@ -1075,10 +1166,16 @@ function Component() {
                             )
                             .addTitle("1.1 Performance Scorecards", 2)
                             .addTitle("1.1.1 Overall Scorecard", 3)
-                            .addTable(columns, finalData)
+                            .addTable(
+                                sortedOverallScorecardColumns,
+                                sortedOverallScorecardRows,
+                            )
                             .addSpacer(3)
                             .addTitle("1.1.2 Budget Performance Scorecard", 3)
-                            .addTable(budgetColumns, budgetData)
+                            .addTable(
+                                sortedBudgetScorecardColumns,
+                                sortedBudgetScorecardRows,
+                            )
                             .addSpacer(3)
                             .addTitle("1.2 Summary Performance", 2)
                             .addTitle(
@@ -1171,14 +1268,14 @@ function Component() {
                 1.1.1 Overall Scorecard
             </Typography.Title>
             <Table
-                columns={columns}
-                dataSource={finalData}
+                columns={sortedOverallScorecardColumns}
+                dataSource={sortedOverallScorecardRows}
                 rowKey="UBWSASWdyfi"
                 bordered={true}
                 tableLayout="auto"
                 pagination={false}
                 size="small"
-                // onChange={handleChange}
+                onChange={handleScorecardTableChange("overall")}
             />
 
             <Typography.Title level={4} style={{ margin: 0 }}>
@@ -1186,14 +1283,14 @@ function Component() {
             </Typography.Title>
 
             <Table
-                columns={budgetColumns}
-                dataSource={budgetData}
+                columns={sortedBudgetScorecardColumns}
+                dataSource={sortedBudgetScorecardRows}
                 rowKey="orgUnit"
                 bordered={true}
                 sticky={true}
                 pagination={false}
                 size="small"
-                // onChange={handleChange}
+                onChange={handleScorecardTableChange("budget")}
             />
             <Typography.Title level={3} style={{ margin: 0 }}>
                 1.2 Summary Performance

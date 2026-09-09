@@ -1,13 +1,17 @@
 import { createRoute, Outlet } from "@tanstack/react-router";
 import React from "react";
-
 import { Flex } from "antd";
+import { ReportingRateSearchSchema } from "../../../../types";
 import { NDPRoute } from "../route";
 
-export const IndicatorDictionaryRoute = createRoute({
+export const ProgrammeReportingRateCompletenessRoute = createRoute({
     getParentRoute: () => NDPRoute,
-    path: "indicator-dictionaries",
+    path: "programme-reporting-rate-completeness",
     component: Component,
+    loaderDeps: ({ search }) => ({
+        v: search.v,
+    }),
+    validateSearch: ReportingRateSearchSchema,
 });
 
 function Component() {

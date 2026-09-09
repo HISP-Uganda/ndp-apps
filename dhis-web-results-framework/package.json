@@ -6,12 +6,15 @@
     "private": true,
     "scripts": {
         "build": "d2-app-scripts build",
-        "start": "d2-app-scripts start --proxy https://ndpme.go.ug/ndpdb",
+        "start": "yarn start:train",
+        "start:prod": "d2-app-scripts start --port 3000 --proxy https://ndpme.go.ug/ndpdb --proxyPort 8080",
+        "start:train": "d2-app-scripts start --port 3000 --proxy https://train.ndpme.go.ug/ndpdb --proxyPort 8080",
         "test": "d2-app-scripts test",
         "deploy": "d2-app-scripts deploy"
     },
     "devDependencies": {
         "@dhis2/cli-app-scripts": "^12.6.4",
+        "@types/file-saver": "^2.0.7",
         "@types/jest": "^30.0.0",
         "@types/lodash": "^4.17.20",
         "@types/react": "^19.1.8",
@@ -29,6 +32,9 @@
         "dexie": "^4.0.11",
         "dexie-react-hooks": "^1.1.7",
         "exceljs": "^4.4.0",
+        "file-saver": "^2.0.5",
+        "jspdf": "^2.5.2",
+        "jspdf-autotable": "^3.8.4",
         "lodash": "^4.17.21",
         "react-resizable": "^3.0.5",
         "zod": "^3.25.67"

@@ -22,6 +22,9 @@ import {
     Option,
     OptionSet,
     OrgUnit,
+    TrackerLineListColumnMetadata,
+    TrackerLineListRow,
+    TrackerProgrammeOption,
 } from "./types";
 import {
     calculatePerformanceRatio,
@@ -485,7 +488,9 @@ export const initialQueryOptions = (
             });
 
             const {
-                orgUnits: { dataViewOrganisationUnits },
+                orgUnits: {
+                    organisationUnits: assignedOrganisationUnits,
+                },
                 options,
                 categories: { categories },
                 central,
@@ -510,7 +515,7 @@ export const initialQueryOptions = (
                     >;
                 };
             };
-            const organisationUnits: OrgUnit[] = dataViewOrganisationUnits.map(
+            const organisationUnits: OrgUnit[] = assignedOrganisationUnits.map(
                 ({ id, name, leaf }) => {
                     const current: OrgUnit = {
                         id,
@@ -562,11 +567,12 @@ export const initialQueryOptions = (
                     } catch (error) {}
                 }
             }
+            await db.dataViewOrgUnits.clear();
             await db.dataViewOrgUnits.bulkPut(organisationUnits);
             return {
                 programs,
                 ndpVersions,
-                ou: dataViewOrganisationUnits[0].id,
+                ou: assignedOrganisationUnits[0]?.id,
                 configurations,
                 programGoals,
                 programObjectives,
@@ -588,7 +594,7 @@ export const initialQueryOptions = (
                 ),
                 votes: central.organisationUnits.filter((ou) => {
                     if (allAreLeaves) {
-                        return dataViewOrganisationUnits.some(
+                        return assignedOrganisationUnits.some(
                             (dvou) => dvou.id === ou.id,
                         );
                     }
@@ -730,6 +736,878 @@ export const orgUnitQueryOptions = (
     });
 };
 
+export const trackerProgramsQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    mode: "policy-actions" | "project-performances" = "policy-actions",
+) => {
+    return queryOptions({
+        queryKey: ["tracker-programs", mode],
+        queryFn: async () => {
+            const response = await engine.query({
+                programs: {
+                    resource: "programs",
+                    params: {
+                        filter: "programType:eq:WITH_REGISTRATION",
+                        fields: [
+                            "id",
+                            "name",
+                            "displayName",
+                            "code",
+                            "programDomain",
+                            "programTrackedEntityAttributes[displayInList]",
+                            "programStages[programStageDataElements[displayInReports]]",
+                        ].join(","),
+                        pageSize: 1000,
+                    },
+                },
+            });
+            const { programs } = response as unknown as {
+                programs: {
+                    programs: Array<{
+                        id: string;
+                        name: string;
+                        displayName?: string;
+                        code?: string;
+                        programDomain?: string;
+                        programTrackedEntityAttributes?: Array<{
+                            displayInList?: boolean;
+                        }>;
+                        programStages?: Array<{
+                            programStageDataElements?: Array<{
+                                displayInReports?: boolean;
+                            }>;
+                        }>;
+                    }>;
+                };
+            };
+            const scopedPrograms =
+                mode === "project-performances"
+                    ? programs.programs.filter(isLikelyProjectTrackerProgram)
+                    : programs.programs.filter(isLikelyPolicyActionProgram);
+            const visiblePrograms =
+                scopedPrograms.length > 0 ? scopedPrograms : programs.programs;
+
+            return orderBy(
+                visiblePrograms.map<TrackerProgrammeOption>(
+                    ({ id, name, displayName }) => ({
+                        id,
+                        name: displayName ?? name,
+                    }),
+                ),
+                "name",
+            );
+        },
+    });
+};
+
+export const trackerProgramMetadataQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    programId?: string,
+) => {
+    return queryOptions({
+        queryKey: ["tracker-program-metadata", programId],
+        enabled: Boolean(programId),
+        queryFn: async () => {
+            if (!programId) return [];
+            const response = await engine.query({
+                program: {
+                    resource: `programs/${programId}`,
+                    params: {
+                        fields: [
+                            "programTrackedEntityAttributes[displayInList,searchable,sortOrder,trackedEntityAttribute[id,name,displayName,optionSet[id,options[code,name,displayName]]]]",
+                            "programStages[id,name,displayName,sortOrder,programStageDataElements[displayInReports,sortOrder,dataElement[id,name,displayName,optionSet[id,options[code,name,displayName]]]]]",
+                        ].join(","),
+                    },
+                },
+            });
+
+            const { program } = response as unknown as {
+                program: {
+                    programTrackedEntityAttributes?: Array<{
+                        displayInList?: boolean;
+                        searchable?: boolean;
+                        sortOrder?: number;
+                        trackedEntityAttribute?: TrackerMetadataItem;
+                    }>;
+                    programStages?: Array<{
+                        id?: string;
+                        name?: string;
+                        displayName?: string;
+                        sortOrder?: number;
+                        programStageDataElements?: Array<{
+                            displayInReports?: boolean;
+                            sortOrder?: number;
+                            dataElement?: TrackerMetadataItem;
+                        }>;
+                    }>;
+                };
+            };
+
+            const attributes =
+                orderBy(
+                    program.programTrackedEntityAttributes?.filter(
+                        ({ displayInList }) => displayInList,
+                    ) ?? [],
+                    "sortOrder",
+                ).flatMap(({ trackedEntityAttribute, searchable }) =>
+                    trackedEntityAttribute
+                        ? [
+                              toTrackerColumnMetadata(
+                                  trackedEntityAttribute,
+                                  "attribute",
+                                  { searchable },
+                              ),
+                          ]
+                        : [],
+                );
+
+            const dataElements =
+                orderBy(program.programStages ?? [], "sortOrder").flatMap(
+                    (stage) =>
+                        orderBy(
+                            stage.programStageDataElements?.filter(
+                                (de) => de.displayInReports === true,
+                            ) ?? [],
+                            "sortOrder",
+                        ).flatMap((de) =>
+                            de.dataElement
+                                ? [
+                                      toTrackerColumnMetadata(
+                                          de.dataElement,
+                                          "dataElement",
+                                          {
+                                              stageId: stage.id,
+                                              stageLabel:
+                                                  stage.displayName ??
+                                                  stage.name,
+                                          },
+                                      ),
+                                  ]
+                                : [],
+                        ),
+                );
+
+            return uniqBy([...attributes, ...dataElements], "id");
+        },
+    });
+};
+
+export const trackerLineListQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    {
+        programId,
+        rootOrgUnitId,
+        orgUnitId,
+        page = 1,
+        pageSize = 50,
+        fetchAll = false,
+        enabled = true,
+    }: {
+        programId?: string;
+        rootOrgUnitId?: string;
+        orgUnitId?: string;
+        page?: number;
+        pageSize?: number;
+        fetchAll?: boolean;
+        enabled?: boolean;
+    },
+) => {
+    return queryOptions({
+        queryKey: [
+            "tracker-line-list",
+            programId,
+            rootOrgUnitId,
+            orgUnitId,
+            page,
+            pageSize,
+            fetchAll,
+        ],
+        enabled: Boolean(programId && rootOrgUnitId && orgUnitId && enabled),
+        queryFn: async () => {
+            if (!programId || !rootOrgUnitId || !orgUnitId) {
+                return { rows: [], total: 0 } satisfies TrackerLineListResult;
+            }
+
+            if (fetchAll) {
+                const directTrackedEntityInstances =
+                    await fetchTrackedEntitiesSafely(engine, {
+                        programId,
+                        orgUnitId,
+                        pageSize: 1000,
+                    });
+
+                const shouldFallbackToRootScope =
+                    orgUnitId !== rootOrgUnitId &&
+                    directTrackedEntityInstances.length === 0;
+
+                const trackedEntityInstances = shouldFallbackToRootScope
+                    ? await fetchTrackedEntitiesSafely(engine, {
+                          programId,
+                          orgUnitId: rootOrgUnitId,
+                          pageSize: 1000,
+                      })
+                    : directTrackedEntityInstances;
+
+                const orgUnitDetailsById =
+                    trackedEntityInstances.length > 0
+                        ? await fetchOrgUnitDetailsByIdSafely(
+                              engine,
+                              Array.from(
+                                  new Set(
+                                      trackedEntityInstances.flatMap(({ orgUnit }) =>
+                                          orgUnit ? [orgUnit] : [],
+                                      ),
+                                  ),
+                              ),
+                          )
+                        : new Map<string, { name: string; path?: string }>();
+
+                const processedRows = mapTrackedEntitiesToRows(
+                    trackedEntityInstances,
+                    orgUnitDetailsById,
+                );
+
+                const filteredRows =
+                    shouldFallbackToRootScope && orgUnitId !== rootOrgUnitId
+                        ? processedRows.filter((row) => {
+                              const path = row.orgUnit
+                                  ? orgUnitDetailsById.get(row.orgUnit)?.path
+                                  : undefined;
+                              return Boolean(
+                                  path &&
+                                      (path === `/${orgUnitId}` ||
+                                          path.startsWith(`/${orgUnitId}/`) ||
+                                          path.includes(`/${orgUnitId}/`)),
+                              );
+                          })
+                        : processedRows;
+
+                return {
+                    rows: orderBy(
+                        filteredRows,
+                        [
+                            (row) =>
+                                String(
+                                    row.orgUnitName ?? row.orgUnit ?? "",
+                                ).toLowerCase(),
+                        ],
+                        ["asc"],
+                    ),
+                    total: filteredRows.length,
+                } satisfies TrackerLineListResult;
+            }
+
+            const directPageResponse = await fetchTrackedEntityPage(engine, {
+                programId,
+                orgUnitId,
+                page,
+                pageSize,
+            });
+            const directTrackedEntityInstances =
+                directPageResponse.trackedEntities.trackedEntityInstances ?? [];
+
+            const shouldFallbackToRootScope =
+                orgUnitId !== rootOrgUnitId &&
+                directTrackedEntityInstances.length === 0;
+
+            if (!shouldFallbackToRootScope) {
+                const orgUnitDetailsById =
+                    directTrackedEntityInstances.length > 0
+                        ? await fetchOrgUnitDetailsByIdSafely(
+                              engine,
+                              Array.from(
+                                  new Set(
+                                      directTrackedEntityInstances.flatMap(
+                                          ({ orgUnit }) =>
+                                              orgUnit ? [orgUnit] : [],
+                                      ),
+                                  ),
+                              ),
+                          )
+                        : new Map<string, { name: string; path?: string }>();
+
+                const processedRows = mapTrackedEntitiesToRows(
+                    directTrackedEntityInstances,
+                    orgUnitDetailsById,
+                );
+
+                return {
+                    rows: orderBy(
+                        processedRows,
+                        [
+                            (row) =>
+                                String(
+                                    row.orgUnitName ?? row.orgUnit ?? "",
+                                ).toLowerCase(),
+                        ],
+                        ["asc"],
+                    ),
+                    total:
+                        directPageResponse.trackedEntities.pager?.total ??
+                        processedRows.length,
+                } satisfies TrackerLineListResult;
+            }
+
+            const fallbackTrackedEntityInstances =
+                await fetchTrackedEntitiesSafely(engine, {
+                    programId,
+                    orgUnitId: rootOrgUnitId,
+                    pageSize: 1000,
+                });
+
+            const orgUnitDetailsById =
+                fallbackTrackedEntityInstances.length > 0
+                    ? await fetchOrgUnitDetailsByIdSafely(
+                          engine,
+                          Array.from(
+                              new Set(
+                                  fallbackTrackedEntityInstances.flatMap(({ orgUnit }) =>
+                                      orgUnit ? [orgUnit] : [],
+                                  ),
+                              ),
+                          ),
+                      )
+                    : new Map<string, { name: string; path?: string }>();
+
+            const filteredRows = mapTrackedEntitiesToRows(
+                fallbackTrackedEntityInstances,
+                orgUnitDetailsById,
+            ).filter((row) => {
+                const path = row.orgUnit
+                    ? orgUnitDetailsById.get(row.orgUnit)?.path
+                    : undefined;
+                return Boolean(
+                    path &&
+                        (path === `/${orgUnitId}` ||
+                            path.startsWith(`/${orgUnitId}/`) ||
+                            path.includes(`/${orgUnitId}/`)),
+                );
+            });
+
+            const sortedFilteredRows = orderBy(
+                filteredRows,
+                [
+                    (row) =>
+                        String(row.orgUnitName ?? row.orgUnit ?? "").toLowerCase(),
+                ],
+                ["asc"],
+            );
+            const startIndex = (page - 1) * pageSize;
+
+            return {
+                rows: sortedFilteredRows.slice(startIndex, startIndex + pageSize),
+                total: sortedFilteredRows.length,
+            } satisfies TrackerLineListResult;
+        },
+    });
+};
+
+export const orgUnitHierarchyQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    rootId?: string,
+) => {
+    return queryOptions({
+        queryKey: ["org-unit-hierarchy", rootId],
+        enabled: Boolean(rootId),
+        queryFn: async () => {
+            if (!rootId) return [];
+            const response = await engine.query({
+                root: {
+                    resource: `organisationUnits/${rootId}`,
+                    params: {
+                        fields: "id,name,displayName,leaf,parent[id],path,ancestors[id,name,displayName,leaf,parent[id],path],children[id,name,displayName,leaf,parent[id],path]",
+                    },
+                },
+            });
+            const { root } = response as unknown as {
+                root: {
+                    id: string;
+                    name: string;
+                    displayName?: string;
+                    leaf: boolean;
+                    parent?: { id: string };
+                    path: string;
+                    ancestors?: Array<{
+                        id: string;
+                        name: string;
+                        displayName?: string;
+                        leaf: boolean;
+                        parent?: { id: string };
+                        path: string;
+                    }>;
+                    children?: Array<{
+                        id: string;
+                        name: string;
+                        displayName?: string;
+                        leaf: boolean;
+                        parent?: { id: string };
+                        path: string;
+                    }>;
+                };
+            };
+            const units = orderBy(
+                uniqBy(
+                    [
+                        ...(root.ancestors ?? []),
+                        root,
+                        ...(root.children ?? []),
+                    ],
+                    "id",
+                ),
+                "path",
+            );
+            const rootPathIds = new Set(root.path.split("/").filter(Boolean));
+            const nodes = new Map<string, OrgUnit>();
+
+            units.forEach(({ id, name, displayName, leaf, parent }) => {
+                nodes.set(id, {
+                    id,
+                    key: id,
+                    value: id,
+                    title: displayName ?? name,
+                    isLeaf: leaf,
+                    pId: parent?.id,
+                    disabled: id !== rootId && rootPathIds.has(id),
+                });
+            });
+
+            const tree: OrgUnit[] = [];
+            nodes.forEach((node) => {
+                if (node.pId && nodes.has(node.pId)) {
+                    const parent = nodes.get(node.pId)!;
+                    parent.children = [...(parent.children ?? []), node];
+                } else {
+                    tree.push(node);
+                }
+            });
+
+            return sortOrgUnitTree(tree);
+        },
+    });
+};
+
+export const orgUnitChildrenQueryOptions = (
+    engine: ReturnType<typeof useDataEngine>,
+    orgUnitId?: string,
+) => {
+    return queryOptions({
+        queryKey: ["org-unit-children", orgUnitId],
+        enabled: Boolean(orgUnitId),
+        queryFn: async () => {
+            if (!orgUnitId) return [];
+            return fetchOrgUnitChildren(engine, orgUnitId);
+        },
+    });
+};
+
+type TrackerMetadataItem = {
+    id: string;
+    name: string;
+    displayName?: string;
+    optionSet?: {
+        id: string;
+        options?: Array<{
+            code: string;
+            name: string;
+            displayName?: string;
+        }>;
+    };
+};
+
+const toTrackerColumnMetadata = (
+    item: TrackerMetadataItem,
+    source: TrackerLineListColumnMetadata["source"],
+    extras?: Partial<
+        Pick<
+            TrackerLineListColumnMetadata,
+            "searchable" | "stageId" | "stageLabel"
+        >
+    >,
+): TrackerLineListColumnMetadata => ({
+    id: item.id,
+    label: item.displayName ?? item.name,
+    source,
+    searchable: extras?.searchable,
+    stageId: extras?.stageId,
+    stageLabel: extras?.stageLabel,
+    optionSet: item.optionSet
+        ? {
+              id: item.optionSet.id,
+              options:
+                  item.optionSet.options?.map(({ code, name, displayName }) => ({
+                      code,
+                      name: displayName ?? name,
+                  })) ?? [],
+          }
+        : undefined,
+});
+
+type DeprecatedTrackerTrackedEntity = {
+    trackedEntityInstance: string;
+    orgUnit?: string;
+    orgUnitName?: string;
+    attributes?: Array<{
+        attribute: string;
+        value: string;
+    }>;
+    enrollments?: Array<{
+        events?: Array<{
+            occurredAt?: string;
+            eventDate?: string;
+            dataValues?: Array<{
+                dataElement: string;
+                value: string;
+            }>;
+        }>;
+    }>;
+};
+
+type DeprecatedTrackerResponse = {
+    trackedEntities: {
+        pager?: {
+            page?: number;
+            pageCount?: number;
+            total?: number;
+        };
+        trackedEntityInstances?: DeprecatedTrackerTrackedEntity[];
+    };
+};
+
+type TrackerLineListResult = {
+    rows: TrackerLineListRow[];
+    total: number;
+};
+
+async function fetchTrackedEntityPage(
+    engine: ReturnType<typeof useDataEngine>,
+    {
+        programId,
+        orgUnitId,
+        page,
+        pageSize,
+    }: {
+        programId: string;
+        orgUnitId: string;
+        page: number;
+        pageSize: number;
+    },
+) {
+    const response = await engine.query({
+        trackedEntities: {
+            resource: "trackedEntityInstances.json",
+            params: {
+                program: programId,
+                ou: orgUnitId,
+                ouMode: "DESCENDANTS",
+                page,
+                pageSize,
+                totalPages: true,
+                fields: [
+                    "trackedEntityInstance",
+                    "orgUnit",
+                    "orgUnitName",
+                    "attributes[attribute,value]",
+                    "enrollments[enrollment,program,status,enrollmentDate,eventDate,events[event,programStage,status,eventDate,dataValues[dataElement,value]]]",
+                ].join(","),
+            },
+        },
+    });
+
+    return response as unknown as DeprecatedTrackerResponse;
+}
+
+function mapTrackedEntitiesToRows(
+    trackedEntityInstances: DeprecatedTrackerTrackedEntity[],
+    orgUnitDetailsById: Map<string, { name: string; path?: string }>,
+) {
+    return trackedEntityInstances.map<TrackerLineListRow>((trackedEntity) => {
+        const trackedEntityId = trackedEntity.trackedEntityInstance;
+        const orgUnitDetails = trackedEntity.orgUnit
+            ? orgUnitDetailsById.get(trackedEntity.orgUnit)
+            : undefined;
+        const row: TrackerLineListRow = {
+            key: trackedEntityId,
+            trackedEntity: trackedEntityId,
+            orgUnit: trackedEntity.orgUnit,
+            orgUnitName:
+                trackedEntity.orgUnitName ??
+                orgUnitDetails?.name ??
+                trackedEntity.orgUnit,
+        };
+
+        trackedEntity.attributes?.forEach(({ attribute, value }) => {
+            row[attribute] = value;
+        });
+
+        const latestValues = new Map<string, { value: string; occurredAt: string }>();
+
+        trackedEntity.enrollments?.forEach(({ events }) => {
+            events?.forEach((event) => {
+                const occurredAt = event.eventDate ?? event.occurredAt ?? "";
+                event.dataValues?.forEach(({ dataElement, value }) => {
+                    const previous = latestValues.get(dataElement);
+                    if (!previous || occurredAt >= previous.occurredAt) {
+                        latestValues.set(dataElement, {
+                            value,
+                            occurredAt,
+                        });
+                    }
+                });
+            });
+        });
+
+        latestValues.forEach(({ value }, dataElement) => {
+            row[dataElement] = value;
+        });
+
+        return row;
+    });
+}
+
+async function fetchAllTrackedEntityPages(
+    engine: ReturnType<typeof useDataEngine>,
+    {
+        programId,
+        orgUnitId,
+        pageSize,
+    }: {
+        programId: string;
+        orgUnitId: string;
+        pageSize: number;
+    },
+) {
+    const allRows: DeprecatedTrackerTrackedEntity[] = [];
+    let page = 1;
+    let pageCount = 1;
+
+    do {
+        const response = await fetchTrackedEntityPage(engine, {
+            programId,
+            orgUnitId,
+            page,
+            pageSize,
+        });
+        const { trackedEntities } = response;
+
+        allRows.push(...(trackedEntities.trackedEntityInstances ?? []));
+        pageCount = trackedEntities.pager?.pageCount ?? pageCount;
+        page += 1;
+    } while (page <= pageCount);
+
+    return allRows;
+}
+
+async function fetchTrackedEntitiesSafely(
+    engine: ReturnType<typeof useDataEngine>,
+    params: {
+        programId: string;
+        orgUnitId: string;
+        pageSize: number;
+    },
+) {
+    try {
+        return await fetchAllTrackedEntityPages(engine, params);
+    } catch (error) {
+        if (isOrgUnitAccessError(error)) {
+            return [];
+        }
+        throw error;
+    }
+}
+
+function isLikelyPolicyActionProgram(program: {
+    name: string;
+    displayName?: string;
+    code?: string;
+    programDomain?: string;
+    programTrackedEntityAttributes?: Array<{ displayInList?: boolean }>;
+    programStages?: Array<{
+        programStageDataElements?: Array<{ displayInReports?: boolean }>;
+    }>;
+}) {
+    const searchableText = [
+        program.name,
+        program.displayName,
+        program.code,
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    const normalizedDomain = program.programDomain?.toLowerCase();
+    const hasReportProfile =
+        program.programTrackedEntityAttributes?.some(
+            ({ displayInList }) => displayInList,
+        ) ||
+        program.programStages?.some(({ programStageDataElements }) =>
+            programStageDataElements?.some(
+                ({ displayInReports }) => displayInReports,
+            ),
+        );
+
+    return (
+        hasReportProfile &&
+        (normalizedDomain === "policyaction" ||
+            normalizedDomain === "policy_action" ||
+            searchableText.includes("policy action") ||
+            searchableText.includes("policy directive") ||
+            searchableText.includes("directive tracker"))
+    );
+}
+
+function isLikelyProjectTrackerProgram(program: {
+    name: string;
+    displayName?: string;
+    code?: string;
+    programDomain?: string;
+    programTrackedEntityAttributes?: Array<{ displayInList?: boolean }>;
+    programStages?: Array<{
+        programStageDataElements?: Array<{ displayInReports?: boolean }>;
+    }>;
+}) {
+    const searchableText = [
+        program.name,
+        program.displayName,
+        program.code,
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    const normalizedDomain = program.programDomain?.toLowerCase();
+    const hasReportProfile =
+        program.programTrackedEntityAttributes?.some(
+            ({ displayInList }) => displayInList,
+        ) ||
+        program.programStages?.some(({ programStageDataElements }) =>
+            programStageDataElements?.some(
+                ({ displayInReports }) => displayInReports,
+            ),
+        );
+
+    return (
+        hasReportProfile &&
+        (normalizedDomain === "project" ||
+            normalizedDomain === "projecttracker" ||
+            normalizedDomain === "project_tracker" ||
+            searchableText.includes("project tracker") ||
+            searchableText.includes("project performance"))
+    );
+}
+
+async function fetchOrgUnitDetailsById(
+    engine: ReturnType<typeof useDataEngine>,
+    orgUnitIds: string[],
+) {
+    if (orgUnitIds.length === 0) {
+        return new Map<string, { name: string; path?: string }>();
+    }
+
+    const response = await engine.query({
+        orgUnits: {
+            resource: "organisationUnits",
+            params: {
+                filter: `id:in:[${orgUnitIds.join(",")}]`,
+                fields: "id,name,displayName,path",
+                pageSize: orgUnitIds.length,
+            },
+        },
+    });
+    const { orgUnits } = response as unknown as {
+        orgUnits: {
+            organisationUnits: Array<{
+                id: string;
+                name: string;
+                displayName?: string;
+                path?: string;
+            }>;
+        };
+    };
+
+    return new Map(
+        orgUnits.organisationUnits.map(({ id, name, displayName, path }) => [
+            id,
+            {
+                name: displayName ?? name,
+                path,
+            },
+        ]),
+    );
+}
+
+async function fetchOrgUnitDetailsByIdSafely(
+    engine: ReturnType<typeof useDataEngine>,
+    orgUnitIds: string[],
+) {
+    try {
+        return await fetchOrgUnitDetailsById(engine, orgUnitIds);
+    } catch (error) {
+        if (isOrgUnitAccessError(error)) {
+            return new Map<string, { name: string; path?: string }>();
+        }
+        throw error;
+    }
+}
+
+async function fetchOrgUnitChildren(
+    engine: ReturnType<typeof useDataEngine>,
+    orgUnitId: string,
+): Promise<OrgUnit[]> {
+    const response = await engine.query({
+        orgUnit: {
+            resource: `organisationUnits/${orgUnitId}`,
+            params: {
+                fields: "children[id,name,displayName,leaf,parent[id],path]",
+            },
+        },
+    });
+    const { orgUnit } = response as unknown as {
+        orgUnit: {
+            children?: Array<{
+                id: string;
+                name: string;
+                displayName?: string;
+                leaf: boolean;
+                parent?: { id: string };
+                path: string;
+            }>;
+        };
+    };
+
+    return orderBy(
+        (orgUnit.children ?? []).map(({ id, name, displayName, leaf, parent }) => ({
+            id,
+            key: id,
+            value: id,
+            title: displayName ?? name,
+            isLeaf: leaf,
+            pId: parent?.id,
+        })),
+        [(node) => String(node.title).toLowerCase()],
+    );
+}
+
+function sortOrgUnitTree(nodes: OrgUnit[]): OrgUnit[] {
+    return orderBy(
+        nodes.map((node) => ({
+            ...node,
+            children: node.children
+                ? sortOrgUnitTree(node.children as OrgUnit[])
+                : undefined,
+        })),
+        [(node) => String(node.title).toLowerCase()],
+    );
+}
+
+function isOrgUnitAccessError(error: unknown) {
+    const errorText = JSON.stringify(error).toLowerCase();
+    return (
+        errorText.includes("organisation unit") &&
+        (errorText.includes("access") ||
+            errorText.includes("permission") ||
+            errorText.includes("denied") ||
+            errorText.includes("not found"))
+    );
+}
+
 export const analyticsQueryOptions = ({
     engine,
     search: {
@@ -843,40 +1721,1123 @@ export const ndpIndicatorsQueryOptions = (
     return queryOptions({
         queryKey: ["ndp-indicators", ndpVersion],
         queryFn: async () => {
-            try {
-                const doneCount = await db.dataElements
-                    .where({ fsIKncW1Eps: ndpVersion })
-                    .count();
-                if (doneCount === 0) {
-                    const {
-                        dataElements: { dataElements },
-                    } = (await engine.query({
-                        dataElements: {
-                            resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,description,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[path]]]&paging=false`,
-                        },
-                    })) as {
-                        dataElements: { dataElements: DataElement[] };
-                    };
+            const requiresRefresh = async () => {
+                const sample = await db.dataElements
+                    .where("fsIKncW1Eps")
+                    .equals(ndpVersion)
+                    .first();
+                if (!sample) return true;
+                return !(
+                    Array.isArray(sample.voteCodes) &&
+                    Array.isArray(sample.reportingCycles) &&
+                    typeof sample.valueType === "string" &&
+                    Array.isArray(sample.datasetAssignments) &&
+                    Array.isArray(sample.dataSetNames)
+                );
+            };
 
-                    const processed = processDataElements(dataElements);
-                    await db.dataElements.bulkPut(processed);
-                }
-            } catch (error) {
-                await Dexie.delete("ndp-rf");
+            const loadDataElements = async () => {
                 const {
                     dataElements: { dataElements },
                 } = (await engine.query({
                     dataElements: {
-                        resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,code,aggregationType,description,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,organisationUnits[id]]]&paging=false`,
+                        resource: `dataElements?filter=attributeValues.value:eq:${ndpVersion}&fields=id,name,displayName,code,aggregationType,valueType,categoryCombo[id,name,displayName],description,attributeValues[value,attribute[id,name,code]],dataSetElements[dataSet[id,name,periodType,organisationUnits[code,displayName,id,path]]]&paging=false`,
                     },
                 })) as {
                     dataElements: { dataElements: DataElement[] };
                 };
                 const processed = processDataElements(dataElements);
+                await db.dataElements
+                    .where("fsIKncW1Eps")
+                    .equals(ndpVersion)
+                    .delete();
                 await db.dataElements.bulkPut(processed);
+            };
+
+            try {
+                const doneCount = await db.dataElements
+                    .where({ fsIKncW1Eps: ndpVersion })
+                    .count();
+                if (doneCount === 0 || (await requiresRefresh())) {
+                    await loadDataElements();
+                }
+            } catch (error) {
+                await Dexie.delete("ndp-rf");
+                await loadDataElements();
             }
             return "Done";
         },
+    });
+};
+
+export type IndicatorDictionaryRow = {
+    key: string;
+    id: string;
+    displayName: string;
+    code: string;
+    aggregationType: string;
+    disaggregation: string;
+    valueType: string;
+    periodType: string;
+    vote: string;
+    indicatorGroupType: string;
+    completenessConfigured: number;
+    completenessTotal: number;
+    completenessRate: string;
+    completenessState: "green" | "yellow" | "red";
+    [key: string]: string | number;
+};
+
+export type IndicatorDictionaryTab = "ndpIndicators" | "classification";
+
+export type IndicatorDictionarySortField = "displayName" | "code";
+
+export type IndicatorDictionaryHeaderDefinition = {
+    id: string;
+    title: string;
+    defaultVisible: boolean;
+    width: number;
+    sortable?: boolean;
+    aliases?: string[];
+};
+
+export type IndicatorDictionaryPager = {
+    page: number;
+    pageCount: number;
+    pageSize: number;
+    total: number;
+};
+
+export type IndicatorClassificationOption = {
+    id: string;
+    code?: string;
+    name: string;
+};
+
+export type ReportingRatesDatasetOption = {
+    value: string;
+    label: string;
+    periodType?: string;
+    assignedOrgUnitCount: number;
+};
+
+export type ReportingRatesQuarterOption = {
+    value: string;
+    label: string;
+    financialYear: string;
+    quarter: "Q1" | "Q2" | "Q3" | "Q4";
+};
+
+export type ReportingRatesRow = {
+    key: string;
+    orgUnitId: string;
+    orgUnitName: string;
+    dataSetId: string;
+    dataSetName: string;
+    quarterLabel: string;
+    period: string;
+    expectedReports: number;
+    completedReports: number;
+    missingReports: number;
+    reportingRate: number;
+    reportingRateDisplay: string;
+    performanceBand: "green" | "yellow" | "red";
+};
+
+export type ReportingRateSummaryPeriodSummary = {
+    numerator: number;
+    denominator: number;
+    rate: number;
+    display: string;
+    performanceBand: "green" | "yellow" | "red";
+};
+
+export type ReportingRateSummaryExpandedRow = {
+    key: string;
+    dataSetId: string;
+    dataSetName: string;
+    periodType: string;
+    indicatorGroupType: string;
+    indicatorGroupTypeLabel: string;
+    reportedByPeriod: Record<"Q1" | "Q2" | "Q3" | "Q4" | "financialYear", boolean>;
+    reported: boolean;
+};
+
+export type ReportingRateProgrammeExpandedRow = {
+    key: string;
+    orgUnitId: string;
+    orgUnitName: string;
+    assignedDataSetCount: number;
+    indicatorGroupTypeSummariesByPeriod: Record<
+        "Q1" | "Q2" | "Q3" | "Q4" | "financialYear",
+        Record<string, ReportingRateSummaryPeriodSummary>
+    >;
+    indicatorGroupTypeSummaries: Record<
+        string,
+        ReportingRateSummaryPeriodSummary
+    >;
+};
+
+export type ReportingRateSummaryRow = {
+    key: string;
+    entityId: string;
+    entityName: string;
+    assignedDataSetCount: number;
+    assignedDataSets: ReportingRateSummaryExpandedRow[];
+    programmeExpandedRows: ReportingRateProgrammeExpandedRow[];
+    periodSummaries: Record<
+        "Q1" | "Q2" | "Q3" | "Q4" | "financialYear",
+        ReportingRateSummaryPeriodSummary
+    >;
+};
+
+export const indicatorDictionaryHeaders: IndicatorDictionaryHeaderDefinition[] = [
+    {
+        id: "displayName",
+        title: "Name",
+        defaultVisible: true,
+        width: 520,
+        sortable: true,
+    },
+    {
+        id: "code",
+        title: "Indicator code",
+        defaultVisible: true,
+        width: 150,
+        sortable: true,
+    },
+    {
+        id: "aggregationType",
+        title: "Aggregation type",
+        defaultVisible: true,
+        width: 160,
+    },
+    {
+        id: "disaggregation",
+        title: "Disaggregation",
+        defaultVisible: true,
+        width: 160,
+    },
+    {
+        id: "valueType",
+        title: "Value type",
+        defaultVisible: true,
+        width: 120,
+    },
+    {
+        id: "periodType",
+        title: "Reporting cycle",
+        defaultVisible: true,
+        width: 140,
+    },
+    {
+        id: "vote",
+        title: "Vote",
+        defaultVisible: true,
+        width: 220,
+    },
+    {
+        id: "indicatorGroupType",
+        title: "Indicator Group Type",
+        defaultVisible: true,
+        width: 190,
+        aliases: ["indicatorGroupType", "BmUMiIbD5XY"],
+    },
+    {
+        id: "alternativeDataSource",
+        title: "Alternative data source",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Alternative data source", "alternativeDataSource"],
+    },
+    {
+        id: "measurement",
+        title: "Measurement",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Measurement", "Lxe84DpBHhm", "measurement"],
+    },
+    {
+        id: "descendingIndicatorType",
+        title: "descending indicator type",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "descending indicator type",
+            "Descending Indicator",
+            "descendingIndicatorType",
+        ],
+    },
+    {
+        id: "frequencyOfDataCollection",
+        title: "Frequency of data collection",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "Frequency of data collection",
+            "M5nS9I96cCx",
+            "frequencyOfDataCollection",
+        ],
+    },
+    {
+        id: "dataSource",
+        title: "Data Source",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Data Source", "Prss6OhQvYg", "dataSource"],
+    },
+    {
+        id: "intermediateOutcome",
+        title: "Intermediate Outcome",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "Intermediate Outcome",
+            "k9c6BOHIohu",
+            "intermediateOutcome",
+        ],
+    },
+    {
+        id: "keyResultAreas",
+        title: "Key Result Areas",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Key Result Areas", "Key Result Area", "JmZO4hoIlfT"],
+    },
+    {
+        id: "leadMda",
+        title: "Lead MDA",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Lead MDA", "leadMda"],
+    },
+    {
+        id: "limitations",
+        title: "Limitations",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Limitations", "limitations"],
+    },
+    {
+        id: "ndp",
+        title: "NDP",
+        defaultVisible: false,
+        width: 140,
+        aliases: ["NDP", "fsIKncW1Eps", "ndp"],
+    },
+    {
+        id: "ndpProgrammeList",
+        title: "NDP Programme List",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["NDP Programme List", "UBWSASWdyfi", "Programme"],
+    },
+    {
+        id: "otherMdas",
+        title: "Other MDAs",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Other MDAs", "otherMdas"],
+    },
+    {
+        id: "programGoal",
+        title: "Program Goal",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Program Goal", "Goal", "m3Be0z4xNnA", "programGoal"],
+    },
+    {
+        id: "programIntervention",
+        title: "Program Intervention",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "Program Intervention",
+            "LKWITZXQD9l",
+            "programIntervention",
+        ],
+    },
+    {
+        id: "programObjective",
+        title: "Program Objective",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Program Objective", "GuoVDNEBAXA", "programObjective"],
+    },
+    {
+        id: "responsibilityForIndicator",
+        title: "Responsibility for reporting",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "Responsibility for reporting",
+            "responsibilityForIndicator",
+            "lIRw10zARY7",
+        ],
+    },
+    {
+        id: "rationale",
+        title: "Rationale",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Rationale", "rationale"],
+    },
+    {
+        id: "strategicObjective",
+        title: "Strategic Objective",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Strategic Objective", "fwSdMAZ9egv", "strategicObjective"],
+    },
+    {
+        id: "unitOfMeasure",
+        title: "Unit of Measure",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Unit of Measure", "FuRWtF51PyL", "unit", "unitOfMeasure"],
+    },
+    {
+        id: "preferredDataSource",
+        title: "Preferred Data Source",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "Preferred Data Source",
+            "preferredDataSource",
+            "Prss6OhQvYg",
+        ],
+    },
+    {
+        id: "accountabilityForIndicator",
+        title: "Accountability for Indicator",
+        defaultVisible: false,
+        width: 220,
+        aliases: [
+            "Accountability for Indicator",
+            "accountabilityForIndicator",
+        ],
+    },
+    {
+        id: "indicatorType",
+        title: "Indicator type",
+        defaultVisible: false,
+        width: 180,
+        aliases: ["Indicator type", "indicatorType", "aWsagpqErAq"],
+    },
+    {
+        id: "computationMethod",
+        title: "Computation Method",
+        defaultVisible: false,
+        width: 220,
+        aliases: ["Computation Method", "computationMethod"],
+    },
+];
+
+const indicatorDictionaryCompletenessRules = {
+    green: [
+        "displayName",
+        "code",
+        "periodType",
+        "computationMethod",
+        "indicatorType",
+        "preferredDataSource",
+        "rationale",
+        "responsibilityForIndicator",
+        "unitOfMeasure",
+    ],
+    yellow: [
+        "displayName",
+        "code",
+        "accountabilityForIndicator",
+        "computationMethod",
+        "preferredDataSource",
+        "unitOfMeasure",
+    ],
+};
+
+const dictionaryPlaceholder = "-";
+
+const hasMeaningfulDictionaryValue = (value: unknown) => {
+    if (value === undefined || value === null) return false;
+    if (typeof value === "number") return !Number.isNaN(value);
+    const normalized = String(value).trim();
+    if (normalized.length === 0) return false;
+    return normalized !== dictionaryPlaceholder;
+};
+
+const normalizeDictionaryScalar = (value: unknown): string => {
+    if (Array.isArray(value)) {
+        const joined = value
+            .map((item) => String(item ?? "").trim())
+            .filter((item) => item.length > 0)
+            .join(", ");
+        return joined.length > 0 ? joined : dictionaryPlaceholder;
+    }
+    if (value === undefined || value === null) {
+        return dictionaryPlaceholder;
+    }
+    const normalized = String(value).trim();
+    return normalized.length > 0 ? normalized : dictionaryPlaceholder;
+};
+
+const getDictionaryHeaderValue = (
+    dataElement: ReturnType<typeof processDataElements>[number],
+    header: IndicatorDictionaryHeaderDefinition,
+) => {
+    switch (header.id) {
+        case "displayName":
+            return dataElement.displayName ?? dataElement.name ?? "";
+        case "code":
+            return dataElement.code ?? "";
+        case "aggregationType":
+            return dataElement.aggregationType ?? "";
+        case "disaggregation":
+            return dataElement.disaggregation ?? "";
+        case "valueType":
+            return dataElement.valueType ?? "";
+        case "periodType":
+            return dataElement.reportingCycles ?? [];
+        case "vote":
+            return Array.from(
+                new Set(
+                    (Array.isArray(dataElement.datasetAssignments)
+                        ? dataElement.datasetAssignments
+                        : []
+                    )
+                        .map((assignment) =>
+                            String(assignment.orgUnitName ?? "").trim(),
+                        )
+                        .filter((value) => value.length > 0),
+                ),
+            ).sort();
+        case "indicatorGroupType":
+            return formatIndicatorGroupType(
+                dataElement.BmUMiIbD5XY ?? dataElement.indicatorGroupType,
+            );
+        default:
+            for (const alias of header.aliases ?? []) {
+                const value = dataElement[alias];
+                if (hasMeaningfulDictionaryValue(value)) {
+                    return value;
+                }
+            }
+            return "";
+    }
+};
+
+const getDictionaryCompletenessState = (
+    row: Record<string, string>,
+): "green" | "yellow" | "red" => {
+    const matchesRule = (fields: string[]) =>
+        fields.every((field) => hasMeaningfulDictionaryValue(row[field]));
+    if (matchesRule(indicatorDictionaryCompletenessRules.green)) {
+        return "green";
+    }
+    if (matchesRule(indicatorDictionaryCompletenessRules.yellow)) {
+        return "yellow";
+    }
+    return "red";
+};
+
+const mapIndicatorDictionaryRow = (
+    dataElement: ReturnType<typeof processDataElements>[number],
+): IndicatorDictionaryRow => {
+    const values = Object.fromEntries(
+        indicatorDictionaryHeaders.map((header) => [
+            header.id,
+            normalizeDictionaryScalar(getDictionaryHeaderValue(dataElement, header)),
+        ]),
+    ) as Record<string, string>;
+    const completenessConfigured = indicatorDictionaryHeaders.filter((header) =>
+        hasMeaningfulDictionaryValue(values[header.id]),
+    ).length;
+    const completenessTotal = indicatorDictionaryHeaders.length;
+
+    return {
+        key: dataElement.id,
+        id: dataElement.id,
+        ...values,
+        aggregationType: values.aggregationType,
+        code: values.code,
+        completenessConfigured,
+        completenessRate: `(${completenessConfigured} / ${completenessTotal})`,
+        completenessState: getDictionaryCompletenessState(values),
+        completenessTotal,
+        disaggregation: values.disaggregation,
+        displayName: values.displayName,
+        periodType: values.periodType,
+        valueType: values.valueType,
+        vote: values.vote,
+    };
+};
+
+const formatIndicatorGroupType = (value: unknown) => {
+    switch (String(value ?? "").trim()) {
+        case "ndpGoal":
+            return "Goal";
+        case "strategicObjective":
+            return "Strategic Objective";
+        case "outcome":
+            return "Outcome";
+        case "intermediateOutcome":
+            return "Intermediate Outcome";
+        case "output":
+            return "Output";
+        case "action":
+            return "Action";
+        default:
+            return value;
+    }
+};
+
+export const indicatorDictionaryQueryOptions = ({
+    engine,
+    ndpVersion,
+    tab = "ndpIndicators",
+    searchText,
+    page = 1,
+    pageSize = 50,
+    sortField = "displayName",
+    sortOrder = "ascend",
+    classificationId,
+    fetchAll = false,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    ndpVersion: string;
+    tab?: IndicatorDictionaryTab;
+    searchText?: string;
+    page?: number;
+    pageSize?: number;
+    sortField?: IndicatorDictionarySortField;
+    sortOrder?: "ascend" | "descend";
+    classificationId?: string;
+    fetchAll?: boolean;
+}) => {
+    return queryOptions({
+        queryKey: [
+            "indicator-dictionary",
+            ndpVersion,
+            tab,
+            searchText?.trim().toLowerCase() ?? "",
+            page,
+            pageSize,
+            sortField,
+            sortOrder,
+            classificationId ?? "",
+            fetchAll,
+        ],
+        queryFn: async () => {
+            const normalizedSearch = searchText?.trim().toLowerCase() ?? "";
+            const params = new URLSearchParams({
+                fields: [
+                    "id",
+                    "name",
+                    "displayName",
+                    "code",
+                    "aggregationType",
+                    "valueType",
+                    "categoryCombo[id,name,displayName]",
+                    "description",
+                    "attributeValues[value,attribute[id,name,code]]",
+                    "dataElementGroups[id,name,code,groupSets[id,name,code]]",
+                    "dataSetElements[dataSet[id,name,periodType,organisationUnits[code,displayName,id,path]]]",
+                ].join(","),
+                order: `${sortField}:${sortOrder === "descend" ? "desc" : "asc"}`,
+                paging: fetchAll ? "false" : "true",
+            });
+
+            params.append("filter", `attributeValues.value:eq:${ndpVersion}`);
+
+            if (tab === "classification" && classificationId) {
+                params.append("filter", `dataElementGroups.id:eq:${classificationId}`);
+            }
+
+            if (normalizedSearch) {
+                params.set("query", normalizedSearch);
+            }
+
+            if (!fetchAll) {
+                params.set("page", String(page));
+                params.set("pageSize", String(pageSize));
+                params.set("totalPages", "true");
+            }
+
+            const response = (await engine.query({
+                dataElements: {
+                    resource: `dataElements?${params.toString()}`,
+                },
+            })) as {
+                dataElements: {
+                    dataElements: DataElement[];
+                    pager?: IndicatorDictionaryPager;
+                };
+            };
+
+            const rows = uniqBy(
+                processDataElements(response.dataElements.dataElements ?? []),
+                "id",
+            ).map(mapIndicatorDictionaryRow);
+            const total = fetchAll
+                ? rows.length
+                : response.dataElements.pager?.total ?? rows.length;
+            return {
+                pager: {
+                    page: fetchAll ? 1 : response.dataElements.pager?.page ?? page,
+                    pageCount: fetchAll
+                        ? Math.max(1, Math.ceil(total / Math.max(pageSize, 1)))
+                        : Math.max(
+                              1,
+                              response.dataElements.pager?.pageCount ??
+                                  Math.ceil(total / Math.max(pageSize, 1)),
+                          ),
+                    pageSize: fetchAll
+                        ? total || pageSize
+                        : response.dataElements.pager?.pageSize ?? pageSize,
+                    total,
+                } satisfies IndicatorDictionaryPager,
+                rows,
+            };
+        },
+    });
+};
+
+export const indicatorDictionaryClassificationQueryOptions = ({
+    engine,
+    groupSetId,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    groupSetId?: string;
+}) => {
+    return queryOptions({
+        queryKey: ["indicator-dictionary-classifications", groupSetId ?? ""],
+        queryFn: async () => {
+            if (!groupSetId) {
+                return [];
+            }
+            const response = (await engine.query({
+                dataElementGroupSet: {
+                    resource: `dataElementGroupSets/${groupSetId}`,
+                    params: {
+                        fields: "id,name,dataElementGroups[id,name,code]",
+                    },
+                },
+            })) as {
+                dataElementGroupSet: {
+                    dataElementGroups?: IndicatorClassificationOption[];
+                };
+            };
+            return response.dataElementGroupSet.dataElementGroups ?? [];
+        },
+    });
+};
+
+export const reportingRatesDatasetOptionsQueryOptions = (
+    ndpVersion: string,
+) => {
+    return queryOptions({
+        queryKey: ["reporting-rates-datasets", ndpVersion],
+        queryFn: async () => {
+            const dataElements = await db.dataElements
+                .where("fsIKncW1Eps")
+                .equals(ndpVersion)
+                .toArray();
+
+            const datasetMap = new Map<string, ReportingRatesDatasetOption>();
+            const datasetOrgUnits = new Map<string, Set<string>>();
+
+            uniqBy(dataElements, "id").forEach((dataElement) => {
+                const assignments = Array.isArray(dataElement.datasetAssignments)
+                    ? dataElement.datasetAssignments
+                    : [];
+                assignments.forEach((assignment) => {
+                    const dataSetId = String(assignment.dataSetId ?? "").trim();
+                    if (!dataSetId) {
+                        return;
+                    }
+                    const orgUnits = datasetOrgUnits.get(dataSetId) ?? new Set<string>();
+                    orgUnits.add(String(assignment.orgUnitId ?? ""));
+                    datasetOrgUnits.set(dataSetId, orgUnits);
+                    const existing = datasetMap.get(dataSetId);
+                    datasetMap.set(dataSetId, {
+                        value: dataSetId,
+                        label: String(
+                            assignment.dataSetName ?? existing?.label ?? dataSetId,
+                        ),
+                        periodType: String(
+                            assignment.periodType ?? existing?.periodType ?? "",
+                        ),
+                        assignedOrgUnitCount: orgUnits.size,
+                    });
+                });
+            });
+
+            return orderBy(
+                Array.from(datasetMap.values()),
+                ["label"],
+                ["asc"],
+            );
+        },
+    });
+};
+
+export const reportingRatesQueryOptions = ({
+    engine,
+    ndpVersion,
+    dataSetId,
+    orgUnitId,
+    quarter,
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    ndpVersion: string;
+    dataSetId?: string;
+    orgUnitId?: string;
+    quarter?: ReportingRatesQuarterOption;
+}) => {
+    return queryOptions({
+        queryKey: [
+            "reporting-rates",
+            ndpVersion,
+            dataSetId ?? "",
+            orgUnitId ?? "",
+            quarter?.value ?? "",
+        ],
+        queryFn: async () => {
+            if (!dataSetId || !orgUnitId || !quarter) {
+                return [];
+            }
+
+            const dataElements = await db.dataElements
+                .where("fsIKncW1Eps")
+                .equals(ndpVersion)
+                .toArray();
+            const rootResponse = (await engine.query({
+                organisationUnit: {
+                    resource: `organisationUnits/${orgUnitId}`,
+                    params: {
+                        fields: "id,name,displayName,path",
+                    },
+                },
+            })) as {
+                organisationUnit: {
+                    id: string;
+                    name: string;
+                    displayName?: string;
+                    path?: string;
+                };
+            };
+            const rootPath = rootResponse.organisationUnit.path ?? `/${orgUnitId}`;
+
+            const expectedOrgUnits = new Map<
+                string,
+                { orgUnitId: string; orgUnitName: string; path: string }
+            >();
+            let dataSetName = dataSetId;
+
+            uniqBy(dataElements, "id").forEach((dataElement) => {
+                const assignments = Array.isArray(dataElement.datasetAssignments)
+                    ? dataElement.datasetAssignments
+                    : [];
+                assignments.forEach((assignment) => {
+                    if (String(assignment.dataSetId ?? "") !== dataSetId) {
+                        return;
+                    }
+                    dataSetName = String(
+                        assignment.dataSetName ?? dataSetName ?? dataSetId,
+                    );
+                    const path = String(assignment.path ?? "");
+                    const assignmentOrgUnitId = String(assignment.orgUnitId ?? "");
+                    if (
+                        !assignmentOrgUnitId ||
+                        !path ||
+                        !path.startsWith(rootPath)
+                    ) {
+                        return;
+                    }
+                    expectedOrgUnits.set(assignmentOrgUnitId, {
+                        orgUnitId: assignmentOrgUnitId,
+                        orgUnitName: String(
+                            assignment.orgUnitName ??
+                                assignment.orgUnitCode ??
+                                assignmentOrgUnitId,
+                        ),
+                        path,
+                    });
+                });
+            });
+
+            const registrationsResponse = (await engine.query({
+                completeDataSetRegistrations: {
+                    resource: "completeDataSetRegistrations",
+                    params: {
+                        dataSet: dataSetId,
+                        period: quarter.value,
+                        orgUnit: orgUnitId,
+                        children: true,
+                        paging: false,
+                        fields: "organisationUnit[id],dataSet[id],period",
+                    },
+                },
+            })) as {
+                completeDataSetRegistrations: {
+                    completeDataSetRegistrations?: Array<{
+                        organisationUnit?:
+                            | {
+                                  id?: string;
+                              }
+                            | string;
+                    }>;
+                };
+            };
+
+            const completedCounts = new Map<string, number>();
+            (
+                registrationsResponse.completeDataSetRegistrations
+                    .completeDataSetRegistrations ?? []
+            ).forEach((registration) => {
+                const organisationUnit =
+                    typeof registration.organisationUnit === "string"
+                        ? registration.organisationUnit
+                        : registration.organisationUnit?.id;
+                const registrationOrgUnitId = String(organisationUnit ?? "");
+                if (!expectedOrgUnits.has(registrationOrgUnitId)) {
+                    return;
+                }
+                completedCounts.set(
+                    registrationOrgUnitId,
+                    (completedCounts.get(registrationOrgUnitId) ?? 0) + 1,
+                );
+            });
+
+            return orderBy(
+                Array.from(expectedOrgUnits.values()).map((orgUnit) => {
+                    const completedReports =
+                        completedCounts.get(orgUnit.orgUnitId) ?? 0;
+                    const expectedReports = 1;
+                    const missingReports = Math.max(
+                        expectedReports - completedReports,
+                        0,
+                    );
+                    const reportingRate =
+                        expectedReports === 0
+                            ? 0
+                            : (completedReports / expectedReports) * 100;
+                    return {
+                        key: `${dataSetId}-${quarter.value}-${orgUnit.orgUnitId}`,
+                        orgUnitId: orgUnit.orgUnitId,
+                        orgUnitName: orgUnit.orgUnitName,
+                        dataSetId,
+                        dataSetName,
+                        quarterLabel: quarter.label,
+                        period: quarter.value,
+                        expectedReports,
+                        completedReports,
+                        missingReports,
+                        reportingRate,
+                        reportingRateDisplay: reportingRate.toFixed(2),
+                        performanceBand:
+                            reportingRate >= 100
+                                ? "green"
+                                : reportingRate >= 75
+                                  ? "yellow"
+                                  : "red",
+                    } satisfies ReportingRatesRow;
+                }),
+                ["orgUnitName"],
+                ["asc"],
+            );
+        },
+    });
+};
+
+export const reportingRateSummariesQueryOptions = ({
+    engine,
+    ndpVersion,
+    programme,
+    programmes,
+    orgUnitId,
+    defaultOrgUnitId,
+    financialYear,
+    quarters,
+    view = "vote",
+}: {
+    engine: ReturnType<typeof useDataEngine>;
+    ndpVersion: string;
+    programme?: string;
+    programmes: Array<{ code: string; name: string }>;
+    orgUnitId?: string;
+    defaultOrgUnitId?: string;
+    financialYear?: string;
+    quarters: Array<"Q1" | "Q2" | "Q3" | "Q4">;
+    view?: "vote" | "programme";
+}) => {
+    return queryOptions({
+        queryKey: [
+            "reporting-rate-summaries-v2",
+            ndpVersion,
+            programme ?? "",
+            view,
+            programmes.map((programme) => programme.code).join(","),
+            orgUnitId ?? "",
+            defaultOrgUnitId ?? "",
+            financialYear ?? "",
+            quarters.join(","),
+        ],
+        enabled: Boolean(ndpVersion && financialYear && quarters.length > 0),
+        queryFn: async (): Promise<ReportingRateSummaryRow[]> => {
+            if (!financialYear || quarters.length === 0) {
+                return [];
+            }
+
+            const dataElements = uniqBy(
+                await db.dataElements
+                    .where("fsIKncW1Eps")
+                    .equals(ndpVersion)
+                    .toArray(),
+                "id",
+            );
+
+            const eligibleDataElements = dataElements.filter((de) => {
+                const indicatorGroupType =
+                    normalizeReportingRateIndicatorGroupType(de);
+                if (!indicatorGroupType) {
+                    return false;
+                }
+                if (programme) {
+                    return getReportingRateProgrammeCode(de) === programme;
+                }
+                return true;
+            });
+
+            const scopeRootOrgUnitId =
+                orgUnitId ||
+                defaultOrgUnitId ||
+                getScopeRootOrgUnitIdFromDataElements(eligibleDataElements);
+
+            if (!scopeRootOrgUnitId) {
+                return [];
+            }
+
+            const datasetMetadataLookup = buildReportingRateDatasetMetadataLookup(
+                eligibleDataElements,
+                scopeRootOrgUnitId,
+                ndpVersion,
+            );
+            const assignmentRecords = buildReportingRateAssignmentRecords(
+                datasetMetadataLookup,
+            );
+
+            const quarterlyAssignmentRecords = assignmentRecords.filter((record) =>
+                record.periodType.trim().toLowerCase().includes("quarter"),
+            );
+
+            if (quarterlyAssignmentRecords.length === 0) {
+                return [];
+            }
+
+            const quarterPeriods = buildReportingRateQuarterPeriods(
+                financialYear,
+                quarters,
+            );
+
+            const requestDefinitions = quarterPeriods.flatMap((period) =>
+                Array.from(
+                    new Set(
+                        quarterlyAssignmentRecords.map((record) => record.dataSetId),
+                    ),
+                ).map((dataSetId) => ({
+                    dataSetId,
+                    periodKey: period.key,
+                    period: period.period,
+                })),
+            );
+            const assignmentDataSetIdsByOrgUnit = new Map<string, Set<string>>();
+            quarterlyAssignmentRecords.forEach((record) => {
+                const scopedDataSetIds =
+                    assignmentDataSetIdsByOrgUnit.get(record.orgUnitId) ??
+                    new Set<string>();
+                scopedDataSetIds.add(record.dataSetId);
+                assignmentDataSetIdsByOrgUnit.set(record.orgUnitId, scopedDataSetIds);
+            });
+
+            const settledResponses = await Promise.allSettled(
+                requestDefinitions.map((request) =>
+                    engine.query({
+                        completeDataSetRegistrations: {
+                            resource: "completeDataSetRegistrations",
+                            params: {
+                                dataSet: request.dataSetId,
+                                period: request.period,
+                                orgUnit: scopeRootOrgUnitId,
+                                children: true,
+                                paging: false,
+                                fields: "organisationUnit[id],dataSet[id],period",
+                            },
+                        },
+                    }),
+                ),
+            );
+
+            const completedByOrgUnit = new Map<
+                string,
+                Record<"Q1" | "Q2" | "Q3" | "Q4", Set<string>>
+            >();
+
+            settledResponses.forEach((result, index) => {
+                if (result.status !== "fulfilled") {
+                    return;
+                }
+
+                const request = requestDefinitions[index];
+                const response = result.value as {
+                    completeDataSetRegistrations: {
+                        completeDataSetRegistrations?: Array<{
+                            organisationUnit?: { id?: string } | string;
+                        }>;
+                    };
+                };
+
+                (
+                    response.completeDataSetRegistrations
+                        .completeDataSetRegistrations ?? []
+                ).forEach((registration) => {
+                    const organisationUnit =
+                        typeof registration.organisationUnit === "string"
+                            ? registration.organisationUnit
+                            : registration.organisationUnit?.id;
+                    const registrationOrgUnitId = String(organisationUnit ?? "");
+                    const scopedDataSetIds = assignmentDataSetIdsByOrgUnit.get(
+                        registrationOrgUnitId,
+                    );
+                    if (!scopedDataSetIds?.has(request.dataSetId)) {
+                        return;
+                    }
+
+                    const periods =
+                        completedByOrgUnit.get(registrationOrgUnitId) ??
+                        createReportingRateQuarterAssignmentMap();
+                    periods[request.periodKey].add(request.dataSetId);
+                    completedByOrgUnit.set(registrationOrgUnitId, periods);
+                });
+            });
+
+            if (view === "programme") {
+                return buildProgrammeReportingRateRows({
+                    assignmentRecords: quarterlyAssignmentRecords,
+                    completedByOrgUnit,
+                    programmes,
+                    quarters,
+                });
+            }
+
+            return buildVoteReportingRateRows({
+                assignmentRecords: quarterlyAssignmentRecords,
+                completedByOrgUnit,
+                quarters,
+            });
+        },
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
 };
 
@@ -1102,6 +3063,541 @@ export const voteProgramOutcomesQueryOptions = ({
         enabled: ou !== undefined && ou !== "" && pe !== undefined && pe !== "",
     });
 };
+
+function buildReportingRateQuarterPeriods(
+    financialYear: string,
+    quarters: Array<"Q1" | "Q2" | "Q3" | "Q4">,
+) {
+    const startYear = Number(financialYear.slice(0, 4));
+    const quarterPeriods = {
+        Q1: `${startYear}Q3`,
+        Q2: `${startYear}Q4`,
+        Q3: `${startYear + 1}Q1`,
+        Q4: `${startYear + 1}Q2`,
+    } as const;
+
+    return orderReportingRateQuarterKeys(quarters).map((quarter) => ({
+        key: quarter,
+        period: quarterPeriods[quarter],
+    }));
+}
+
+function createReportingRateQuarterAssignmentMap() {
+    return {
+        Q1: new Set<string>(),
+        Q2: new Set<string>(),
+        Q3: new Set<string>(),
+        Q4: new Set<string>(),
+    };
+}
+
+function createReportingRatePeriodSummary(
+    numerator: number,
+    denominator: number,
+): ReportingRateSummaryPeriodSummary {
+    const rate = denominator === 0 ? 0 : (numerator / denominator) * 100;
+    const roundedRate = Math.round(rate);
+
+    return {
+        numerator,
+        denominator,
+        rate,
+        display:
+            denominator === 0
+                ? "-"
+                : `${roundedRate}% (${numerator}/${denominator})`,
+        performanceBand:
+            rate >= 100 ? "green" : rate >= 75 ? "yellow" : "red",
+    };
+}
+
+function createReportingRateFinancialYearSummary(
+    quarterSummaries: ReportingRateSummaryPeriodSummary[],
+): ReportingRateSummaryPeriodSummary {
+    if (quarterSummaries.length === 0) {
+        return createReportingRatePeriodSummary(0, 0);
+    }
+
+    const averageRate =
+        quarterSummaries.reduce((sum, summary) => sum + summary.rate, 0) /
+        quarterSummaries.length;
+    const roundedAverageRate = Math.round(averageRate);
+
+    return {
+        numerator: 0,
+        denominator: quarterSummaries.length,
+        rate: averageRate,
+        display: `${roundedAverageRate}%`,
+        performanceBand:
+            averageRate >= 100 ? "green" : averageRate >= 75 ? "yellow" : "red",
+    };
+}
+
+function orderReportingRateQuarterKeys(
+    quarters: Array<"Q1" | "Q2" | "Q3" | "Q4">,
+) {
+    const ordered = ["Q1", "Q2", "Q3", "Q4"] as const;
+    return ordered.filter((quarter) => quarters.includes(quarter));
+}
+
+function getAllReportingRateQuarterSummaries(
+    quarterSummaries: Record<
+        "Q1" | "Q2" | "Q3" | "Q4",
+        ReportingRateSummaryPeriodSummary
+    >,
+) {
+    return (["Q1", "Q2", "Q3", "Q4"] as const).map(
+        (quarter) => quarterSummaries[quarter],
+    );
+}
+
+function normalizeReportingRateIndicatorGroupType(
+    indicator: Record<string, unknown>,
+) {
+    const candidate = String(
+        indicator.BmUMiIbD5XY ??
+            indicator.indicatorGroupType ??
+            indicator["Indicator Group Type"] ??
+            "",
+    ).trim();
+    if (!candidate) {
+        return undefined;
+    }
+    return candidate.toLowerCase() === "action" ? undefined : candidate;
+}
+
+function getReportingRateProgrammeCode(dataElement: Record<string, unknown>) {
+    return String(
+        dataElement.ndpProgramme ??
+            dataElement["NDP Programme List"] ??
+            dataElement["UBWSASWdyfi"] ??
+            dataElement["Programme"] ??
+            "",
+    ).trim();
+}
+
+function formatReportingRateIndicatorGroupType(value: string) {
+    if (value === "ndpGoal") {
+        return "Goal";
+    }
+
+    return value
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/[_-]+/g, " ")
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+type ReportingRateAssignmentRecord = {
+    assignmentKey: string;
+    orgUnitId: string;
+    orgUnitName: string;
+    dataSetId: string;
+    dataSetName: string;
+    periodType: string;
+    indicatorGroupType: string;
+    programmeCode: string;
+};
+
+function matchesReportingRateAssignmentNdpVersion(
+    assignment: Record<string, unknown>,
+    ndpVersion: string | undefined,
+) {
+    if (!ndpVersion) {
+        return true;
+    }
+
+    const dataSetName = String(assignment.dataSetName ?? "").trim().toUpperCase();
+    if (!dataSetName) {
+        return true;
+    }
+
+    const matchedVersion =
+        dataSetName.match(/\bNDP(?:I|II|III|IV|V|VI|VII|VIII|IX|X)\b/i)?.[0];
+    if (!matchedVersion) {
+        return true;
+    }
+
+    return matchedVersion.toUpperCase() === ndpVersion.toUpperCase();
+}
+
+function getScopeRootOrgUnitIdFromDataElements(
+    dataElements: Array<Record<string, unknown>>,
+) {
+    for (const dataElement of dataElements) {
+        const assignments = Array.isArray(dataElement.datasetAssignments)
+            ? dataElement.datasetAssignments
+            : [];
+        for (const assignment of assignments) {
+            const path = String(assignment.path ?? "");
+            const pathParts = path.split("/").filter(Boolean);
+            if (pathParts.length > 0) {
+                return pathParts[0];
+            }
+        }
+    }
+    return undefined;
+}
+
+function buildReportingRateDatasetMetadataLookup(
+    dataElements: Array<Record<string, unknown>>,
+    scopeRootOrgUnitId: string | undefined,
+    ndpVersion: string,
+) {
+    const metadataByAssignment = new Map<
+        string,
+        {
+            indicatorTypeCounts: Map<string, number>;
+            programmeCodeCounts: Map<string, number>;
+            dataSetName: string;
+            periodType: string;
+            orgUnitId: string;
+            orgUnitName: string;
+            dataSetId: string;
+        }
+    >();
+
+    dataElements.forEach((dataElement) => {
+        const indicatorGroupType =
+            normalizeReportingRateIndicatorGroupType(dataElement);
+        if (!indicatorGroupType) {
+            return;
+        }
+
+        const assignments = Array.isArray(dataElement.datasetAssignments)
+            ? dataElement.datasetAssignments
+            : [];
+
+        assignments.forEach((assignment) => {
+            const path = String(assignment.path ?? "");
+            const orgUnitId = String(assignment.orgUnitId ?? "");
+            const dataSetId = String(assignment.dataSetId ?? "");
+
+            if (!orgUnitId || !dataSetId) {
+                return;
+            }
+            if (
+                scopeRootOrgUnitId &&
+                !path.split("/").filter(Boolean).includes(scopeRootOrgUnitId)
+            ) {
+                return;
+            }
+            if (!matchesReportingRateAssignmentNdpVersion(assignment, ndpVersion)) {
+                return;
+            }
+
+            const key = `${orgUnitId}:${dataSetId}`;
+            const current = metadataByAssignment.get(key) ?? {
+                indicatorTypeCounts: new Map<string, number>(),
+                programmeCodeCounts: new Map<string, number>(),
+                dataSetName: String(assignment.dataSetName ?? dataSetId),
+                periodType: String(assignment.periodType ?? ""),
+                orgUnitId,
+                orgUnitName: String(
+                    assignment.orgUnitName ?? assignment.orgUnitCode ?? orgUnitId,
+                ),
+                dataSetId,
+            };
+            current.indicatorTypeCounts.set(
+                indicatorGroupType,
+                (current.indicatorTypeCounts.get(indicatorGroupType) ?? 0) + 1,
+            );
+            const programmeCode = getReportingRateProgrammeCode(dataElement);
+            if (programmeCode) {
+                current.programmeCodeCounts.set(
+                    programmeCode,
+                    (current.programmeCodeCounts.get(programmeCode) ?? 0) + 1,
+                );
+            }
+            metadataByAssignment.set(key, current);
+        });
+    });
+
+    const canonicalMetadata = new Map<
+        string,
+        Omit<ReportingRateAssignmentRecord, "assignmentKey">
+    >();
+
+    metadataByAssignment.forEach((metadata, key) => {
+        const indicatorGroupType = Array.from(
+            metadata.indicatorTypeCounts.entries(),
+        ).sort((a, b) => {
+            if (b[1] !== a[1]) {
+                return b[1] - a[1];
+            }
+            return a[0].localeCompare(b[0]);
+        })[0]?.[0];
+        const programmeCode = Array.from(
+            metadata.programmeCodeCounts.entries(),
+        ).sort((a, b) => {
+            if (b[1] !== a[1]) {
+                return b[1] - a[1];
+            }
+            return a[0].localeCompare(b[0]);
+        })[0]?.[0];
+        if (!indicatorGroupType || !programmeCode) {
+            return;
+        }
+        canonicalMetadata.set(key, {
+            orgUnitId: metadata.orgUnitId,
+            orgUnitName: metadata.orgUnitName,
+            dataSetId: metadata.dataSetId,
+            dataSetName: metadata.dataSetName,
+            periodType: metadata.periodType,
+            indicatorGroupType,
+            programmeCode,
+        });
+    });
+
+    return canonicalMetadata;
+}
+
+function buildReportingRateAssignmentRecords(
+    datasetMetadataLookup: Map<
+        string,
+        Omit<ReportingRateAssignmentRecord, "assignmentKey">
+    >,
+) {
+    return Array.from(datasetMetadataLookup.entries()).map(([assignmentKey, metadata]) => ({
+        assignmentKey,
+        ...metadata,
+    }));
+}
+
+function buildVoteReportingRateRows({
+    assignmentRecords,
+    completedByOrgUnit,
+    quarters,
+}: {
+    assignmentRecords: ReportingRateAssignmentRecord[];
+    completedByOrgUnit: Map<string, Record<"Q1" | "Q2" | "Q3" | "Q4", Set<string>>>;
+    quarters: Array<"Q1" | "Q2" | "Q3" | "Q4">;
+}) {
+    return orderBy(
+        Object.entries(groupBy(assignmentRecords, "orgUnitId"))
+            .map(([orgUnitId, records]) => {
+                const completedPeriods =
+                    completedByOrgUnit.get(orgUnitId) ??
+                    createReportingRateQuarterAssignmentMap();
+                const quarterSummaries = buildReportingRateQuarterSummaries(
+                    records,
+                    completedPeriods,
+                );
+
+                return {
+                    key: orgUnitId,
+                    entityId: orgUnitId,
+                    entityName: records[0]?.orgUnitName ?? orgUnitId,
+                    assignedDataSetCount: getUniqueAssignmentDataSetCount(records),
+                    assignedDataSets: orderBy(
+                        records.map((record) => ({
+                            reportedByPeriod: {
+                                Q1: completedPeriods.Q1.has(record.dataSetId),
+                                Q2: completedPeriods.Q2.has(record.dataSetId),
+                                Q3: completedPeriods.Q3.has(record.dataSetId),
+                                Q4: completedPeriods.Q4.has(record.dataSetId),
+                                financialYear: quarters.some((quarter) =>
+                                    completedPeriods[quarter].has(record.dataSetId),
+                                ),
+                            },
+                            key: record.assignmentKey,
+                            dataSetId: record.dataSetId,
+                            dataSetName: record.dataSetName,
+                            periodType: record.periodType,
+                            indicatorGroupType: record.indicatorGroupType,
+                            indicatorGroupTypeLabel:
+                                formatReportingRateIndicatorGroupType(
+                                    record.indicatorGroupType,
+                                ),
+                            reported: quarters.some((quarter) =>
+                                completedPeriods[quarter].has(record.dataSetId),
+                            ),
+                        })),
+                        ["dataSetName"],
+                        ["asc"],
+                    ),
+                    programmeExpandedRows: [],
+                    periodSummaries: {
+                        ...quarterSummaries,
+                        financialYear: createReportingRateFinancialYearSummary(
+                            getAllReportingRateQuarterSummaries(quarterSummaries),
+                        ),
+                    },
+                } satisfies ReportingRateSummaryRow;
+            })
+            .filter(
+                (row) =>
+                    quarters.some(
+                        (quarter) => row.periodSummaries[quarter].denominator > 0,
+                    ) && row.assignedDataSetCount > 0,
+            ),
+        ["entityName"],
+        ["asc"],
+    );
+}
+
+function buildProgrammeReportingRateRows({
+    assignmentRecords,
+    completedByOrgUnit,
+    programmes,
+    quarters,
+}: {
+    assignmentRecords: ReportingRateAssignmentRecord[];
+    completedByOrgUnit: Map<string, Record<"Q1" | "Q2" | "Q3" | "Q4", Set<string>>>;
+    programmes: Array<{ code: string; name: string }>;
+    quarters: Array<"Q1" | "Q2" | "Q3" | "Q4">;
+}) {
+    const programmeNames = new Map(
+        programmes.map((programme) => [programme.code, programme.name]),
+    );
+
+    return orderBy(
+        Object.entries(groupBy(assignmentRecords, "programmeCode"))
+            .map(([programmeCode, records]) => {
+                const quarterSummaries = buildAggregatedReportingRateQuarterSummaries(
+                    records,
+                    completedByOrgUnit,
+                );
+
+                const programmeExpandedRows = orderBy(
+                    Object.entries(groupBy(records, "orgUnitId"))
+                        .map(([orgUnitId, orgUnitRecords]) => {
+                            const indicatorGroupTypeSummariesByPeriod = {
+                                Q1: {},
+                                Q2: {},
+                                Q3: {},
+                                Q4: {},
+                                financialYear: {},
+                            } as Record<
+                                "Q1" | "Q2" | "Q3" | "Q4" | "financialYear",
+                                Record<string, ReportingRateSummaryPeriodSummary>
+                            >;
+
+                            Object.entries(
+                                groupBy(orgUnitRecords, "indicatorGroupType"),
+                            ).forEach(([indicatorGroupType, typeRecords]) => {
+                                const quarterSummariesByType =
+                                    buildAggregatedReportingRateQuarterSummaries(
+                                        typeRecords,
+                                        completedByOrgUnit,
+                                    );
+
+                                indicatorGroupTypeSummariesByPeriod.Q1[
+                                    indicatorGroupType
+                                ] = quarterSummariesByType.Q1;
+                                indicatorGroupTypeSummariesByPeriod.Q2[
+                                    indicatorGroupType
+                                ] = quarterSummariesByType.Q2;
+                                indicatorGroupTypeSummariesByPeriod.Q3[
+                                    indicatorGroupType
+                                ] = quarterSummariesByType.Q3;
+                                indicatorGroupTypeSummariesByPeriod.Q4[
+                                    indicatorGroupType
+                                ] = quarterSummariesByType.Q4;
+                                indicatorGroupTypeSummariesByPeriod.financialYear[
+                                    indicatorGroupType
+                                ] = createReportingRateFinancialYearSummary(
+                                    getAllReportingRateQuarterSummaries(
+                                        quarterSummariesByType,
+                                    ),
+                                );
+                            });
+
+                            return {
+                                key: `${programmeCode}-${orgUnitId}`,
+                                orgUnitId,
+                                orgUnitName:
+                                    orgUnitRecords[0]?.orgUnitName ?? orgUnitId,
+                                assignedDataSetCount:
+                                    getUniqueAssignmentDataSetCount(orgUnitRecords),
+                                indicatorGroupTypeSummariesByPeriod,
+                                indicatorGroupTypeSummaries:
+                                    indicatorGroupTypeSummariesByPeriod.financialYear,
+                            } satisfies ReportingRateProgrammeExpandedRow;
+                        })
+                        .filter((row) => row.assignedDataSetCount > 0),
+                    ["orgUnitName"],
+                    ["asc"],
+                );
+
+                return {
+                    key: programmeCode,
+                    entityId: programmeCode,
+                    entityName:
+                        programmeNames.get(programmeCode) || programmeCode,
+                    assignedDataSetCount: getUniqueAssignmentDataSetCount(records),
+                    assignedDataSets: [],
+                    programmeExpandedRows,
+                    periodSummaries: {
+                        ...quarterSummaries,
+                        financialYear: createReportingRateFinancialYearSummary(
+                            getAllReportingRateQuarterSummaries(quarterSummaries),
+                        ),
+                    },
+                } satisfies ReportingRateSummaryRow;
+            })
+            .filter(
+                (row) =>
+                    quarters.some(
+                        (quarter) => row.periodSummaries[quarter].denominator > 0,
+                    ) && row.assignedDataSetCount > 0,
+            ),
+        ["entityName"],
+        ["asc"],
+    );
+}
+
+function buildReportingRateQuarterSummaries(
+    records: ReportingRateAssignmentRecord[],
+    completedPeriods: Record<"Q1" | "Q2" | "Q3" | "Q4", Set<string>>,
+) {
+    const quarterKeys = ["Q1", "Q2", "Q3", "Q4"] as const;
+
+    return Object.fromEntries(
+        quarterKeys.map((quarter) => {
+            const denominator = new Set(records.map((record) => record.dataSetId)).size;
+            const numerator = records.reduce((count, record) => {
+                return count + (completedPeriods[quarter].has(record.dataSetId) ? 1 : 0);
+            }, 0);
+            return [
+                quarter,
+                createReportingRatePeriodSummary(numerator, denominator),
+            ];
+        }),
+    ) as Record<
+        (typeof quarterKeys)[number],
+        ReportingRateSummaryPeriodSummary
+    >;
+}
+
+function buildAggregatedReportingRateQuarterSummaries(
+    records: ReportingRateAssignmentRecord[],
+    completedByOrgUnit: Map<string, Record<"Q1" | "Q2" | "Q3" | "Q4", Set<string>>>,
+) {
+    const quarterKeys = ["Q1", "Q2", "Q3", "Q4"] as const;
+
+    return Object.fromEntries(
+        quarterKeys.map((quarter) => {
+            const denominator = records.length;
+            const numerator = records.reduce((count, record) => {
+                const completedPeriods =
+                    completedByOrgUnit.get(record.orgUnitId) ??
+                    createReportingRateQuarterAssignmentMap();
+                return count + (completedPeriods[quarter].has(record.dataSetId) ? 1 : 0);
+            }, 0);
+            return [
+                quarter,
+                createReportingRatePeriodSummary(numerator, denominator),
+            ];
+        }),
+    ) as Record<
+        (typeof quarterKeys)[number],
+        ReportingRateSummaryPeriodSummary
+    >;
+}
+
+function getUniqueAssignmentDataSetCount(records: ReportingRateAssignmentRecord[]) {
+    return new Set(records.map((record) => record.assignmentKey)).size;
+}
 
 export const voteFlashQueryOptions = ({
     engine,

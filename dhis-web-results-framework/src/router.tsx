@@ -31,6 +31,8 @@ import { PolicyActionIndexRoute } from "./routes/layout/ndp/policy-actions";
 import { PolicyActionRoute } from "./routes/layout/ndp/policy-actions/route";
 import { ProjectPerformanceIndexRoute } from "./routes/layout/ndp/project-performances";
 import { ProjectPerformanceRoute } from "./routes/layout/ndp/project-performances/route";
+import { ReportingRatesIndexRoute } from "./routes/layout/ndp/reporting-rates";
+import { ReportingRatesRoute } from "./routes/layout/ndp/reporting-rates/route";
 import { NDPRoute } from "./routes/layout/ndp/route";
 import { SubProgramActionIndexRoute } from "./routes/layout/ndp/sub-program-actions";
 import { SubProgramActionRoute } from "./routes/layout/ndp/sub-program-actions/route";
@@ -57,6 +59,8 @@ import { VoteFlashReportRoute } from "./routes/layout/ndp/vote-flash-report/rout
 import { VoteFlashReportIndexRoute } from "./routes/layout/ndp/vote-flash-report";
 import { ProgramFlashReportRoute } from "./routes/layout/ndp/program-flash-report/route";
 import { ProgramFlashReportIndexRoute } from "./routes/layout/ndp/program-flash-report";
+import { ProgrammeReportingRateCompletenessRoute } from "./routes/layout/ndp/programme-reporting-rate-completeness/route";
+import { ProgrammeReportingRateCompletenessIndexRoute } from "./routes/layout/ndp/programme-reporting-rate-completeness";
 
 const routeTree = RootRoute.addChildren([
     IndexRoute,
@@ -78,6 +82,10 @@ const routeTree = RootRoute.addChildren([
             VisionRoute.addChildren([VisionIndexRoute]),
             WorkflowRoute.addChildren([WorkFlowIndexRoute]),
             ProjectPerformanceRoute.addChildren([ProjectPerformanceIndexRoute]),
+            ReportingRatesRoute.addChildren([ReportingRatesIndexRoute]),
+            ProgrammeReportingRateCompletenessRoute.addChildren([
+                ProgrammeReportingRateCompletenessIndexRoute,
+            ]),
             OverallPerformanceRoute.addChildren([OverallPerformanceIndexRoute]),
             OutcomePerformanceRoute.addChildren([OutcomePerformanceIndexRoute]),
             OutputPerformanceRoute.addChildren([OutputPerformanceIndexRoute]),

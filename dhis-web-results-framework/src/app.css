@@ -3,6 +3,635 @@
 	font-size: 16px !important;
 }
 
+.policy-actions-page {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: calc(100vh - 148px);
+	width: 100%;
+}
+
+.project-performance-page {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: calc(100vh - 148px);
+	width: 100%;
+}
+
+.indicator-dictionary-page {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: calc(100vh - 148px);
+	width: 100%;
+}
+
+.reporting-rates-page {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: calc(100vh - 148px);
+	width: 100%;
+}
+
+.policy-actions-controls-row {
+	flex: 0 0 auto;
+}
+
+.project-performance-controls-row {
+	flex: 0 0 auto;
+}
+
+.indicator-dictionary-controls-row {
+	flex: 0 0 auto;
+	align-items: stretch;
+}
+
+.policy-actions-control-col {
+	display: flex;
+}
+
+.project-performance-control-col {
+	display: flex;
+}
+
+.indicator-dictionary-control-col {
+	display: flex;
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.policy-actions-control-card {
+	width: 100%;
+}
+
+.project-performance-control-card {
+	width: 100%;
+}
+
+.indicator-dictionary-control-card {
+	width: 100%;
+}
+
+.policy-actions-control-card .ant-collapse-content-box {
+	padding-top: 8px !important;
+}
+
+.policy-actions-filter-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+}
+
+.policy-actions-filter-label {
+	flex: 0 0 140px;
+	margin: 0;
+	white-space: nowrap;
+}
+
+.policy-actions-filter-field {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.policy-actions-period-field {
+	max-width: 320px;
+}
+
+.policy-actions-report-panel {
+	flex: 1 1 auto;
+}
+
+.project-performance-report-panel {
+	flex: 1 1 auto;
+}
+
+.indicator-dictionary-report-panel {
+	flex: 1 1 auto;
+}
+
+.reporting-rates-report-panel {
+	flex: 1 1 auto;
+}
+
+.policy-actions-report-header {
+	flex: 0 0 auto;
+}
+
+.project-performance-report-header {
+	flex: 0 0 auto;
+}
+
+.policy-actions-summary-card .ant-card-body {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+}
+
+.policy-actions-download-button {
+	min-width: 132px;
+	font-weight: 600;
+}
+
+.policy-actions-empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1 1 auto;
+	min-height: calc(100vh - 260px);
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.project-performance-empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1 1 auto;
+	min-height: calc(100vh - 260px);
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.policy-actions-table-region .ant-table-wrapper,
+.policy-actions-table-region .ant-spin-nested-loading,
+.policy-actions-table-region .ant-spin-container {
+	height: 100%;
+}
+
+.project-performance-table-region .ant-table-wrapper,
+.project-performance-table-region .ant-spin-nested-loading,
+.project-performance-table-region .ant-spin-container {
+	height: 100%;
+}
+
+.reporting-rates-table-region .ant-table-wrapper,
+.reporting-rates-table-region .ant-spin-nested-loading,
+.reporting-rates-table-region .ant-spin-container {
+	height: 100%;
+	min-width: 0;
+}
+
+.reporting-rates-summary-card .ant-card-body {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 0;
+	min-height: 44px;
+	padding: 10px 12px !important;
+}
+
+.reporting-rates-summary-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.reporting-rates-summary-cards {
+	display: flex;
+	align-items: stretch;
+	gap: 8px;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	max-width: 100%;
+}
+
+.reporting-rates-summary-cards .ant-card {
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
+.reporting-rates-download-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	margin-left: auto;
+}
+
+.indicator-dictionary-header-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 12px;
+}
+
+.indicator-dictionary-search-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1 1 360px;
+	min-width: 0;
+}
+
+.indicator-dictionary-search-label {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
+.indicator-dictionary-search-input {
+	flex: 1 1 auto;
+	min-width: 180px;
+}
+
+.indicator-dictionary-action-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
+	margin-left: auto;
+}
+
+.policy-actions-footer {
+	flex: 0 0 auto;
+}
+
+.project-performance-footer {
+	flex: 0 0 auto;
+}
+
+.indicator-dictionary-footer {
+	flex: 0 0 auto;
+	margin-top: auto;
+}
+
+.reporting-rates-footer {
+	flex: 0 0 auto;
+	margin-top: auto;
+}
+
+.policy-actions-table .ant-table {
+	border-radius: 0;
+	width: 100%;
+}
+
+.project-performance-table .ant-table {
+	border-radius: 0;
+	width: 100%;
+}
+
+.indicator-dictionary-table .ant-table {
+	border-radius: 0;
+	width: 100%;
+}
+
+.reporting-rates-table .ant-table {
+	border-radius: 0;
+	width: 100%;
+	--ant-table-row-hover-bg: transparent;
+	--ant-table-row-selected-bg: transparent;
+	--ant-table-row-selected-hover-bg: transparent;
+}
+
+.reporting-rates-expanded-table .ant-table {
+	--ant-table-row-hover-bg: transparent;
+	--ant-table-row-selected-bg: transparent;
+	--ant-table-row-selected-hover-bg: transparent;
+}
+
+.policy-actions-table .ant-table-container,
+.policy-actions-table .ant-table-content,
+.policy-actions-table table {
+	border-radius: 0 !important;
+}
+
+.project-performance-table .ant-table-container,
+.project-performance-table .ant-table-content,
+.project-performance-table table {
+	border-radius: 0 !important;
+}
+
+.indicator-dictionary-table .ant-table-container,
+.indicator-dictionary-table .ant-table-content,
+.indicator-dictionary-table table {
+	border-radius: 0 !important;
+}
+
+.reporting-rates-table .ant-table-container,
+.reporting-rates-table .ant-table-content,
+.reporting-rates-table table {
+	border-radius: 0 !important;
+}
+
+.reporting-rates-table-region {
+	min-width: 0;
+	overflow: auto;
+}
+
+.reporting-rates-table .ant-table-content,
+.reporting-rates-expanded-table .ant-table-content {
+	overflow-x: auto !important;
+}
+
+.reporting-rates-expanded-table {
+	min-width: 760px;
+}
+
+.reporting-rates-expanded-table .ant-table {
+	width: max-content;
+	min-width: 100%;
+}
+
+.indicator-dictionary-table .ant-table-thead > tr > th {
+	background: #bbd1ee !important;
+	color: #25364a;
+	font-size: 15px !important;
+	font-weight: 700;
+	line-height: 1.25;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: middle;
+}
+
+.policy-actions-table .ant-table-thead > tr > th {
+	background: #bbd1ee !important;
+	color: #25364a;
+	font-size: 15px !important;
+	font-weight: 700;
+	line-height: 1.25;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: middle;
+}
+
+.project-performance-table .ant-table-thead > tr > th {
+	background: #bbd1ee !important;
+	color: #25364a;
+	font-size: 15px !important;
+	font-weight: 700;
+	line-height: 1.25;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: middle;
+}
+
+.reporting-rates-table .ant-table-thead > tr > th {
+	background: #bbd1ee !important;
+	color: #25364a;
+	font-size: 15px !important;
+	font-weight: 700;
+	line-height: 1.25;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: middle;
+}
+
+.policy-actions-table .ant-table-tbody > tr > td {
+	color: #333333;
+	font-size: 13px !important;
+	font-weight: 400;
+	line-height: 1.4;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: top;
+}
+
+.project-performance-table .ant-table-tbody > tr > td {
+	color: #333333;
+	font-size: 13px !important;
+	font-weight: 400;
+	line-height: 1.4;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: top;
+}
+
+.indicator-dictionary-table .ant-table-tbody > tr > td {
+	color: #333333;
+	font-size: 15px !important;
+	font-weight: 400;
+	line-height: 1.4;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: top;
+}
+
+.reporting-rates-table .ant-table-tbody > tr > td {
+	color: #333333;
+	font-size: 15px !important;
+	font-weight: 400;
+	line-height: 1.4;
+	padding: 6px 8px !important;
+	white-space: normal !important;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	vertical-align: top;
+}
+
+.policy-actions-table .ant-table-tbody > tr > td > div {
+	margin: -6px -8px;
+	padding: 6px 8px;
+}
+
+.project-performance-table .ant-table-tbody > tr > td > div {
+	margin: -6px -8px;
+	padding: 6px 8px;
+}
+
+.indicator-dictionary-table .ant-table-tbody > tr > td > div {
+	margin: -6px -8px;
+	padding: 6px 8px;
+}
+
+.reporting-rates-table .ant-table-tbody > tr > td > div {
+	margin: -6px -8px;
+	padding: 6px 8px;
+}
+
+.policy-actions-table .ant-table-tbody > tr > td > div:not([style*="background-color"]) {
+	font-weight: 400;
+}
+
+.project-performance-table .ant-table-tbody > tr > td > div:not([style*="background-color"]) {
+	font-weight: 400;
+}
+
+.indicator-dictionary-table .ant-table-tbody > tr > td > div:not([style*="background-color"]) {
+	font-weight: 400;
+}
+
+.reporting-rates-table .ant-table-tbody > tr > td > div:not([style*="background-color"]) {
+	font-weight: 400;
+}
+
+.policy-actions-table .ant-table-tbody > tr > td:empty::after {
+	content: "";
+	display: block;
+	min-height: 24px;
+}
+
+.project-performance-table .ant-table-tbody > tr > td:empty::after {
+	content: "";
+	display: block;
+	min-height: 24px;
+}
+
+.indicator-dictionary-table .ant-table-tbody > tr > td:empty::after {
+	content: "";
+	display: block;
+	min-height: 24px;
+}
+
+.reporting-rates-table .ant-table-tbody > tr > td:empty::after {
+	content: "";
+	display: block;
+	min-height: 24px;
+}
+
+.policy-actions-table .ant-table-cell {
+	border-color: #cad5e5 !important;
+}
+
+.project-performance-table .ant-table-cell {
+	border-color: #cad5e5 !important;
+}
+
+.indicator-dictionary-table .ant-table-cell {
+	border-color: #cad5e5 !important;
+}
+
+.reporting-rates-table .ant-table-cell {
+	border-color: #cad5e5 !important;
+}
+
+.policy-actions-table .ant-table-tbody > tr:hover > td {
+	background: #f7fbff !important;
+}
+
+.indicator-dictionary-table .ant-table-tbody > tr:hover > td {
+	background: inherit !important;
+}
+
+.project-performance-table .ant-table-tbody > tr:hover > td {
+	background: #f7fbff !important;
+}
+
+.reporting-rates-table .ant-table-tbody > tr:hover > td:not([style*="background-color"]),
+.reporting-rates-table .ant-table-tbody > tr.ant-table-row:hover > td:not([style*="background-color"]),
+.reporting-rates-table .ant-table-tbody > tr.ant-table-row-selected > td:not([style*="background-color"]),
+.reporting-rates-table .ant-table-tbody > tr.ant-table-row-selected:hover > td:not([style*="background-color"]),
+.reporting-rates-table .ant-table-tbody > tr > td.ant-table-cell-row-hover:not([style*="background-color"]),
+.reporting-rates-table .ant-table-expanded-row:hover > td:not([style*="background-color"]),
+.reporting-rates-expanded-table .ant-table-tbody > tr:hover > td:not([style*="background-color"]),
+.reporting-rates-expanded-table .ant-table-tbody > tr.ant-table-row:hover > td:not([style*="background-color"]),
+.reporting-rates-expanded-table .ant-table-tbody > tr.ant-table-row-selected > td:not([style*="background-color"]),
+.reporting-rates-expanded-table .ant-table-tbody > tr.ant-table-row-selected:hover > td:not([style*="background-color"]),
+.reporting-rates-expanded-table .ant-table-tbody > tr > td.ant-table-cell-row-hover:not([style*="background-color"]),
+.reporting-rates-expanded-table .ant-table-expanded-row:hover > td:not([style*="background-color"]) {
+	background: #ffffff !important;
+}
+
+.policy-actions-table .ant-table-cell-fix-left {
+	z-index: 2;
+}
+
+.policy-actions-table .ant-table-cell-ellipsis {
+	white-space: nowrap !important;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.project-performance-table .ant-table-cell-ellipsis {
+	white-space: nowrap !important;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+	.policy-actions-page {
+		min-height: auto;
+	}
+
+	.project-performance-page {
+		min-height: auto;
+	}
+
+	.indicator-dictionary-page {
+		min-height: auto;
+	}
+
+	.reporting-rates-page {
+		min-height: auto;
+	}
+
+	.policy-actions-filter-row {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 6px;
+	}
+
+	.policy-actions-filter-label {
+		flex-basis: auto;
+		white-space: normal;
+	}
+
+	.policy-actions-period-field {
+		max-width: 100%;
+	}
+
+	.policy-actions-download-button {
+		width: 100%;
+	}
+
+	.indicator-dictionary-search-row {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 6px;
+	}
+
+	.indicator-dictionary-action-row {
+		margin-left: 0;
+		width: 100%;
+	}
+
+	.policy-actions-empty-state {
+		min-height: 320px;
+	}
+
+	.project-performance-empty-state {
+		min-height: 320px;
+	}
+}
+
+.reporting-rates-empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1 1 auto;
+	min-height: calc(100vh - 260px);
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
 /* File Icon Tabs Styling */
 /* .file-icon-tabs .ant-tabs-nav {
 	margin-bottom: 16px;
